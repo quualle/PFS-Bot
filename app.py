@@ -131,7 +131,7 @@ def store_feedback(feedback_type, comment, chat_history):
 
 def calculate_chat_stats():
     """
-    Liest alle Chatlog-Dateien aus CHATLOG_FOLDER und zählt die Gesamtanzahl an Nachrichten (User-Bots).
+    Liest alle Chatlog-Dateien aus CHATLOG_FOLDER und zählt die Gesamtanzahl an Nachrichten (User-Bot).
     Außerdem: Zählung nur für dieses Jahr, diesen Monat, heute.
     """
     total_count = 0
@@ -148,7 +148,6 @@ def calculate_chat_stats():
         if not filename.endswith(".txt"):
             continue
         
-        # Datei-Inhalt lesen
         filepath = os.path.join(CHATLOG_FOLDER, filename)
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -163,16 +162,13 @@ def calculate_chat_stats():
             y, m, d = date_str.split("-")
             y, m, d = int(y), int(m), int(d)
         except:
-            # Wenn wir es nicht parsen können, rechnen wir's nicht in year/month/day rein
+            # Falls das nicht parsebar ist, zählen wir die Datei nicht in year/month/day
             continue
 
-        # Jahr
         if y == current_year:
             year_count += message_pairs
-            # Monat
             if m == current_month:
                 month_count += message_pairs
-                # Tag
                 if d == current_day:
                     day_count += message_pairs
 
@@ -217,7 +213,7 @@ def download_wissensbasis(max_retries=5, backoff_factor=1):
     return wissensbasis
 
 def upload_wissensbasis(wissensbasis, max_retries=5, backoff_factor=1):
-    debug_print("Wissensbasis Download/Upload", f"Versuche, Wissensbasis hochzuladen.")
+    debug_print("Wissensbasis Download/Upload", "Versuche, Wissensbasis hochzuladen.")
     blob = bucket.blob(wissensbasis_blob_name)
     for attempt in range(1, max_retries + 1):
         try:
@@ -411,7 +407,7 @@ def toggle_notfall_mode():
 @app.route('/store_feedback', methods=['POST'])
 def store_feedback_route():
     """
-    Erwartet: 
+    Erwartet:
       - feedback_type (str): "positive" oder "negative"
       - comment (str): Kommentar
     Speichert das Feedback inkl. Chatverlauf in feedback/.
@@ -454,7 +450,7 @@ def chat():
         if request.method == 'POST':
             user_message = request.form.get('message', '').strip()
             notfall_aktiv = (request.form.get('notfallmodus') == '1')
-            notfall_art = request.form.get('notfallart', '').strip()
+            notfall_art = request.form.get('notfallart', '').strip()  # ggf. kommaseparierte Liste
 
             if not user_message:
                 flash("Bitte geben Sie eine Nachricht ein.", 'warning')
@@ -475,9 +471,8 @@ def chat():
             if notfall_aktiv:
                 session['notfall_mode'] = True
                 user_message = (
-                    f"ACHTUNG NOTFALL: {notfall_art}\n"
-                    "Dies ist ein Notfall im Sinne einer Vertragsgefährdung. "
-                    "Bitte konzentriere dich primär auf Wissen aus 'Thema 9: Notfälle & Vertragsgefährdungen'.\n\n"
+                    f"ACHTUNG NOTFALL - Thema 9: Notfälle & Vertragsgefährdungen.\n"
+                    f"Ausgewählte Notfalloption(en): {notfall_art}\n\n"
                     + user_message
                 )
                 log_notfall_event(user_id, notfall_art, user_message)
@@ -493,8 +488,9 @@ def chat():
                         "Deine Antworten sollten in sinnvollen Absätzen strukturiert sein, um die Lesbarkeit zu erhöhen, "
                         "du darfst gerne HTML-Markup verwenden (z.B. <b>, <ul>, <li>, <br>), "
                         "aber bitte keine unnötigen Sonderzeichen. "
-                        "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, sondern sagst, dass du es nicht weißt. "
-                        f"Hier die Frage: '''{user_message}'''\n\n"
+                        "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
+                        "sondern sagst, dass du es nicht weißt. "
+                        f"Hier die Frage:\n'''{user_message}'''\n\n"
                         f"Dies ist die Wissensbasis:\n{wissens_text}"
                     )
                 }
@@ -505,10 +501,7 @@ def chat():
 
             antwort = contact_openai(messages, model='o1-preview')
             if antwort:
-                # Chatverlauf speichern (Session)
                 session[chat_key].append({'user': user_message, 'bot': antwort})
-
-                # Chatlog in Datei schreiben
                 store_chatlog(user_id, session[chat_key])
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -999,13 +992,11 @@ def process_file_ai():
             with open(temp_filepath, 'r', encoding='utf-8') as f:
                 extracted_text = f.read()
         elif ext == '.pdf':
-            from PyPDF2 import PdfReader
             with open(temp_filepath, 'rb') as f:
                 reader = PdfReader(f)
                 for page in reader.pages:
                     extracted_text += page.extract_text() + "\n"
         elif ext in ['.doc', '.docx']:
-            import docx
             doc = docx.Document(temp_filepath)
             for para in doc.paragraphs:
                 extracted_text += para.text + "\n"
@@ -1096,13 +1087,11 @@ def process_file_manual():
             with open(temp_filepath, 'r', encoding='utf-8') as f:
                 extracted_text = f.read()
         elif ext == '.pdf':
-            from PyPDF2 import PdfReader
             with open(temp_filepath, 'rb') as f:
                 reader = PdfReader(f)
                 for page in reader.pages:
                     extracted_text += page.extract_text() + "\n"
         elif ext in ['.doc', '.docx']:
-            import docx
             doc = docx.Document(temp_filepath)
             for para in doc.paragraphs:
                 extracted_text += para.text + "\n"

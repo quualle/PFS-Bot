@@ -110,7 +110,7 @@
             display: block;
             font-family: 'Roboto', sans-serif;
             line-height: 1.5;
-            overflow: hidden;    /* damit wir bei Tippanimation kein Overflow sehen */
+            overflow: visible;
             position: relative;
         }
 
@@ -285,6 +285,43 @@
             margin-top: 0;
         }
 
+        /* Notfall-Button */
+        .notfall-button {
+            background-color: #dc3545; /* Rot */
+            color: #fff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+        }
+        .notfall-button:hover {
+            background-color: #b52a3a;
+        }
+
+        /* Panel mit allen Notfalloptionen */
+        .notfall-options {
+            display: none; /* Erst sichtbar, wenn Notfall aktiv */
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+        .notfall-option {
+            border: 2px solid #aaa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            user-select: none;
+        }
+        .notfall-option.selected {
+            background-color: #ff4c4c;
+            color: #fff;
+            border-color: #ff4c4c;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .chat-box {
@@ -292,7 +329,7 @@
                 height: 90vh;
             }
             .message {
-                width: 80%; /* Weniger fixe Breite auf Handy */
+                width: 80%;
             }
             .stats-container {
                 position: static;
@@ -326,6 +363,30 @@
                 Companion
             </h1>
 
+            <!-- Roter Notfall-Button -->
+            <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
+
+            <!-- Panel mit allen Notfalloptionen (mehrfach wählbar) -->
+            <div id="notfallOptions" class="notfall-options">
+                <div class="notfall-option" data-value="BK Alkohollmissbrauch">BK Alkohollmissbrauch</div>
+                <div class="notfall-option" data-value="BK und Kunde keine Sympathie mehr/Streit, Abreise gewünscht">BK / Kunde Streit</div>
+                <div class="notfall-option" data-value="BK Diebstahl">BK Diebstahl</div>
+                <div class="notfall-option" data-value="BK Verletzung/Erkrankung">BK Verletzung/Erkrankung</div>
+                <div class="notfall-option" data-value="BK vorzeitig abgereist, unangekündigt">BK vorzeitig abgereist</div>
+                <div class="notfall-option" data-value="BK abgebrochen kurz vor geplanter Anreise">BK Abbruch vor Anreise</div>
+                <div class="notfall-option" data-value="BK verursacht Sachschaden">BK Sachschaden</div>
+                <div class="notfall-option" data-value="BK nicht auffindbar/verschwunden">BK verschwunden</div>
+                <div class="notfall-option" data-value="BK verweigert bestimmte Aufgabe(n)">BK verweigert Aufgaben</div>
+                <div class="notfall-option" data-value="BK kommt nicht mehr aus dem Zimmer">BK verweigert Kontakt</div>
+                <div class="notfall-option" data-value="BK aggressiv">BK aggressiv</div>
+                <div class="notfall-option" data-value="BK hat Pflege nicht hinreichend getätigt">BK mangelnde Pflege</div>
+                <div class="notfall-option" data-value="BK hat Haushalt nicht ausreichend gepflegt">BK mangelnde Haushaltsführung</div>
+                <div class="notfall-option" data-value="BK meldet Überforderung (Pflege)">BK Überforderung Pflege</div>
+                <div class="notfall-option" data-value="BK meldet Überforderung (Haushalt)">BK Überforderung Haushalt</div>
+                <div class="notfall-option" data-value="Senior Aggressiv">Senior aggressiv</div>
+                <div class="notfall-option" data-value="Nicht aufgelistet">Nicht aufgelistet</div>
+            </div>
+
             <!-- Flash-Nachrichten -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -350,10 +411,7 @@
                         </div>
                         <div class="message bot typing" style="border-right:none;">
                             <strong>C-3PO:</strong> 
-                            <!-- Hier wird Bot-Content mit Markup gerendert -->
                             <span style="white-space:pre-wrap;">{{ chat.bot|safe }}</span>
-
-                            <!-- Feedback Icons -->
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>
                                 <span class="thumb-down" data-type="negative">👎</span>
@@ -361,26 +419,6 @@
                         </div>
                     {% endfor %}
                 {% endif %}
-            </div>
-
-            <!-- NOTFALLMODUS UI (Checkbox + Dropdown) -->
-            <div style="margin-bottom: 10px;">
-                <label>
-                    <input type="checkbox" id="notfallmodusCheckbox"
-                           {% if session.get('notfall_mode') %}checked{% endif %}
-                    >
-                    Notfallmodus aktivieren
-                </label>
-                <div id="notfallartWrapper" style="display:none; margin-top: 8px;">
-                    <label for="notfallart">Notfall-Typ:</label>
-                    <select id="notfallart" name="notfallart">
-                        <option value="">-- Bitte wählen --</option>
-                        <option value="Pflegekraft abgesprungen">Pflegekraft abgesprungen</option>
-                        <option value="Alkoholmissbrauch der Kraft">Alkoholmissbrauch der Kraft</option>
-                        <option value="Kunde will kündigen">Kunde will kündigen</option>
-                        <option value="Kunde droht mit Schadensersatz">Kunde droht mit Schadensersatz</option>
-                    </select>
-                </div>
             </div>
 
             <!-- Chat-Formular -->
@@ -438,49 +476,73 @@
         const chatForm = document.getElementById('chatForm');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        // Notfall UI
-        const notfallCheckbox = document.getElementById('notfallmodusCheckbox');
-        const notfallartWrapper = document.getElementById('notfallartWrapper');
-        const notfallartSelect = document.getElementById('notfallart');
+        // -----------------------------------------------------------
+        // Neuer Notfall-Button + Panel
+        // -----------------------------------------------------------
+        const notfallBtn = document.getElementById('notfallBtn');
+        const notfallOptionsContainer = document.getElementById('notfallOptions');
+        let notfallActive = false; // Status: ob wir uns im Notfallmodus befinden
+        let selectedNotfallOptions = [];
 
-        function toggleNotfallUI() {
-            if (notfallCheckbox.checked) {
-                notfallartWrapper.style.display = 'block';
+        notfallBtn.addEventListener('click', function() {
+            // Notfallmodus umschalten
+            notfallActive = !notfallActive;
+            if (notfallActive) {
+                // Aktivieren
+                document.body.classList.add('notfall-active');
+                notfallOptionsContainer.style.display = 'flex';
+                // Serverseitig "notfall_mode" setzen (Toggle anfordern)
+                fetch("{{ url_for('toggle_notfall_mode') }}", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: new URLSearchParams({
+                        'activate': '1'
+                    })
+                }).catch(err => console.error(err));
+                notfallBtn.textContent = "Notfall beenden";
             } else {
-                notfallartWrapper.style.display = 'none';
-                notfallartSelect.value = '';
+                // Deaktivieren
+                document.body.classList.remove('notfall-active');
+                notfallOptionsContainer.style.display = 'none';
+                selectedNotfallOptions = [];
+                // Reset visuell
+                document.querySelectorAll('.notfall-option').forEach(opt => opt.classList.remove('selected'));
+
+                fetch("{{ url_for('toggle_notfall_mode') }}", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: new URLSearchParams({
+                        'activate': '0'
+                    })
+                }).catch(err => console.error(err));
+                notfallBtn.textContent = "Ich habe einen Notfall";
             }
-        }
-        toggleNotfallUI();
-
-        notfallCheckbox.addEventListener('change', function() {
-            toggleNotfallUI();
-            const activate = this.checked ? '1' : '0';
-
-            fetch("{{ url_for('toggle_notfall_mode') }}", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfToken
-                },
-                body: new URLSearchParams({
-                    'activate': activate
-                })
-            })
-            .then(resp => resp.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.notfall_mode_active) {
-                        document.body.classList.add('notfall-active');
-                    } else {
-                        document.body.classList.remove('notfall-active');
-                    }
-                }
-            })
-            .catch(err => console.error(err));
         });
 
-        // Tippanimation
+        // Klick auf eine Notfall-Option (mehrfachauswahl)
+        document.querySelectorAll('.notfall-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                opt.classList.toggle('selected');
+                const val = opt.dataset.value;
+                if (selectedNotfallOptions.includes(val)) {
+                    // bereits drin -> entfernen
+                    selectedNotfallOptions = selectedNotfallOptions.filter(x => x !== val);
+                } else {
+                    // hinzufügen
+                    selectedNotfallOptions.push(val);
+                }
+            });
+        });
+
+        // -----------------------------------------------------------
+        // Scroll-Funktion
+        // -----------------------------------------------------------
         function forceScrollToBottom() {
             chatHistory.scrollTop = chatHistory.scrollHeight;
             if (chatHistory.lastElementChild) {
@@ -489,6 +551,9 @@
         }
         forceScrollToBottom();
 
+        // -----------------------------------------------------------
+        // Tippanimation
+        // -----------------------------------------------------------
         function typeMessage(element, message, callback) {
             let index = 0;
             const speed = 20; // Etwas schneller
@@ -517,7 +582,9 @@
             return bubble;
         }
 
+        // -----------------------------------------------------------
         // Chat abschicken
+        // -----------------------------------------------------------
         chatForm.addEventListener('submit', function(event) {
             event.preventDefault();
 
@@ -532,14 +599,13 @@
 
             forceScrollToBottom();
 
-            // Tipp-Animation ablaufen lassen
             typeMessage(userDiv, userMessageText, function() {
-                // Bot "schreibt..."-Indikator
                 const c3poTyping = showTypingIndicator();
 
-                // Zusätzliche Parameter für Notfallmodus
-                const isNotfall = notfallCheckbox.checked ? '1' : '0';
-                const whichNotfall = notfallartSelect.value || '';
+                // notfall_aktiv? Dann '1', sonst '0'
+                const isNotfall = notfallActive ? '1' : '0';
+                // Liste der ausgewählten Notfalloptionen -> Komma-getrennt
+                const joinedNotfallOptions = selectedNotfallOptions.join(', ');
 
                 fetch("{{ url_for('chat') }}", {
                     method: 'POST',
@@ -552,7 +618,7 @@
                         'csrf_token': csrfToken,
                         'message': userMessageText,
                         'notfallmodus': isNotfall,
-                        'notfallart': whichNotfall
+                        'notfallart': joinedNotfallOptions
                     })
                 })
                 .then(r => r.json())
@@ -579,7 +645,7 @@
                         chatHistory.appendChild(errDiv);
                     }
                     forceScrollToBottom();
-                    attachFeedbackHandlers(); // Erneut binden
+                    attachFeedbackHandlers();
                 })
                 .catch(err => {
                     c3poTyping.remove();
@@ -592,11 +658,12 @@
                 });
             });
 
-            // Eingabe leeren
             chatForm.reset();
         });
 
+        // -----------------------------------------------------------
         // Feedback-Funktion
+        // -----------------------------------------------------------
         const feedbackOverlay = document.getElementById('feedbackOverlay');
         const feedbackTitle = document.getElementById('feedbackTitle');
         const feedbackComment = document.getElementById('feedbackComment');
@@ -604,7 +671,6 @@
         const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
 
         let currentFeedbackType = null;
-
         function attachFeedbackHandlers() {
             const thumbUps = document.querySelectorAll('.thumb-up');
             const thumbDowns = document.querySelectorAll('.thumb-down');
@@ -626,12 +692,10 @@
                 });
             });
         }
-
         attachFeedbackHandlers();
 
         sendFeedbackBtn.addEventListener('click', () => {
             const commentVal = feedbackComment.value.trim();
-            // Feedback an /store_feedback schicken
             fetch("{{ url_for('store_feedback_route') }}", {
                 method: 'POST',
                 headers: {

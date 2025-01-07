@@ -104,6 +104,7 @@
             margin-bottom: 15px;
             width: 500px;        /* Feste Breite, damit ein Umbruch erzwungen wird */
             padding: 8px;
+            padding-bottom: 35px; 
             animation: slideIn 0.5s ease-out;
             word-wrap: break-word;
             white-space: pre-wrap;
@@ -141,13 +142,15 @@
         /* Feedback-Icons (Daumen hoch / Daumen runter) */
         .feedback-icons {
             position: absolute;
-            bottom: 5px;
-            right: 5px;
+            bottom: 5px;              /* Abstand vom unteren Rand der Bubble */
+            right: 5px;               /* Abstand vom rechten Rand der Bubble */
+            display: flex;            /* Icons nebeneinander */
+            gap: 10px;                /* Abstand zwischen den Icons */
             font-size: 1.2em;
             cursor: pointer;
-        }
-        .feedback-icons span {
-            margin-left: 10px;
+                .feedback-icons span {
+                    margin-left: 10px;
+                }
         }
 
         /* Tipp-Animation */

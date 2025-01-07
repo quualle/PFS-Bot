@@ -1,0 +1,27 @@
+# Alles ignorieren
+*
+
+# .gitignore nicht ignorieren
+!.gitignore
+
+# Erlaubte Dateien
+!app.py
+!.env
+!notfall_logs.json
+!requirements.txt
+!themen.txt
+
+# Erlaube templates-Ordner, aber nur bestimmte Dateien
+!templates/
+templates/*
+!templates/admin.html
+!templates/chat.html
+!templates/login.html
+!templates/edit.html
+!templates/index.html
+!templates/debug.html
+
+# Erlaube static-Ordner, aber nur styles.css
+!static/
+static/*
+!static/styles.css

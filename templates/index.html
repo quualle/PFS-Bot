@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Wissensbasis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <!-- CSRF-Token Meta-Tag hinzufügen -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
+    <style>
+        /* Ihre bestehenden CSS-Regeln */
+        /* ... */
+
+        /* Flex Container für Hauptinhalt */
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start; /* Elemente werden am Anfang der Hauptachse platziert */
+            align-items: flex-start;    /* Elemente werden am Anfang der Querachse ausgerichtet */
+            padding: 20px;
+            height: calc(100vh - 40px); /* Volle Höhe minus Padding */
+            box-sizing: border-box;
+        }
+
+        /* Hauptbereich */
+        .main-content {
+            flex: 1; /* Nimmt den verfügbaren Platz ein */
+            margin-right: 20px;
+            max-width: 70%; /* Optional: Begrenzung der maximalen Breite */
+        }
+
+        /* Seitenleiste für "Aktuelle Themen" */
+        .sidebar {
+            width: 35%; /* Feste Breite für die Sidebar */
+            min-width: 300px; /* Mindestbreite, um lesbar zu bleiben */
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+            background-color: #f9f9f9; /* Optional: Hintergrundfarbe für bessere Abgrenzung */
+        }
+
+        /* Größeres Textarea */
+        textarea[name="eingabe_text"] {
+            width: 100%;
+            height: 200px; /* Sie können die Höhe nach Bedarf anpassen */
+            resize: vertical;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        /* Checkboxen nebeneinander */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-group label {
+            margin-right: 20px;
+        }
+
+        /* Debug-Einstellungen Button unten rechts */
+        .debug-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #f0ad4e;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1em;
+        }
+
+        .debug-button:hover {
+            background-color: #ec971f;
+        }
+
+        /* Button zum Aufrufen von edit.html */
+        .edit-button {
+            margin-top: 20px;
+            background-color: #5bc0de;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1em;
+        }
+
+        .edit-button:hover {
+            background-color: #31b0d5;
+        }
+
+        /* Button für Chat-Ansicht */
+        .chat-button {
+            display: inline-block;
+            margin-top: 20px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1em;
+        }
+
+        .chat-button:hover {
+            background-color: #4cae4c;
+        }
+
+        /* Flash Nachrichten Styling */
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+
+        .flashes li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .flashes li.success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+
+        .flashes li.danger {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+
+        .flashes li.warning {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+        }
+
+        .flashes li.info {
+            background-color: #d9edf7;
+            color: #31708f;
+        }
+
+        /* Versteckte Elemente */
+        .hidden {
+            display: none;
+        }
+
+        /* Responsives Design für kleinere Bildschirme */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 40%;
+                min-width: 250px;
+            }
+            .main-content {
+                max-width: 60%;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                max-height: 50vh;
+                margin-top: 20px;
+            }
+            .main-content {
+                max-width: 100%;
+                margin-right: 0;
+            }
+        }
+    </style>
+    <script>
+        // Funktion zur Abrufung des CSRF-Tokens aus dem Meta-Tag
+        function getCSRFToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
+        // Funktion zum Senden von AJAX-Anfragen mit CSRF-Token
+        function fetchWithCSRF(url, options = {}) {
+            const csrfToken = getCSRFToken();
+            options.headers = options.headers || {};
+            options.headers['X-CSRFToken'] = csrfToken;
+            return fetch(url, options);
+        }
+
+        // Funktion zur Aktualisierung der Unterthemen basierend auf dem ausgewählten Thema
+        function aktualisiereUnterthemen() {
+            var thema = document.getElementById('thema_var').value;
+            var unterthemaSelect = document.getElementById('unterthema_var');
+
+            // Leeren des Unterthema-Dropdowns
+            unterthemaSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+
+            if (thema === "") {
+                return;
+            }
+
+            // AJAX-Anfrage an die Flask-App, um die Unterthemen abzurufen
+            fetchWithCSRF('{{ url_for("get_unterthemen") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'thema=' + encodeURIComponent(thema)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.unterthemen && data.unterthemen.length > 0) {
+                    data.unterthemen.forEach(function(unterthema) {
+                        var option = document.createElement('option');
+                        option.value = unterthema;
+                        option.text = unterthema;
+                        unterthemaSelect.add(option);
+                    });
+                } else {
+                    unterthemaSelect.innerHTML = '<option value="">Keine Unterthemen verfügbar</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Ein Fehler ist beim Abrufen der Unterthemen aufgetreten.");
+            });
+        }
+
+        // Funktion zur Steuerung der Sichtbarkeit der Dropdowns und Beschreibung
+        function toggleKIOptionen() {
+            var kiCheckbox = document.getElementById('ki_var_checkbox');
+            var manualThemaSection = document.getElementById('manual_thema_section');
+            var descriptionSection = document.getElementById('description_section');
+
+            if (kiCheckbox.checked) {
+                manualThemaSection.classList.add('hidden');
+                descriptionSection.classList.add('hidden');
+
+                // Entfernen der "required" Attribute
+                document.getElementById('thema_var').removeAttribute('required');
+                document.getElementById('unterthema_var').removeAttribute('required');
+                document.getElementById('beschreibung_text').removeAttribute('required');
+
+                console.log("KI-Kategorisierung aktiviert, verstecke manuelle Themenauswahl.");
+            } else {
+                manualThemaSection.classList.remove('hidden');
+                descriptionSection.classList.remove('hidden');
+
+                // Hinzufügen der "required" Attribute
+                document.getElementById('thema_var').setAttribute('required', 'required');
+                document.getElementById('unterthema_var').setAttribute('required', 'required');
+                document.getElementById('beschreibung_text').setAttribute('required', 'required');
+
+                console.log("KI-Kategorisierung deaktiviert, zeige manuelle Themenauswahl.");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('thema_var').addEventListener('change', aktualisiereUnterthemen);
+            document.getElementById('ki_var_checkbox').addEventListener('change', toggleKIOptionen);
+
+            // Initiale Überprüfung beim Laden der Seite
+            toggleKIOptionen();
+        });
+    </script>
+</head>
+<body>
+    <h1>Wissensbasis</h1>
+
+    <!-- Nachrichten anzeigen -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div class="container">
+        <!-- Hauptinhalt -->
+        <div class="main-content">
+            <!-- Formular für neue Einträge -->
+            <form method="POST" action="{{ url_for('admin') }}">
+                <!-- CSRF-Token hinzufügen -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <textarea name="eingabe_text" placeholder="Gib hier deinen Wissenseintrag ein"></textarea><br>
+
+                <!-- Checkbox zur Aktivierung der KI-Kategorisierung -->
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="ki_var" id="ki_var_checkbox"> Mehrere Themen: KI soll aufteilen
+                    </label>
+                    <label>
+                        <input type="checkbox" name="debug_mode"> Debug-Modus
+                    </label>
+                </div>
+
+                <!-- Manuelle Themen- und Unterthemen-Auswahl -->
+                <div id="manual_thema_section">
+                    <!-- Dropdown für Thema -->
+                    <label for="thema_var">Wählen Sie ein Thema:</label><br>
+                    <select name="thema_var" id="thema_var" required>
+                        <option value="">Bitte wählen...</option>
+                        {% for thema in themen_dict.keys() %}
+                            <option value="{{ thema }}">{{ thema }}</option>
+                        {% endfor %}
+                    </select><br><br>
+
+                    <!-- Dropdown für Unterthema -->
+                    <label for="unterthema_var">Wählen Sie ein Unterthema:</label><br>
+                    <select name="unterthema_var" id="unterthema_var" required>
+                        <option value="">Bitte wählen...</option>
+                        <!-- Optionen werden dynamisch per JavaScript hinzugefügt -->
+                    </select><br><br>
+
+                    <!-- Beschreibungseingabe -->
+                    <div id="description_section">
+                        <label for="beschreibung_text">Beschreibung:</label><br>
+                        <input type="text" name="beschreibung_text" id="beschreibung_text" placeholder="Geben Sie eine Beschreibung ein" required><br><br>
+                    </div>
+                </div>
+
+                <button type="submit">Eintrag speichern</button>
+            </form>
+
+            <form method="POST" action="{{ url_for('clear_chat_history') }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="clear-chat-button">Chatverlauf leeren</button>
+            </form>
+
+            <!-- Button zum Aufrufen von edit.html -->
+            <a href="{{ url_for('edit') }}" class="edit-button">Einträge bearbeiten</a>
+
+            <!-- Button zum Aufrufen der Chat-Seite -->
+            <a href="{{ url_for('chat') }}" class="chat-button">Chat mit Bot</a>
+        </div>
+
+        <!-- Seitenleiste für "Aktuelle Themen" -->
+        <div class="sidebar">
+            <h2>Aktuelle Themen</h2>
+            <ul>
+                {% for thema, unterpunkte in themen_dict.items() %}
+                    <li>
+                        <strong>{{ thema }}</strong>
+                        <ul>
+                            {% for unterthema, details in unterpunkte.items() %}
+                                <li>{{ unterthema }} - {{ details.title }}{% if details.beschreibung %} ({{ details.beschreibung }}){% endif %}</li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Debug-Seite-Link als Button unten rechts -->
+    <a href="{{ url_for('debug_page') }}" class="debug-button">Debug-Einstellungen</a>
+
+    <!-- Optional: Ein einziger Button zur Rückkehr zur Chat-Ansicht -->
+    <a href="{{ url_for('chat') }}" class="chat-button">Zurück zum Chat</a>
+</body>
+</html>

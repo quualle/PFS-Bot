@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Pflegehilfe für Senioren / Companion</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <!-- Google Fonts für futuristische Typografie -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+
+    <!-- CSRF-Token Meta-Tag hinzufügen -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
+    <style>
+        /* Grundlegende Stile */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            /* zentrieren */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center; /* damit wir das Inline-Block-Setup nutzen */
+        }
+
+        /* Rotfärbung bei Notfallmodus */
+        .notfall-active {
+            background: linear-gradient(135deg, #8b0000, #ff0000) !important; /* Rot / Rot */
+        }
+        .notfall-active .chat-box {
+            border: 3px solid red;
+        }
+
+        /* Container für Chat + Stats, damit Chat zentriert bleibt */
+        .chat-container {
+            display: inline-block; /* Damit es mittig bleibt */
+            position: relative;    /* Für die Stats-Positionierung */
+        }
+
+        .chat-box {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            max-width: 1000px;
+            width: 90vw;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+            text-align: left; /* Chat-Inhalt linksbündig */
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            color: #00ffff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ffff;
+            white-space: pre-line; /* Ermöglicht Zeilenumbrüche */
+        }
+
+        /* Flash-Nachrichten */
+        .flashes {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        .flash {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-family: 'Roboto', sans-serif;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .flash-danger { background-color: #ff4c4c; color: #fff; }
+        .flash-warning { background-color: #ffa500; color: #fff; }
+        .flash-info { background-color: #1e90ff; color: #fff; }
+        .flash-success { background-color: #28a745; color: #fff; }
+
+        /* Chat-Verlauf */
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+        }
+
+        .message {
+            border-radius: 10px;
+            margin-bottom: 15px;
+            width: 320px;        /* Feste Breite, damit ein Umbruch erzwungen wird */
+            padding: 10px;
+            animation: slideIn 0.5s ease-out;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            display: block;
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.5;
+            overflow: hidden;    /* damit wir bei Tippanimation kein Overflow sehen */
+            position: relative;
+        }
+
+        /* Farbe für User */
+        .user {
+            background-color: #00ffff;
+            color: #000;
+            align-self: flex-end; /* Rechts ausrichten */
+            border-bottom-right-radius: 0;
+            text-align: left;     /* Text links in der Bubble */
+        }
+
+        /* Farbe für Bot */
+        .bot {
+            background-color: #2e2e2e;
+            color: #fff;
+            align-self: flex-start; /* Links ausrichten */
+            border-bottom-left-radius: 0;
+            text-align: left;
+        }
+
+        .message strong {
+            display: block;
+            margin-bottom: 5px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Feedback-Icons (Daumen hoch / Daumen runter) */
+        .feedback-icons {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+        .feedback-icons span {
+            margin-left: 10px;
+        }
+
+        /* Tipp-Animation */
+        .typing {
+            border-right: 2px solid #00ffff;
+            animation: blink-caret 0.75s step-end infinite;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #00ffff; }
+        }
+
+        /* Formular unten */
+        form {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 1em;
+            outline: none;
+            transition: background 0.3s ease;
+            font-family: 'Roboto', sans-serif;
+        }
+        input[type="text"]::placeholder {
+            color: #e0e0e0;
+        }
+        input[type="text"]:focus {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            background-color: #00ffff;
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 255, 255, 0.2);
+            line-height: 1.6;
+        }
+        button:hover {
+            background-color: #00e6e6;
+            transform: translateY(-3px);
+        }
+
+        .admin-button {
+            background-color: #f0ad4e;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+        .admin-button:hover {
+            background-color: #ec971f;
+            transform: translateY(-2px);
+        }
+
+        .clear-chat-button {
+            background-color: #dc3545;
+            margin-top: 10px;
+        }
+        .clear-chat-button:hover {
+            background-color: #c82333;
+            transform: translateY(-2px);
+        }
+
+        /* User Guidance */
+        .user-guidance {
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #ccc;
+            line-height: 1.4;
+        }
+        .user-guidance details {
+            margin-top: 8px;
+            cursor: pointer;
+        }
+        .user-guidance summary {
+            font-weight: bold;
+            outline: none;
+        }
+        .user-guidance ul {
+            list-style: disc;
+            margin-left: 1.4em;
+            margin-top: 5px;
+        }
+
+        /* Statistik-Box oben rechts (innerhalb .chat-container) */
+        .stats-container {
+            position: absolute;
+            top: 0;
+            right: -240px;
+            width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            text-align: left;
+        }
+
+        /* Modal für Feedback */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .modal {
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            max-width: 90%;
+        }
+        .modal h3 {
+            margin-top: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chat-box {
+                padding: 20px;
+                height: 90vh;
+            }
+            .message {
+                width: 80%; /* Weniger fixe Breite auf Handy */
+            }
+            .stats-container {
+                position: static;
+                margin: 10px auto 0 auto;
+                width: auto;
+            }
+            .admin-button {
+                bottom: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body class="{% if session.get('notfall_mode') %}notfall-active{% endif %}">
+
+    <!-- Overlays für Feedback -->
+    <div class="modal-overlay" id="feedbackOverlay">
+        <div class="modal">
+            <h3 id="feedbackTitle">Feedback</h3>
+            <textarea id="feedbackComment" rows="4" style="width: 100%;"></textarea>
+            <br><br>
+            <button id="sendFeedbackBtn">Absenden</button>
+            <button id="cancelFeedbackBtn" style="margin-left: 10px;">Abbrechen</button>
+        </div>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-box">
+            <h1>
+                Pflegehilfe für Senioren
+                Companion
+            </h1>
+
+            <!-- Flash-Nachrichten -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flashes">
+                        {% for category, message in messages %}
+                            <li class="flash flash-{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Chat-Verlauf -->
+            <div class="chat-history" id="chatHistory">
+                {% if chat_history|length == 0 %}
+                    <div class="message bot">
+                        <strong>C-3PO:</strong> Willkommen! Wie kann ich Ihnen heute helfen?
+                    </div>
+                {% else %}
+                    {% for chat in chat_history %}
+                        <div class="message user typing" style="border-right:none;">
+                            <strong>Sie:</strong> {{ chat.user }}
+                        </div>
+                        <div class="message bot typing" style="border-right:none;">
+                            <strong>C-3PO:</strong> 
+                            <!-- Hier wird Bot-Content mit Markup gerendert -->
+                            <span style="white-space:pre-wrap;">{{ chat.bot|safe }}</span>
+
+                            <!-- Feedback Icons -->
+                            <div class="feedback-icons">
+                                <span class="thumb-up" data-type="positive">👍</span>
+                                <span class="thumb-down" data-type="negative">👎</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- NOTFALLMODUS UI (Checkbox + Dropdown) -->
+            <div style="margin-bottom: 10px;">
+                <label>
+                    <input type="checkbox" id="notfallmodusCheckbox"
+                           {% if session.get('notfall_mode') %}checked{% endif %}
+                    >
+                    Notfallmodus aktivieren
+                </label>
+                <div id="notfallartWrapper" style="display:none; margin-top: 8px;">
+                    <label for="notfallart">Notfall-Typ:</label>
+                    <select id="notfallart" name="notfallart">
+                        <option value="">-- Bitte wählen --</option>
+                        <option value="Pflegekraft abgesprungen">Pflegekraft abgesprungen</option>
+                        <option value="Alkoholmissbrauch der Kraft">Alkoholmissbrauch der Kraft</option>
+                        <option value="Kunde will kündigen">Kunde will kündigen</option>
+                        <option value="Kunde droht mit Schadensersatz">Kunde droht mit Schadensersatz</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Chat-Formular -->
+            <form id="chatForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="text" name="message" placeholder="Ihre Nachricht..." required>
+                <button type="submit">Senden</button>
+            </form>
+
+            <!-- User Guidance Hinweis -->
+            <div class="user-guidance">
+                <small>
+                    Du chattest mit einer künstlichen Intelligenz, die aus sehr vielen Daten eine Antwort zusammenstellt.<br>
+                    Je ausführlicher und präziser du deine Frage stellst, desto besser wird die Antwort.<br>
+                    Du kannst zum Beispiel Fragen zum CRM, zu weiteren Tools oder zum Umgang mit Kunden, Agenturen und Pflegekräften stellen.
+                </small>
+                <details>
+                    <summary>Tipps für bessere Fragen</summary>
+                    <ul>
+                        <li>
+                            <strong>Statt:</strong> "Wie kann ich eine SA pausieren?"<br>
+                            <strong>Besser:</strong> "Wie kann ich im CRM eine laufende Stellenausschreibung pausieren?"
+                        </li>
+                        <li>
+                            <strong>Statt:</strong> "Eine BK ist nicht angereist, kann ich die Stelle wieder freischalten?"<br>
+                            <strong>Besser:</strong> "Eine Betreuungskraft, die morgen hätte anreisen sollen, ist am heutigen Abend nicht in den Bus gestiegen. Deswegen wird der Kunde morgen keine Pflege bekommen. Meine Frage: Darf ich die Stellenausschreibung direkt wieder aktivieren und für alle anderen Agenturen freischalten?"
+                        </li>
+                    </ul>
+                </details>
+            </div>
+
+            <!-- Chatverlauf leeren -->
+            <form method="POST" action="{{ url_for('clear_chat_history') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="clear-chat-button">Chatverlauf leeren</button>
+            </form>
+
+            <!-- Admin-View Button -->
+            <a href="{{ url_for('login') }}" class="admin-button">Admin View</a>
+        </div>
+
+        <!-- Stats Container (oben rechts daneben) -->
+        <div class="stats-container">
+            <h3>So viele Fragen hat der Bot schon beantwortet</h3>
+            <p>Gesamt: {{ stats.total }}</p>
+            <p>Dieses Jahr: {{ stats.year }}</p>
+            <p>Diesen Monat: {{ stats.month }}</p>
+            <p>Heute: {{ stats.today }}</p>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const chatHistory = document.getElementById('chatHistory');
+        const chatForm = document.getElementById('chatForm');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Notfall UI
+        const notfallCheckbox = document.getElementById('notfallmodusCheckbox');
+        const notfallartWrapper = document.getElementById('notfallartWrapper');
+        const notfallartSelect = document.getElementById('notfallart');
+
+        function toggleNotfallUI() {
+            if (notfallCheckbox.checked) {
+                notfallartWrapper.style.display = 'block';
+            } else {
+                notfallartWrapper.style.display = 'none';
+                notfallartSelect.value = '';
+            }
+        }
+        toggleNotfallUI();
+
+        notfallCheckbox.addEventListener('change', function() {
+            toggleNotfallUI();
+            const activate = this.checked ? '1' : '0';
+
+            fetch("{{ url_for('toggle_notfall_mode') }}", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: new URLSearchParams({
+                    'activate': activate
+                })
+            })
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.notfall_mode_active) {
+                        document.body.classList.add('notfall-active');
+                    } else {
+                        document.body.classList.remove('notfall-active');
+                    }
+                }
+            })
+            .catch(err => console.error(err));
+        });
+
+        // Tippanimation
+        function forceScrollToBottom() {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            if (chatHistory.lastElementChild) {
+                chatHistory.lastElementChild.scrollIntoView({ block: "end", inline: "nearest" });
+            }
+        }
+        forceScrollToBottom();
+
+        function typeMessage(element, message, callback) {
+            let index = 0;
+            const speed = 20; // Etwas schneller
+
+            function typeChar() {
+                if (index < message.length) {
+                    element.textContent += message.charAt(index);
+                    index++;
+                    forceScrollToBottom();
+                    setTimeout(typeChar, speed);
+                } else {
+                    // Tippanimation beenden
+                    element.classList.remove('typing');
+                    if (callback) callback();
+                }
+            }
+            typeChar();
+        }
+
+        function showTypingIndicator() {
+            const bubble = document.createElement('div');
+            bubble.classList.add('message', 'bot', 'typing');
+            bubble.innerHTML = "<strong>C-3PO:</strong> ...schreibt gerade...";
+            chatHistory.appendChild(bubble);
+            forceScrollToBottom();
+            return bubble;
+        }
+
+        // Chat abschicken
+        chatForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const userMessageText = new FormData(chatForm).get('message').trim();
+            if (!userMessageText) return;
+
+            // User-Bubble (mit Tippanimation)
+            const userDiv = document.createElement('div');
+            userDiv.classList.add('message', 'user', 'typing');
+            userDiv.innerHTML = "<strong>Sie:</strong> ";
+            chatHistory.appendChild(userDiv);
+
+            forceScrollToBottom();
+
+            // Tipp-Animation ablaufen lassen
+            typeMessage(userDiv, userMessageText, function() {
+                // Bot "schreibt..."-Indikator
+                const c3poTyping = showTypingIndicator();
+
+                // Zusätzliche Parameter für Notfallmodus
+                const isNotfall = notfallCheckbox.checked ? '1' : '0';
+                const whichNotfall = notfallartSelect.value || '';
+
+                fetch("{{ url_for('chat') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: new URLSearchParams({
+                        'csrf_token': csrfToken,
+                        'message': userMessageText,
+                        'notfallmodus': isNotfall,
+                        'notfallart': whichNotfall
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    c3poTyping.remove();
+
+                    if (data.response) {
+                        // Neue Bot-Bubble
+                        const botDiv = document.createElement('div');
+                        botDiv.classList.add('message', 'bot');
+                        botDiv.innerHTML = `
+                            <strong>C-3PO:</strong>
+                            <span style="white-space:pre-wrap;">${data.response}</span>
+                            <div class="feedback-icons">
+                                <span class="thumb-up" data-type="positive">👍</span>
+                                <span class="thumb-down" data-type="negative">👎</span>
+                            </div>
+                        `;
+                        chatHistory.appendChild(botDiv);
+                    } else if (data.error) {
+                        const errDiv = document.createElement('div');
+                        errDiv.classList.add('flash', 'flash-danger');
+                        errDiv.textContent = data.error;
+                        chatHistory.appendChild(errDiv);
+                    }
+                    forceScrollToBottom();
+                    attachFeedbackHandlers(); // Erneut binden
+                })
+                .catch(err => {
+                    c3poTyping.remove();
+                    const errDiv = document.createElement('div');
+                    errDiv.classList.add('flash', 'flash-danger');
+                    errDiv.textContent = "Fehler beim Senden der Nachricht.";
+                    chatHistory.appendChild(errDiv);
+                    forceScrollToBottom();
+                    console.error(err);
+                });
+            });
+
+            // Eingabe leeren
+            chatForm.reset();
+        });
+
+        // Feedback-Funktion
+        const feedbackOverlay = document.getElementById('feedbackOverlay');
+        const feedbackTitle = document.getElementById('feedbackTitle');
+        const feedbackComment = document.getElementById('feedbackComment');
+        const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
+        const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
+
+        let currentFeedbackType = null;
+
+        function attachFeedbackHandlers() {
+            const thumbUps = document.querySelectorAll('.thumb-up');
+            const thumbDowns = document.querySelectorAll('.thumb-down');
+
+            thumbUps.forEach(el => {
+                el.addEventListener('click', () => {
+                    currentFeedbackType = 'positive';
+                    feedbackTitle.textContent = "Positives Feedback geben";
+                    feedbackComment.value = "";
+                    feedbackOverlay.style.display = "flex";
+                });
+            });
+            thumbDowns.forEach(el => {
+                el.addEventListener('click', () => {
+                    currentFeedbackType = 'negative';
+                    feedbackTitle.textContent = "Negatives Feedback geben";
+                    feedbackComment.value = "";
+                    feedbackOverlay.style.display = "flex";
+                });
+            });
+        }
+
+        attachFeedbackHandlers();
+
+        sendFeedbackBtn.addEventListener('click', () => {
+            const commentVal = feedbackComment.value.trim();
+            // Feedback an /store_feedback schicken
+            fetch("{{ url_for('store_feedback_route') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    feedback_type: currentFeedbackType,
+                    comment: commentVal
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Feedback gespeichert! Vielen Dank.");
+                } else {
+                    alert("Fehler beim Speichern des Feedbacks: " + (data.error || data.message));
+                }
+                feedbackOverlay.style.display = "none";
+            })
+            .catch(err => {
+                console.error(err);
+                feedbackOverlay.style.display = "none";
+            });
+        });
+
+        cancelFeedbackBtn.addEventListener('click', () => {
+            feedbackOverlay.style.display = "none";
+        });
+    });
+    </script>
+</body>
+</html>

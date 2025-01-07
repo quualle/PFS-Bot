@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Wissensbasis Admin</title>
+
+    <!-- Bootswatch Flatly Theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/flatly/bootstrap.min.css">
+
+    <!-- Font Awesome für Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts für eine moderne Typografie -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSRF-Token Meta-Tag hinzufügen -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #1abc9c, #16a085);
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* Flex Container für Hauptinhalt */
+        .container-flex {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: flex-start;
+            padding: 20px;
+            height: calc(100vh - 80px); /* Volle Höhe minus Padding und Header */
+            box-sizing: border-box;
+        }
+        .hidden {
+            display: none;
+        }
+
+        /* Hauptbereich */
+        .main-content {
+            flex: 1;
+            margin-right: 20px;
+            max-width: 70%;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        /* Seitenleiste für "Aktuelle Themen" */
+        .sidebar {
+            width: 35%;
+            min-width: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Drehe das Chevron-Icon beim Ausklappen */
+        a[data-bs-toggle="collapse"].collapsed i {
+            transform: rotate(0deg);
+            transition: transform 0.3s;
+        }
+
+        a[data-bs-toggle="collapse"] i {
+            transform: rotate(180deg);
+            transition: transform 0.3s;
+        }
+
+
+        /* Größeres Textarea */
+        textarea[name="eingabe_text"] {
+            width: 100%;
+            height: 200px;
+            resize: vertical;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 1em;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+        }
+
+        /* Checkboxen nebeneinander */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-group label {
+            margin-right: 20px;
+        }
+
+        /* Buttons Styling */
+        .btn-action {
+            margin-right: 5px;
+            transition: transform 0.1s;
+        }
+
+        .btn-action:hover {
+            transform: scale(1.05);
+        }
+
+        /* Flash Nachrichten Styling */
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+
+        .flashes li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .flashes li.success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+
+        .flashes li.danger {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+
+        .flashes li.warning {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+        }
+
+        .flashes li.info {
+            background-color: #d9edf7;
+            color: #31708f;
+        }
+
+        /* Responsive Design für kleinere Bildschirme */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 40%;
+                min-width: 250px;
+            }
+            .main-content {
+                max-width: 60%;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .container-flex {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                max-height: 50vh;
+                margin-top: 20px;
+            }
+            .main-content {
+                max-width: 100%;
+                margin-right: 0;
+            }
+        }
+
+        /* Collapse Header Styling */
+        .collapse-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px;
+            background-color: #34495e;
+            color: #ecf0f1;
+            border-radius: 5px;
+        }
+
+        .collapse-header:hover {
+            background-color: #2c3e50;
+        }
+
+        /* Add/Remove Topic Buttons */
+        .add-topic-btn, .remove-topic-btn {
+            margin-top: 10px;
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            border-radius: 10px;
+        }
+
+        .modal-header, .modal-footer {
+            background-color: #ecf0f1;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #16a085;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1abc9c;
+        }
+
+        /* Animationen */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Tabelle für Datei-Status */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #dee2e6;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        .status-uploading {
+            color: #ffc107;
+        }
+
+        .status-extracting {
+            color: #17a2b8;
+        }
+
+        .status-categorizing {
+            color: #28a745;
+        }
+
+        .status-saving {
+            color: #007bff;
+        }
+
+        .status-completed {
+            color: #28a745;
+        }
+
+        .status-failed {
+            color: #dc3545;
+        }
+    </style>
+
+<script>
+    // Funktion zur Abrufung des CSRF-Tokens aus dem Meta-Tag
+    function getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    // Funktion zum Senden von AJAX-Anfragen mit CSRF-Token
+    function fetchWithCSRF(url, options = {}) {
+        const csrfToken = getCSRFToken();
+        options.headers = options.headers || {};
+        options.headers['X-CSRFToken'] = csrfToken;
+        return fetch(url, options);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Skript wird geladen.');
+
+        // Elemente referenzieren
+        const addTypeSelect = document.getElementById('add_type');
+        const themaSection = document.getElementById('thema_section');
+        const unterthemaSection = document.getElementById('unterthema_section');
+
+        // Funktion zur Steuerung der Sichtbarkeit der Abschnitte
+        function toggleAddSections() {
+            if (addTypeSelect.value === 'thema') {
+                themaSection.style.display = 'block';
+                unterthemaSection.style.display = 'none';
+
+                // Setze required für Hauptthema und entferne für Unterthema
+                document.getElementById('neues_thema').setAttribute('required', 'required');
+                document.getElementById('parent_thema').removeAttribute('required');
+                document.getElementById('unterthema_nummer').removeAttribute('required');
+                document.getElementById('unterthema_titel').removeAttribute('required');
+            } else if (addTypeSelect.value === 'unterthema') {
+                themaSection.style.display = 'none';
+                unterthemaSection.style.display = 'block';
+
+                // Entferne required für Hauptthema und setze für Unterthema
+                document.getElementById('neues_thema').removeAttribute('required');
+                document.getElementById('parent_thema').setAttribute('required', 'required');
+                document.getElementById('unterthema_nummer').setAttribute('required', 'required');
+                document.getElementById('unterthema_titel').setAttribute('required', 'required');
+            }
+        }
+
+        // Event Listener für die Auswahl
+        addTypeSelect.addEventListener('change', toggleAddSections);
+
+        // Initiale Anzeige
+        toggleAddSections();
+
+        // Event Listener für das Hinzufügen von Themen oder Unterthemen
+        document.getElementById('add-topic-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formular zum Hinzufügen wurde abgeschickt.');
+
+            const addType = addTypeSelect.value;
+
+            if (addType === 'thema') {
+                const neuesThema = document.getElementById('neues_thema').value.trim();
+                if (neuesThema === "") {
+                    alert("Bitte geben Sie ein Hauptthema ein.");
+                    return;
+                }
+
+                console.log('Neues Hauptthema:', neuesThema);
+
+                fetchWithCSRF('{{ url_for("add_topic") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'thema',
+                        thema: neuesThema
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert("Fehler beim Hinzufügen des Hauptthemas: " + (data.message || ""));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Ein unerwarteter Fehler ist aufgetreten.");
+                });
+
+            } else if (addType === 'unterthema') {
+                const parentThema = document.getElementById('parent_thema').value;
+                const unterthemaNummer = document.getElementById('unterthema_nummer').value.trim();
+                const unterthemaTitel = document.getElementById('unterthema_titel').value.trim();
+                const unterthemaBeschreibung = document.getElementById('unterthema_beschreibung').value.trim();
+
+                if (parentThema === "") {
+                    alert("Bitte wählen Sie ein übergeordnetes Hauptthema aus.");
+                    return;
+                }
+                if (unterthemaNummer === "" || unterthemaTitel === "") {
+                    alert("Bitte füllen Sie alle Pflichtfelder für das Unterthema aus.");
+                    return;
+                }
+
+                console.log('Neues Unterthema:', {
+                    parentThema,
+                    unterthemaNummer,
+                    unterthemaTitel,
+                    unterthemaBeschreibung
+                });
+
+                fetchWithCSRF('{{ url_for("add_topic") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'unterthema',
+                        parent_thema: parentThema,
+                        unterthema_nummer: unterthemaNummer,
+                        unterthema_titel: unterthemaTitel,
+                        unterthema_beschreibung: unterthemaBeschreibung
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert("Fehler beim Hinzufügen des Unterthemas: " + (data.message || ""));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Ein unerwarteter Fehler ist aufgetreten.");
+                });
+            }
+        });
+
+        // Überprüfen, ob die Elemente existieren, bevor wir darauf zugreifen
+        const themaVarElement = document.getElementById('thema_var');
+        const kiVarCheckbox = document.getElementById('ki_var_checkbox');
+
+        if (themaVarElement) {
+            // Funktion zur Aktualisierung der Unterthemen
+            function aktualisiereUnterthemen() {
+                var thema = themaVarElement.value;
+                var unterthemaSelect = document.getElementById('unterthema_var');
+
+                // Leeren des Unterthema-Dropdowns
+                unterthemaSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+
+                if (thema === "") {
+                    return;
+                }
+
+                // AJAX-Anfrage an die Flask-App, um die Unterthemen abzurufen
+                fetchWithCSRF('{{ url_for("get_unterthemen") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'thema=' + encodeURIComponent(thema)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.unterthemen && data.unterthemen.length > 0) {
+                        data.unterthemen.forEach(function(unterthema) {
+                            var option = document.createElement('option');
+                            option.value = unterthema;
+                            option.text = unterthema;
+                            unterthemaSelect.add(option);
+                        });
+                    } else {
+                        unterthemaSelect.innerHTML = '<option value="">Keine Unterthemen verfügbar</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Ein Fehler ist beim Abrufen der Unterthemen aufgetreten.");
+                });
+            }
+
+            // Event Listener für die manuelle Themenauswahl
+            themaVarElement.addEventListener('change', aktualisiereUnterthemen);
+        }
+
+        if (kiVarCheckbox) {
+            // Funktion zur Steuerung der Sichtbarkeit der Dropdowns und Beschreibung
+            function toggleKIOptionen() {
+                var manualThemaSection = document.getElementById('manual_thema_section');
+                var descriptionSection = document.getElementById('description_section');
+
+                if (kiVarCheckbox.checked) {
+                    manualThemaSection.style.display = 'none';
+                    descriptionSection.style.display = 'none';
+
+                    // Entfernen der "required" Attribute
+                    document.getElementById('thema_var').removeAttribute('required');
+                    document.getElementById('unterthema_var').removeAttribute('required');
+                    document.getElementById('beschreibung_text').removeAttribute('required');
+
+                    console.log("KI-Kategorisierung aktiviert, verstecke manuelle Themenauswahl.");
+                } else {
+                    manualThemaSection.style.display = 'block';
+                    descriptionSection.style.display = 'block';
+
+                    // Hinzufügen der "required" Attribute
+                    document.getElementById('thema_var').setAttribute('required', 'required');
+                    document.getElementById('unterthema_var').setAttribute('required', 'required');
+                    document.getElementById('beschreibung_text').setAttribute('required', 'required');
+
+                    console.log("KI-Kategorisierung deaktiviert, zeige manuelle Themenauswahl.");
+                }
+            }
+
+            // Event Listener für die KI-Checkbox
+            kiVarCheckbox.addEventListener('change', toggleKIOptionen);
+
+            // Initiale Überprüfung beim Laden der Seite
+            toggleKIOptionen();
+        }
+
+        // Event Listener für das Entfernen eines Themas
+        document.querySelectorAll('.remove-topic-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                var thema = this.getAttribute('data-thema');
+                if (confirm(`Möchten Sie das Thema "${thema}" wirklich löschen?`)) {  // Korrigiert mit Backticks
+                    fetchWithCSRF('{{ url_for("delete_topic") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ thema: thema })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert("Fehler beim Löschen des Themas: " + (data.message || ""));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("Ein unerwarteter Fehler ist aufgetreten.");
+                    });
+                }
+            });
+        });
+
+        // Referenz zu den Dateistatus-Tabellenkörper
+        const filesStatusBody = document.getElementById('files-status-body');
+
+        // Handle des Upload-Formulars
+        document.getElementById('upload-files-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const filesInput = document.getElementById('files');
+            const files = filesInput.files;
+
+            if (files.length === 0) {
+                alert('Bitte wählen Sie mindestens eine Datei aus.');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            fetchWithCSRF('{{ url_for("upload_files") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    data.files.forEach(file => {
+                        const row = document.createElement('tr');
+                        row.id = `file-${file.id}`;
+
+                        const filenameCell = document.createElement('td');
+                        filenameCell.textContent = file.filename;
+                        row.appendChild(filenameCell);
+
+                        const statusCell = document.createElement('td');
+                        statusCell.textContent = file.status;
+                        statusCell.id = `status-${file.id}`;
+                        row.appendChild(statusCell);
+
+                        const actionsCell = document.createElement('td');
+
+                        // Button zur automatischen Verarbeitung (KI)
+                        const aiButton = document.createElement('button');
+                        aiButton.className = 'btn btn-primary btn-sm me-2';
+                        aiButton.innerHTML = '<i class="fas fa-robot"></i> KI aufteilen';
+                        aiButton.addEventListener('click', function() {
+                            processFileAI(file.id);
+                        });
+                        actionsCell.appendChild(aiButton);
+
+                        // Button zur manuellen Verarbeitung
+                        const manualButton = document.createElement('button');
+                        manualButton.className = 'btn btn-secondary btn-sm';
+                        manualButton.innerHTML = '<i class="fas fa-edit"></i> Manuell zuweisen';
+                        manualButton.addEventListener('click', function() {
+                            processFileManual(file.id, file.filename);
+                        });
+                        actionsCell.appendChild(manualButton);
+
+                        row.appendChild(actionsCell);
+
+                        filesStatusBody.appendChild(row);
+                    });
+
+                    // Leeren des Dateieingabefelds
+                    filesInput.value = '';
+                } else {
+                    alert("Fehler beim Hochladen der Dateien: " + (data.message || ""));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Ein unerwarteter Fehler ist aufgetreten.");
+            });
+        });
+
+        // Funktion zur automatischen Verarbeitung via KI
+        function processFileAI(file_id) {
+            fetchWithCSRF('{{ url_for("process_file_ai") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_id: file_id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusCell = document.getElementById(`status-${file_id}`);
+                if (data.success) {
+                    statusCell.textContent = 'Erfolgreich verarbeitet (KI)';
+                } else {
+                    statusCell.textContent = `Fehler: ${data.message}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Ein Fehler ist beim Verarbeiten der Datei aufgetreten.");
+            });
+        }
+
+        // Funktion zur manuellen Verarbeitung
+        function processFileManual(file_id, filename) {
+            // Öffnen eines Modals zur manuellen Themenzuweisung
+
+            // Schritt 1: Thema auswählen
+            fetchWithCSRF('{{ url_for("lade_themen") }}', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(themen_dict => {
+                // Erstellen eines einfachen Formulars für die manuelle Zuweisung
+                let themaOptions = '';
+                for (let thema in themen_dict) {
+                    themaOptions += `<option value="${thema}">${thema}</option>`;
+                }
+
+                const manualForm = `
+                    <div class="modal fade" id="manualAssignModal-${file_id}" tabindex="-1" aria-labelledby="manualAssignModalLabel-${file_id}" aria-hidden="true">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="manualAssignModalLabel-${file_id}">Manuelle Themenzuweisung für "${filename}"</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                            <form id="manual-assign-form-${file_id}">
+                              <div class="mb-3">
+                                <label for="thema-${file_id}" class="form-label">Thema:</label>
+                                <select id="thema-${file_id}" name="thema" class="form-select" required>
+                                  <option value="">Bitte wählen...</option>
+                                  ${themaOptions}
+                                </select>
+                              </div>
+                              <div class="mb-3">
+                                <label for="unterthema-${file_id}" class="form-label">Unterthema:</label>
+                                <select id="unterthema-${file_id}" name="unterthema" class="form-select" required>
+                                  <option value="">Bitte wählen...</option>
+                                  <!-- Unterthemen werden dynamisch geladen -->
+                                </select>
+                              </div>
+                              <div class="mb-3">
+                                <label for="beschreibung-${file_id}" class="form-label">Beschreibung:</label>
+                                <input type="text" id="beschreibung-${file_id}" name="beschreibung" class="form-control" placeholder="Geben Sie eine Beschreibung ein" required>
+                              </div>
+                              <button type="submit" class="btn btn-primary">Zuweisen</button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                `;
+
+                // Fügen Sie das Modal zum Body hinzu
+                document.body.insertAdjacentHTML('beforeend', manualForm);
+
+                // Initialisieren und Anzeigen des Modals
+                const manualAssignModal = new bootstrap.Modal(document.getElementById(`manualAssignModal-${file_id}`));
+                manualAssignModal.show();
+
+                // Event Listener für Thema-Auswahl, um Unterthemen zu laden
+                document.getElementById(`thema-${file_id}`).addEventListener('change', function() {
+                    const selectedThema = this.value;
+                    const unterthemaSelect = document.getElementById(`unterthema-${file_id}`);
+                    unterthemaSelect.innerHTML = '<option value="">Bitte wählen...</option>';
+
+                    if (selectedThema === "") return;
+
+                    const unterthemen = themen_dict[selectedThema];
+                    for (let unterthema in unterthemen) {
+                        unterthemaSelect.innerHTML += `<option value="${unterthema}">${unterthema} - ${unterthemen[unterthema].title}</option>`;
+                    }
+                });
+
+                // Event Listener für das manuelle Zuweisen
+                document.getElementById(`manual-assign-form-${file_id}`).addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const thema = document.getElementById(`thema-${file_id}`).value;
+                    const unterthema = document.getElementById(`unterthema-${file_id}`).value;
+                    const beschreibung = document.getElementById(`beschreibung-${file_id}`).value.trim();
+
+                    if (!thema || !unterthema || !beschreibung) {
+                        alert("Bitte füllen Sie alle Felder aus.");
+                        return;
+                    }
+
+                    fetchWithCSRF('{{ url_for("process_file_manual") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            file_id: file_id,
+                            thema: thema,
+                            unterthema: unterthema,
+                            beschreibung: beschreibung
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const statusCell = document.getElementById(`status-${file_id}`);
+                        if (data.success) {
+                            statusCell.textContent = 'Erfolgreich verarbeitet (Manuell)';
+                            manualAssignModal.hide();
+                            // Entferne das Modal aus dem DOM
+                            document.getElementById(`manualAssignModal-${file_id}`).remove();
+                        } else {
+                            alert("Fehler bei der manuellen Verarbeitung: " + (data.message || ""));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("Ein Fehler ist beim manuellen Verarbeiten der Datei aufgetreten.");
+                    });
+                });
+            });
+        }
+
+        // Funktion zur manuellen Verarbeitung (optional, falls außerhalb benötigt)
+        /*
+        function processFileManual(file_id, filename) {
+            // Diese Funktion wird jetzt innerhalb des DOMContentLoaded-Event-Listeners definiert
+        }
+        */
+    });
+</script>
+
+
+
+
+
+
+</head>
+<body>
+    <h1>Wissensbasis Admin</h1>
+
+    <!-- Nachrichten anzeigen -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div class="container-flex">
+        <!-- Hauptinhalt -->
+        <div class="main-content">
+            <!-- Formular für neue Einträge -->
+            <form method="POST" action="{{ url_for('admin') }}">
+                <!-- CSRF-Token hinzufügen -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <div class="mb-3">
+                    <textarea name="eingabe_text" class="form-control" placeholder="Gib hier deinen Wissenseintrag ein" required></textarea>
+                </div>
+
+                <!-- Checkbox zur Aktivierung der KI-Kategorisierung -->
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="ki_var" id="ki_var_checkbox"> Langer Text/viele Themen: KI soll aufteilen
+                    </label>
+                </div>
+
+                <!-- Manuelle Themen- und Unterthemen-Auswahl -->
+                <div id="manual_thema_section">
+                    <!-- Dropdown für Thema -->
+                    <div class="mb-3">
+                        <label for="thema_var" class="form-label">Wählen Sie ein Thema:</label>
+                        <select name="thema_var" id="thema_var" class="form-select" required>
+                            <option value="">Bitte wählen...</option>
+                            {% for thema in themen_dict.keys() %}
+                                <option value="{{ thema }}">{{ thema }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Dropdown für Unterthema -->
+                    <div class="mb-3">
+                        <label for="unterthema_var" class="form-label">Wählen Sie ein Unterthema:</label>
+                        <select name="unterthema_var" id="unterthema_var" class="form-select" required>
+                            <option value="">Bitte wählen...</option>
+                            <!-- Optionen werden dynamisch per JavaScript hinzugefügt -->
+                        </select>
+                    </div>
+
+                    <!-- Beschreibungseingabe -->
+                    <div class="mb-3" id="description_section">
+                        <label for="beschreibung_text" class="form-label">Beschreibung:</label>
+                        <input type="text" name="beschreibung_text" id="beschreibung_text" class="form-control" placeholder="Geben Sie eine Beschreibung ein" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Eintrag speichern</button>
+            </form>
+
+            <!-- Formular für Datei-Uploads -->
+            <hr>
+            <h2>Dateien hochladen</h2>
+            <form id="upload-files-form" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="files" class="form-label">Wähle Dateien aus (.txt, .pdf, .docx):</label>
+                    <input type="file" name="files" id="files" class="form-control" accept=".txt,.pdf,.doc,.docx" multiple required>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Dateien hochladen</button>
+            </form>
+
+            <!-- Tabelle zur Anzeige der Dateien und ihrer Status -->
+            <table class="table table-striped mt-4">
+                <thead>
+                    <tr>
+                        <th>Dateiname</th>
+                        <th>Status</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody id="files-status-body">
+                    <!-- Dynamisch durch JavaScript hinzugefügt -->
+                </tbody>
+            </table>
+
+            <!-- Buttons zum Bearbeiten und Chatten -->
+            <div class="mt-4">
+                <a href="{{ url_for('edit') }}" class="btn btn-info me-2"><i class="fas fa-edit"></i> Einträge bearbeiten</a>
+                <a href="{{ url_for('chat') }}" class="btn btn-success"><i class="fas fa-comments"></i> Chat mit Bot</a>
+            </div>
+        </div>
+
+        <!-- Seitenleiste für "Aktuelle Themen" -->
+        <div class="sidebar">
+            <h2>Aktuelle Themen</h2>
+            <ul class="list-group list-group-flush mt-2">
+                {% for thema, unterpunkte in themen_dict.items() %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <!-- Ausklappbarer Header mit Chevron-Icon -->
+                            <a data-bs-toggle="collapse" href="#collapse-{{ loop.index }}" role="button" aria-expanded="false" aria-controls="collapse-{{ loop.index }}" class="text-decoration-none text-dark d-flex align-items-center">
+                                <strong>{{ thema }}</strong>
+                                <i class="fas fa-chevron-down ms-2"></i>
+                            </a>
+                            <!-- Lösch-Button -->
+                            <button class="btn btn-danger btn-sm remove-topic-btn" data-thema="{{ thema }}"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                        <!-- Ausklappbare Unterthemen -->
+                        <div class="collapse" id="collapse-{{ loop.index }}">
+                            <ul class="mt-2 list-group list-group-flush">
+                                {% for unterthema, details in unterpunkte.items() %}
+                                    <li class="list-group-item">{{ unterthema }} - {{ details.title }}{% if details.beschreibung %} ({{ details.beschreibung }}){% endif %}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+
+                        <!-- Formular zum Hinzufügen eines neuen Themas oder Unterthemas -->
+            <!-- Formular zum Hinzufügen eines neuen Themas oder Unterthemas -->
+            <form id="add-topic-form" class="mt-3">
+                <div class="mb-3">
+                    <label for="add_type" class="form-label">Was möchten Sie hinzufügen?</label>
+                    <select id="add_type" class="form-select" required>
+                        <option value="thema">Hauptthema</option>
+                        <option value="unterthema">Unterthema</option>
+                    </select>
+                </div>
+
+                <!-- Eingabefeld für Hauptthema -->
+                <div id="thema_section">
+                    <div class="mb-3">
+                        <label for="neues_thema" class="form-label">Neues Hauptthema:</label>
+                        <input type="text" id="neues_thema" name="neues_thema" class="form-control" placeholder="Titel des Hauptthemas" required>
+                    </div>
+                </div>
+
+                <!-- Eingabefelder für Unterthema -->
+                <div id="unterthema_section" style="display: none;">
+                    <div class="mb-3">
+                        <label for="parent_thema" class="form-label">Übergeordnetes Hauptthema:</label>
+                        <select id="parent_thema" name="parent_thema" class="form-select" required>
+                            <option value="">Bitte wählen...</option>
+                            {% for thema in themen_dict.keys() %}
+                                <option value="{{ thema }}">{{ thema }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="unterthema_nummer" class="form-label">Unterthema-Nummer (z.B. 1a):</label>
+                        <input type="text" id="unterthema_nummer" name="unterthema_nummer" class="form-control" placeholder="Nummer des Unterthemas" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="unterthema_titel" class="form-label">Unterthema-Titel:</label>
+                        <input type="text" id="unterthema_titel" name="unterthema_titel" class="form-control" placeholder="Titel des Unterthemas" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="unterthema_beschreibung" class="form-label">Beschreibung (optional):</label>
+                        <input type="text" id="unterthema_beschreibung" name="unterthema_beschreibung" class="form-control" placeholder="Beschreibung des Unterthemas">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Hinzufügen</button>
+            </form>
+
+
+        </div>
+    </div>
+
+
+    <!-- Bootstrap JS und Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Optional: jQuery (falls benötigt) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</body>
+</html>

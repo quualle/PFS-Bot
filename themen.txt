@@ -1,0 +1,68 @@
+Thema 1: CRM
+1a) Leadkauf			// Systematik und Funktionsweise beim Einkaufen von Leads
+1b) Lead-Zuweisung			// Systematik der manuellen und automatischen Leadzuweisung
+1c) Ticketsystem			// Informationen zur Nutzung des CRM-internen Ticketsystems zur Aufgabenverfolgung
+1d) Gesamt-Dashboard			// Informationen zum Dashboard und dessen Bedienung (nicht zu verwechseln mit dem Kunden-Dashboard)
+1e) Kundendashboard			// Informationen zum Kundendashboard und dessen Bedienung
+1f) Haushalte			// Informationen zum technischen Element "Haushalt" im CRM-Kundendashboard
+1g) Erfassungsbögen			// Informationen zum Einholen, Pflegen, Bearbeiten und Weitergeben von Erfassungsbögen an die Agenturen
+1h) Stellenausschreibung			// Informationen zum Erstellen und Verwalten von Stellenausschreibungen
+1i) Vertragsreiter			// Informationen zur technischen Komponente "Vertrag" und dessen korrekter Handhabung
+1j) Vertrag			// Erstellung und Versand von Vertragsdokumenten mit "Pandadocs" sowie Speicherort im CRM. Vertragsinhaltliche Fragen siehe Thema 2: Vertragsangelegenheiten
+1k) Pflegeinsätze			// Informationen zur Nutzung der CRM-Komponente "Pflegeeinsätze" im Kundendashboard
+1l) Personalvorschläge			// Informationen zum Umgang mit Personalvorschlägen innerhalb der Pflegeinsätze
+1m) Leadbestellung			// Informationen zur Abgabe und Änderung von Leadbestellungen
+1n) Bestellübersicht			// Möglichkeiten der Übersicht für Leadbestellungen und Messung historischer Abnahmemengen
+1o) Suchfunktion			// Anleitung zur Nutzung der Suchfunktion
+1p) Kontextmenü			// Nutzung des "Drei-Punkte-Menüs" im gesamten Kunden-Dashboard
+1q) Abrechnung			// Informationen zur Ansicht "Abrechnung" im CRM und zur tatsächlichen PDF-Abrechnung
+1r) Tasks und Wiedervorlagen			// Nutzung, Erstellung und Bearbeitung von Tasks und Wiedervorlagen
+1s) Filterfunktionen			// Einsatz von Filtermöglichkeiten für eine optimierte Suche und Datenanalyse
+1t) Sonstige CRM-Themen			// Ergänzende CRM-spezifische Funktionen und allgemeine Hinweise
+1u) weitere crm themen
+
+Thema 2: Vertragsangelegenheiten
+2a) Feiertagszuschläge			// Informationen zu Zuschlägen an Feiertagen
+2b) Arbeitszeiten			// Regelungen zu den Arbeitszeiten der Betreuungskräfte
+2c) Versicherungen			// Überblick über Versicherungsfragen im Zusammenhang mit Verträgen
+2d) Kündigungsmodalitäten			// Regelungen zur Kündigung von Verträgen
+2e) Ausfall einer Betreuungskraft			// Vorgehen bei unerwartetem Ausfall einer Pflegekraft vor oder Während einem Einsatz
+2f) Beachtung des Erfassungsbogens bei Tätigkeiten			// Hinweise zur korrekten Nutzung des Erfassungsbogens
+2g) Sonstige vertragliche Themen			// Weitere relevante Vertragsfragen
+2h) Standard Dienstleistungsvertrag (DLV)			// Dieser Vertrag wird für alle Kunden genutzt und mit den Agenturen geschlossen
+
+Thema 3: Weitere Hilfsmittel
+3a) Asana Formulare			// Nutzung und Erstellung von Formularen in Asana
+3b) Aircall			// Einsatz, Funktionen und Regeln zum Thema Aircall
+3c) Connecteam			// Nutzung von Connecteam für Organisation und Kommunikation
+3d) Google Mail			// Tipps und Tricks zur effektiven Nutzung von Google Mail
+3e) Sonstige Hilfsmittel und Werkzeuge			// Weitere unterstützende Tools
+3f) sonstiges zu Hilfsmitteln
+
+Thema 4: Umgang mit Problemen & Fragen
+4a) Keine Personalvorschläge für SA			// Lösungsansätze und Handlungsmöglichkeiten
+4b) Schlechte Personalvorschläge für SA			// Vorgehen bei unpassenden Vorschlägen
+4c) Kunde zu anspruchsvoll für PV			// Umgang mit anspruchsvollen Kunden
+4d) BK kurz vor Einsatz abgebrochen (reist nicht an)			// Schritte und Alternativen
+4e) Handlungsmöglichkeiten und Pflichten des VP			// Rechte und Pflichten in Problemsituationen
+4f) Kunde mit Betreuungskraft vor Ort nicht zufrieden			// Klärung und Unterstützung bei Konflikten
+4g) Kündigung – organisatorische Abwicklung			// Praktische Tipps zur Kündigungsbearbeitung
+4h) Sonstige Probleme			// Allgemeine Problemlösungen, Fragen zum Korrekten Umgang mit Agenturen und Kunden
+
+Thema 5: KPIs & Statistiken
+5e) Reaction Time			// Informationen zum Lesen und Interpretieren der Reaktionszeit Lead erhalten - Lead kontaktiert
+5f) Sonstige Statistiken			// Weitere relevante Kennzahlen
+
+Thema 6: Vertriebsausbildung rhetorisch
+6a) Rhetorische Mittel zum Vertrauensaufbau			// Tipps zur Gesprächsführung
+6b) Einwandsbehandlung typischer Einwände			// Strategien zur Überwindung von Einwänden
+
+Thema 7: Finanzplanung für Vertriebspartner
+7a) Nutzung des Liquiditätsplan			// Hinweise und Anleitung des Liquiditätsplan
+
+Thema 8: Tests
+8a) tests
+
+Thema 9: Notfälle & Vertragsgefährdungen
+9a) Neukunde: BK vor Anreise abgebrochen			// Hier wird der Umgang erläutert um Neukunden wegen eines BK Abbruchs nicht direkt zu verlieren
+

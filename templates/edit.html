@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Wissensbasis bearbeiten</title>
+
+    <!-- Bootswatch Flatly Theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/flatly/bootstrap.min.css">
+
+    <!-- Font Awesome für Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts für eine moderne Typografie -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- CSRF-Token Meta-Tag hinzufügen -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #1abc9c, #16a085);
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* Flash-Nachrichten Styling */
+        .alert {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        /* Tabellen Styling */
+        .table thead th {
+            background-color: #34495e;
+            color: #ecf0f1;
+            border-bottom: none;
+        }
+
+        .table tbody tr:nth-child(even) {
+            background-color: #ecf0f1;
+        }
+
+        .table tbody tr:hover {
+            background-color: #d1ecf1;
+            cursor: pointer;
+        }
+
+        .table-primary {
+            background-color: #2c3e50 !important;
+            color: #ecf0f1;
+        }
+
+        /* Buttons Styling */
+        .btn-action {
+            margin-right: 5px;
+            transition: transform 0.1s;
+        }
+
+        .btn-action:hover {
+            transform: scale(1.05);
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            border-radius: 10px;
+        }
+
+        .modal-header, .modal-footer {
+            background-color: #ecf0f1;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #16a085;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1abc9c;
+        }
+
+        /* Animationen */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Wissensbasis bearbeiten</h1>
+
+        <!-- Zurück-Button -->
+        <div class="mb-4 text-end">
+            <a href="{{ url_for('admin') }}" class="btn btn-light">
+                <i class="fas fa-arrow-left"></i> Zurück
+            </a>
+        </div>
+
+        <!-- Flash-Nachrichten anzeigen -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Wissensbasis Tabelle -->
+        <!-- Wissensbasis Tabelle mit Suchfunktion -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <!-- Suchfeld hinzufügen -->
+                <div class="mb-3">
+                    <input type="text" id="search-input" class="form-control" placeholder="Suche nach Titel, Beschreibung oder Inhalt...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="wissensbasis-table">
+                        <thead>
+                            <tr>
+                                <th>Thema / Unterthema</th>
+                                <th>Beschreibung</th>
+                                <th>Inhalt</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for thema, unterthemen in wissensbasis.items() %}
+                                <tr class="table-primary">
+                                    <td colspan="4">{{ thema }}</td>
+                                </tr>
+                                {% for unterthema, details in unterthemen.items() %}
+                                    <tr
+                                        data-thema="{{ thema | e }}"
+                                        data-unterthema="{{ unterthema | e }}"
+                                        data-beschreibung="{{ details.beschreibung | default('') | e }}"
+                                        data-inhalt="{{ details.inhalt | default([]) | join('\n') | e }}"
+                                    >
+                                        <td>{{ unterthema }}</td>
+                                        <td>{{ details.beschreibung | default('') }}</td>
+                                        <td>
+                                            <button class="btn btn-info btn-sm view-content-button" data-inhalt="{{ details.inhalt | default([]) | join('\n') | e }}">
+                                                <i class="fas fa-eye"></i> Anzeigen
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm edit-button btn-action"
+                                                data-beschreibung="{{ details.beschreibung | default('') | e }}"
+                                                data-inhalt="{{ details.inhalt | default([]) | join('\n') | e }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-warning btn-sm move-up-button btn-action">
+                                                <i class="fas fa-arrow-up"></i>
+                                            </button>
+                                            <button class="btn btn-warning btn-sm move-down-button btn-action">
+                                                <i class="fas fa-arrow-down"></i>
+                                            </button>
+                                            <button class="btn btn-danger btn-sm delete-button btn-action">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Sortieren Button -->
+        <div class="text-center my-4">
+            <button id="sort-button" class="btn btn-dark">
+                <i class="fas fa-sort"></i> Sortieren
+            </button>
+        </div>
+
+        <!-- Modal für das Bearbeiten eines Eintrags -->
+        <div class="modal fade" id="edit-modal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editModalLabel">Eintrag bearbeiten</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="edit-form">
+                            <div class="mb-3">
+                                <label for="beschreibung" class="form-label">Beschreibung</label>
+                                <textarea class="form-control" id="beschreibung" name="beschreibung" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="inhalt" class="form-label">Inhalt</label>
+                                <textarea class="form-control" id="inhalt" name="inhalt" rows="6" required></textarea>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Speichern
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal für das Anzeigen des Inhalts -->
+        <div class="modal fade" id="content-modal" tabindex="-1" aria-labelledby="contentModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="contentModalLabel">Inhalt anzeigen</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                    </div>
+                    <div class="modal-body">
+                        <pre id="content-display" style="white-space: pre-wrap; font-size: 1rem;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS und Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Optional: jQuery (falls benötigt) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Funktion zum Abrufen des CSRF-Tokens aus dem Meta-Tag
+            function getCSRFToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            // Funktion zum Senden von AJAX-Anfragen mit CSRF-Token
+            function fetchWithCSRF(url, options = {}) {
+                const csrfToken = getCSRFToken();
+                options.headers = options.headers || {};
+                options.headers['X-CSRFToken'] = csrfToken;
+                return fetch(url, options);
+            }
+
+            // Initialisierung der Modals
+            const editModal = new bootstrap.Modal(document.getElementById('edit-modal'));
+            const contentModal = new bootstrap.Modal(document.getElementById('content-modal'));
+
+            let currentEditRow = null;
+
+            // Event Listener für Bearbeiten Buttons
+            document.querySelectorAll('.edit-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    currentEditRow = this.closest('tr');
+                    const beschreibung = this.getAttribute('data-beschreibung');
+                    const inhalt = this.getAttribute('data-inhalt');
+
+                    document.getElementById('beschreibung').value = beschreibung || '';
+                    document.getElementById('inhalt').value = inhalt || '';
+
+                    editModal.show();
+                });
+            });
+
+            // Event Listener für das Bearbeitungsformular
+            document.getElementById('edit-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const beschreibung = document.getElementById('beschreibung').value.trim();
+                const inhalt = document.getElementById('inhalt').value.trim();
+                const thema = currentEditRow.getAttribute('data-thema');
+                const unterthema = currentEditRow.getAttribute('data-unterthema');
+
+                if (!beschreibung || !inhalt) {
+                    alert("Beschreibung und Inhalt dürfen nicht leer sein.");
+                    return;
+                }
+
+                fetchWithCSRF('{{ url_for("update_entry") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        thema: thema,
+                        unterthema: unterthema,
+                        beschreibung: beschreibung,
+                        inhalt: inhalt
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Aktualisiere die Tabelle
+                        currentEditRow.querySelector('td:nth-child(2)').innerText = beschreibung;
+                        currentEditRow.setAttribute('data-beschreibung', beschreibung);
+                        currentEditRow.setAttribute('data-inhalt', inhalt);
+
+                        // Aktualisiere die data-inhalt Attribute der Inhalt Buttons
+                        const contentButtons = currentEditRow.querySelectorAll('.view-content-button');
+                        contentButtons.forEach(btn => {
+                            btn.setAttribute('data-inhalt', inhalt);
+                        });
+
+                        editModal.hide();
+                    } else {
+                        alert("Fehler beim Speichern des Eintrags: " + (data.message || ""));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Ein unerwarteter Fehler ist aufgetreten.");
+                });
+            });
+
+            // Event Listener für Inhaltsanzeige Buttons
+            document.querySelectorAll('.view-content-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const inhalt = this.getAttribute('data-inhalt');
+                    document.getElementById('content-display').textContent = inhalt;
+                    contentModal.show();
+                });
+            });
+
+            // Event Listener für Verschieben nach oben
+            document.querySelectorAll('.move-up-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const row = this.closest('tr');
+                    const thema = row.getAttribute('data-thema');
+                    const unterthema = row.getAttribute('data-unterthema');
+
+                    fetchWithCSRF('{{ url_for("move_entry") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            thema: thema,
+                            unterthema: unterthema,
+                            direction: 'up'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert("Fehler beim Verschieben des Eintrags: " + (data.message || ""));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("Ein unerwarteter Fehler ist aufgetreten.");
+                    });
+                });
+            });
+
+            // Event Listener für Verschieben nach unten
+            document.querySelectorAll('.move-down-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const row = this.closest('tr');
+                    const thema = row.getAttribute('data-thema');
+                    const unterthema = row.getAttribute('data-unterthema');
+
+                    fetchWithCSRF('{{ url_for("move_entry") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            thema: thema,
+                            unterthema: unterthema,
+                            direction: 'down'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert("Fehler beim Verschieben des Eintrags: " + (data.message || ""));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("Ein unerwarteter Fehler ist aufgetreten.");
+                    });
+                });
+            });
+
+            // Event Listener für Löschen Buttons
+            document.querySelectorAll('.delete-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const row = this.closest('tr');
+                    const thema = row.getAttribute('data-thema');
+                    const unterthema = row.getAttribute('data-unterthema');
+                    if (confirm(`Möchten Sie den Eintrag "${unterthema}" wirklich löschen?`)) {
+                        fetchWithCSRF('{{ url_for("delete_entry") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                thema: thema,
+                                unterthema: unterthema
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                location.reload();
+                            } else {
+                                alert("Fehler beim Löschen des Eintrags: " + (data.message || ""));
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert("Ein unerwarteter Fehler ist aufgetreten.");
+                        });
+                    }
+                });
+            });
+
+            // Event Listener für Sortieren Button
+            document.getElementById('sort-button').addEventListener('click', function() {
+                if (confirm("Möchten Sie die Wissensbasis sortieren?")) {
+                    fetchWithCSRF('{{ url_for("sort_entries") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert("Fehler beim Sortieren der Wissensbasis: " + (data.message || ""));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("Ein unerwarteter Fehler ist aufgetreten.");
+                    });
+                }
+            });
+    
+            // Suchfunktion hinzufügen
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                const table = document.getElementById('wissensbasis-table');
+                const tbody = table.getElementsByTagName('tbody')[0];
+                const rows = tbody.getElementsByTagName('tr');
+    
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    // Überspringe die Themenzeilen
+                    if (row.classList.contains('table-primary')) {
+                        continue;
+                    }
+    
+                    const thema = row.getAttribute('data-thema').toLowerCase();
+                    const unterthema = row.getAttribute('data-unterthema').toLowerCase();
+                    const beschreibung = row.getAttribute('data-beschreibung').toLowerCase();
+                    const inhalt = row.getAttribute('data-inhalt').toLowerCase();
+    
+                    if (thema.includes(query) || unterthema.includes(query) || beschreibung.includes(query) || inhalt.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -252,17 +252,52 @@
 
         /* Stile für den Admin-Button */
         .admin-button {
-            background-color: #f0ad4e; /* Hintergrundfarbe */
+            /* Hintergrundfarbe */
+            background-color: #f0ad4e; /* Spezifische Hintergrundfarbe für den Admin-Button */
+
+            /* Text- und Schriftstile */
+            color: #000; /* Textfarbe (schwarz) für bessere Lesbarkeit auf hellem Hintergrund */
+            font-family: 'Orbitron', sans-serif; /* Schriftart, konsistent mit anderen Buttons */
+            text-transform: uppercase; /* Großbuchstaben für einheitliches Erscheinungsbild */
+
+            /* Innenabstand und Größe */
+            padding: 10px 15px; /* Innenabstand, identisch mit anderen Buttons */
+            white-space: nowrap; /* Verhindert Zeilenumbrüche im Button-Text */
+
+            /* Rahmen und Ecken */
+            border: none; /* Entfernen der Standardrahmen, konsistent mit anderen Buttons */
+            border-radius: 8px; /* Abgerundete Ecken, angepasst an die allgemeinen Button-Stile */
+
+            /* Cursor und Interaktivität */
+            cursor: pointer; /* Zeigt einen Zeiger-Cursor an, um Interaktivität zu signalisieren */
+            transition: transform 0.2s, background-color 0.3s; /* Übergangseffekte für sanfte Hover-Animationen */
+
+            /* Positionierung */
             position: absolute; /* Absolute Positionierung innerhalb des Containers */
-            bottom: 10px; /* Abstand vom unteren Rand */
-            right: 10px; /* Abstand vom rechten Rand */
+            bottom: 10px; /* Abstand vom unteren Rand des Containers */
+            right: 10px; /* Abstand vom rechten Rand des Containers */
+
+            /* Anzeigeeigenschaften */
+            display: inline-block; /* Nur die benötigte Breite basierend auf dem Inhalt */
+            margin: 0; /* Entfernen des Standard-Margins */
+
+            /* Schatten und Hover-Effekte */
+            box-shadow: 0 4px 6px rgba(240, 173, 78, 0.2); /* Schattierungseffekt, angepasst an die Hintergrundfarbe */
         }
 
         /* Hover-Effekte für den Admin-Button */
         .admin-button:hover {
-            background-color: #ec971f; /* Änderung der Hintergrundfarbe bei Hover */
+            background-color: #ec971f; /* Dunklere Hintergrundfarbe bei Hover für visuelles Feedback */
             transform: translateY(-2px); /* Leichte Verschiebung nach oben bei Hover */
+            box-shadow: 0 6px 8px rgba(240, 173, 78, 0.3); /* Verstärkter Schattierungseffekt bei Hover */
         }
+
+        /* Optional: Fokus-Stile für den Admin-Button */
+        .admin-button:focus {
+            outline: none; /* Entfernen des Standard-Fokusrahmens */
+            box-shadow: 0 0 0 3px rgba(240, 173, 78, 0.5); /* Benutzerdefinierter Fokusrahmen für Barrierefreiheit */
+        }
+
 
         /* Stile für den Clear-Chat-Button */
         .clear-chat-button {
@@ -353,9 +388,20 @@
             border: none; /* Entfernen der Standardrahmen */
             border-radius: 6px; /* Abgerundete Ecken */
             cursor: pointer; /* Cursor zeigt auf interaktive Elemente */
-            margin-bottom: 1rem; /* Abstand unten */
             font-family: 'Orbitron', sans-serif; /* Schriftart */
             text-transform: uppercase; /* Großbuchstaben */
+            
+            /* Positionierung */
+            position: absolute; /* Absolute Positionierung relativ zum nächsten positionierten Elternelement */
+            top: 10px; /* Abstand vom oberen Rand des Containers */
+            right: 10px; /* Abstand vom rechten Rand des Containers */
+            
+            /* Größe */
+            display: inline-block; /* Nur die benötigte Breite basierend auf dem Inhalt */
+            margin: 0; /* Entfernen des unteren Abstands, da der Button jetzt oben positioniert ist */
+            
+            /* Optional: Sicherstellen, dass der Button nicht die volle Breite einnimmt */
+            white-space: nowrap; /* Verhindert Zeilenumbrüche im Button-Text */
         }
 
         /* Hover-Effekte für den Notfall-Button */

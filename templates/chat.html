@@ -5,18 +5,21 @@
     <title>Pflegehilfe für Senioren / Companion</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 
-    <!-- Google Fonts für futuristische Typografie -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Falls du noch eine andere Schriftart willst, hier anpassen -->
+    <link href="https://fonts.googleapis.com/css2?family=Arial:wght@400;700&display=swap" rel="stylesheet">
 
-    <!-- CSRF-Token Meta-Tag hinzufügen -->
+    <!-- CSRF-Token Meta-Tag -->
     <meta name="csrf-token" content="{{ csrf_token }}">
 
     <style>
         /* GRUNDLEGENDE STILE FÜR DAS GESAMTE DOKUMENT */
         body {
-            font-family: 'Roboto', sans-serif; /* Grundschriftart für das Dokument */
-            background: radial-gradient(circle at top left, #1f1c2c, #928dab, #1f1c2c); /* Hintergrund mit Verlauf */
-            color: #ffffff; /* Grundlegende Textfarbe */
+            /* Wunsch 2: "Normalere" Schriftart statt Roboto */
+            font-family: 'Arial', sans-serif; 
+            
+            /* Hintergrund mit radialem Verlauf */
+            background: radial-gradient(circle at top left, #1f1c2c, #928dab, #1f1c2c);
+            color: #ffffff;
             margin: 0;
             padding: 0;
             display: flex; 
@@ -26,15 +29,15 @@
             text-align: center; 
         }
 
-        /* NOTFALLMODUS */
+        /* NOTFALLMODUS (ROT) */
         .notfall-active {
-            background: linear-gradient(135deg, #8b0000, #ff0000) !important; /* Rot bei Notfall */
+            background: linear-gradient(135deg, #8b0000, #ff0000) !important; 
         }
         .notfall-active .chat-box {
             border: 3px solid red;
         }
 
-        /* UMSCHLIESSENDER CONTAINER (CHAT + STATISTIKEN) */
+        /* HAUPTCONTAINER FÜR CHAT & STATS */
         .chat-container {
             display: block;
             position: relative;
@@ -42,14 +45,13 @@
             padding: 0 10%;
         }
 
-        /* DIE CHAT-BOX SELBST */
+        /* CHAT-BOX */
         .chat-box {
             background: rgba(0, 0, 0, 0.8);
             padding: 15px 21px; 
             border-radius: 15px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
             width: 80vw; 
-            max-width: none; 
             height: 80vh; 
             display: flex; 
             flex-direction: column; 
@@ -60,7 +62,7 @@
 
         /* ÜBERSCHRIFT */
         h1 {
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Arial', sans-serif;
             text-align: center;
             color: #00ffff;
             margin-bottom: 20px;
@@ -78,7 +80,6 @@
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 10px;
-            font-family: 'Roboto', sans-serif;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             animation: fadeIn 0.5s ease-in-out;
         }
@@ -87,11 +88,11 @@
         .flash-info    { background-color: #1e90ff; color: #fff; }
         .flash-success { background-color: #28a745; color: #fff; }
 
-        /* CHAT-HISTORY (DER ROLLBARE BEREICH) */
+        /* CHAT-HISTORY (DER SCROLL-BARE BEREICH) */
         .chat-history {
             flex: 1; 
             overflow-y: auto; 
-            padding: 20px; 
+            padding: 20px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             margin-bottom: 20px;
@@ -102,12 +103,13 @@
             position: relative;
         }
 
-        /* EINZELNE NACHRICHTEN-BUBBLES */
+        /* NACHRICHTEN-BUBBLE */
         .message {
             border-radius: 20px;
             margin-bottom: 15px;
             max-width: 100%;
-            padding: 8px 8px 35px 8px; /* 35px unten für Feedback-Icons */
+            /* Wunsch 5: Mehr Abstand links, oben und rechts */
+            padding: 12px 16px 35px 16px; /* top/left/right = 12px/16px, bottom=35px wegen Feedback-Icons */
             animation: slideIn 0.5s ease-out;
             word-wrap: break-word;
             white-space: pre-wrap;
@@ -115,26 +117,22 @@
             flex-direction: column;
             position: relative;
             
-            /* GEWÜNSCHTE ANPASSUNGEN: GÖßERE SCHRIFT, HÖHERER ZEILENABSTAND */
-            font-family: 'Orbitron', sans-serif; /* Höhere Wertigkeit für Bot/User */
-            font-size: 1.1em; /* etwas größere Schrift */
-            line-height: 1.4; /* ca. 15% mehr Zeilenabstand */
-            
-            /* OPTIONALER BOX-SHADOW FÜR BESSERE LESBARKEIT / TIEFE */
+            /* Größere Schrift + etwas Zeilenabstand */
+            font-size: 1.1em; 
+            line-height: 1.4; 
+
             box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
 
-        /* USER - BLAUE BUBBLE */
+        /* USER-BUBBLE (BLAU) */
         .message.user {
             background-color: #00ffff;
             color: #000;
             align-self: flex-end;
             border-bottom-right-radius: 0;
-            /* "Sie:" RECHTS OBEN BÜNDIG */
-            justify-content: flex-start; 
         }
 
-        /* BOT - GRAUE BUBBLE */
+        /* BOT-BUBBLE (GRAU) */
         .message.bot {
             background-color: #2e2e2e;
             color: #fff;
@@ -142,23 +140,21 @@
             border-bottom-left-radius: 0;
         }
 
-        /* "SIE:" IMMER OBEN RECHTS */
-        .message.user strong {
-            position: absolute; 
-            top: 8px; 
-            right: 10px; /* Rechtsbündig */
-            margin-bottom: 0; 
-        }
-
-        /* "C-3PO:" IMMER OBEN RECHTS */
-        .message.bot strong {
-            position: absolute; 
-            top: 8px; 
-            right: 10px; 
+        /* WUNSCH 3 & 4: "Sie"/"C3PO" LINKS OBEN + NACHRICHT DARUNTER */
+        /* Wir platzieren das Label "strong" links oben und geben der Nachricht eine Zeile darunter. */
+        .message strong {
+            position: absolute;
+            top: 12px; 
+            left: 16px; /* Links ausrichten */
             margin-bottom: 0;
         }
 
-        /* FEEDBACK-ICONS UNTEN RECHTS */
+        /* Der eigentliche Nachrichtentext rutscht durch Padding + margin-top unter das Label */
+        .message span {
+            margin-top: 30px; /* Platz für die Zeile unter "Sie"/"C3PO" */
+        }
+
+        /* FEEDBACK-ICONS (UNTEN RECHTS) */
         .feedback-icons {
             position: absolute;
             bottom: 5px; 
@@ -172,7 +168,7 @@
             margin-left: 10px;
         }
 
-        /* TIPP-ANIMATION */
+        /* ANIMATION TIPPEN */
         .typing {
             border-right: 2px solid #00ffff;
             animation: blink-caret 0.75s step-end infinite;
@@ -192,7 +188,7 @@
             50%      { border-color: #00ffff; }
         }
 
-        /* FORMULAR UNTEN (EINGABE) */
+        /* CHAT-FORMULAR (UNTEN) */
         form {
             display: flex;
             gap: 10px;
@@ -207,7 +203,7 @@
             font-size: 1em;
             outline: none;
             transition: background 0.3s ease;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Arial', sans-serif;
         }
         input[type="text"]::placeholder {
             color: #e0e0e0;
@@ -216,14 +212,14 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* BUTTON-GRUNDEINSTELLUNGEN */
+        /* BUTTON */
         button {
             padding: 15px 25px;
             border: none;
             border-radius: 8px;
             background-color: #00ffff;
             color: #000;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Arial', sans-serif;
             cursor: pointer;
             transition: transform 0.2s, background-color 0.3s;
             box-shadow: 0 4px 6px rgba(0, 255, 255, 0.2);
@@ -234,11 +230,21 @@
             transform: translateY(-3px);
         }
 
-        /* ADMIN-VIEW BUTTON */
+        /* WUNSCH 1: DIE 3 BUTTONS NEBENEINANDER Unten rechts */
+        /* Container für die 3 Buttons */
+        .action-buttons {
+            position: absolute; /* Fixe Position in der Chat-Box */
+            bottom: 10px; 
+            right: 10px;
+            display: flex;
+            gap: 10px; /* Abstand zwischen Buttons */
+        }
+
+        /* ADMIN-BUTTON */
         .admin-button {
             background-color: #f0ad4e;
             color: #000;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Arial', sans-serif;
             text-transform: uppercase;
             padding: 10px 15px;
             white-space: nowrap;
@@ -246,11 +252,6 @@
             border-radius: 8px;
             cursor: pointer;
             transition: transform 0.2s, background-color 0.3s;
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            display: inline-block;
-            margin: 0;
             box-shadow: 0 4px 6px rgba(240, 173, 78, 0.2);
         }
         .admin-button:hover {
@@ -266,11 +267,26 @@
         /* CLEAR-CHAT-BUTTON */
         .clear-chat-button {
             background-color: #dc3545;
-            margin-top: 10px;
         }
         .clear-chat-button:hover {
             background-color: #c82333;
             transform: translateY(-2px);
+        }
+
+        /* NOTFALL-BUTTON */
+        .notfall-button {
+            background-color: #dc3545;
+            color: #fff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Arial', sans-serif;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .notfall-button:hover {
+            background-color: #b52a3a;
         }
 
         /* USER-GUIDANCE */
@@ -294,7 +310,7 @@
             margin-top: 5px;
         }
 
-        /* STATS-CONTAINER (OBEN RECHTS) */
+        /* STATISTIK-BOX OBEN RECHTS */
         .stats-container {
             position: absolute;
             top: 0;
@@ -307,7 +323,7 @@
             text-align: left;
         }
 
-        /* MODAL */
+        /* MODAL-OVERLAY */
         .modal-overlay {
             position: fixed;
             top: 0; 
@@ -332,49 +348,7 @@
             margin-top: 0;
         }
 
-        /* NOTFALL-BUTTON */
-        .notfall-button {
-            background-color: #dc3545;
-            color: #fff;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-family: 'Orbitron', sans-serif;
-            text-transform: uppercase;
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            display: inline-block;
-            margin: 0;
-            white-space: nowrap;
-        }
-        .notfall-button:hover {
-            background-color: #b52a3a;
-        }
-
-        /* NOTFALL-OPTIONEN */
-        .notfall-options {
-            display: none;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 1rem;
-        }
-        .notfall-option {
-            border: 2px solid #aaa;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s, color 0.2s;
-            user-select: none;
-        }
-        .notfall-option.selected {
-            background-color: #ff4c4c;
-            color: #fff;
-            border-color: #ff4c4c;
-        }
-
-        /* RESPONSIVE @MEDIA */
+        /* RESPONSIVE */
         @media (max-width: 768px) {
             .chat-box {
                 padding: 10px 15px;
@@ -389,7 +363,7 @@
                 margin: 10px auto 0 auto;
                 width: auto;
             }
-            .admin-button {
+            .action-buttons {
                 bottom: 10px;
                 right: 10px;
             }
@@ -398,7 +372,7 @@
 </head>
 <body class="{% if session.get('notfall_mode') %}notfall-active{% endif %}">
 
-    <!-- Overlays für Feedback -->
+    <!-- Feedback Modal -->
     <div class="modal-overlay" id="feedbackOverlay">
         <div class="modal">
             <h3 id="feedbackTitle">Feedback</h3>
@@ -411,60 +385,24 @@
 
     <div class="chat-container">
         <div class="chat-box">
-            <h1>
-                Pflegehilfe für Senioren
-                Companion
-            </h1>
-
-            <!-- Roter Notfall-Button -->
-            <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
-
-            <!-- Panel mit allen Notfalloptionen (mehrfach wählbar) -->
-            <div id="notfallOptions" class="notfall-options">
-                <div class="notfall-option" data-value="BK Alkohollmissbrauch">BK Alkohollmissbrauch</div>
-                <div class="notfall-option" data-value="BK und Kunde keine Sympathie mehr/Streit, Abreise gewünscht">BK / Kunde Streit</div>
-                <div class="notfall-option" data-value="BK Diebstahl">BK Diebstahl</div>
-                <div class="notfall-option" data-value="BK Verletzung/Erkrankung">BK Verletzung/Erkrankung</div>
-                <div class="notfall-option" data-value="BK vorzeitig abgereist, unangekündigt">BK vorzeitig abgereist</div>
-                <div class="notfall-option" data-value="BK abgebrochen kurz vor geplanter Anreise">BK Abbruch vor Anreise</div>
-                <div class="notfall-option" data-value="BK verursacht Sachschaden">BK Sachschaden</div>
-                <div class="notfall-option" data-value="BK nicht auffindbar/verschwunden">BK verschwunden</div>
-                <div class="notfall-option" data-value="BK verweigert bestimmte Aufgabe(n)">BK verweigert Aufgaben</div>
-                <div class="notfall-option" data-value="BK kommt nicht mehr aus dem Zimmer">BK verweigert Kontakt</div>
-                <div class="notfall-option" data-value="BK aggressiv">BK aggressiv</div>
-                <div class="notfall-option" data-value="BK hat Pflege nicht hinreichend getätigt">BK mangelnde Pflege</div>
-                <div class="notfall-option" data-value="BK hat Haushalt nicht ausreichend gepflegt">BK mangelnde Haushaltsführung</div>
-                <div class="notfall-option" data-value="BK meldet Überforderung (Pflege)">BK Überforderung Pflege</div>
-                <div class="notfall-option" data-value="BK meldet Überforderung (Haushalt)">BK Überforderung Haushalt</div>
-                <div class="notfall-option" data-value="Senior Aggressiv">Senior aggressiv</div>
-                <div class="notfall-option" data-value="Nicht aufgelistet">Nicht aufgelistet</div>
-            </div>
-
-            <!-- Flash-Nachrichten -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <ul class="flashes">
-                        {% for category, message in messages %}
-                            <li class="flash flash-{{ category }}">{{ message }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            {% endwith %}
+            <h1>Pflegehilfe für Senioren Companion</h1>
 
             <!-- Chat-Verlauf -->
             <div class="chat-history" id="chatHistory">
                 {% if chat_history|length == 0 %}
                     <div class="message bot">
-                        <strong>C-3PO:</strong> Willkommen! Wie kann ich Ihnen heute helfen?
+                        <strong>C-3PO:</strong>
+                        <span>Willkommen! Wie kann ich Ihnen heute helfen?</span>
                     </div>
                 {% else %}
                     {% for chat in chat_history %}
                         <div class="message user typing" style="border-right:none;">
-                            <strong>Sie:</strong> {{ chat.user }}
+                            <strong>Sie:</strong>
+                            <span>{{ chat.user }}</span>
                         </div>
                         <div class="message bot typing" style="border-right:none;">
-                            <strong>C-3PO:</strong> 
-                            <span style="white-space: normal;">{{ chat.bot|safe }}</span>
+                            <strong>C-3PO:</strong>
+                            <span>{{ chat.bot|safe }}</span>
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>
                                 <span class="thumb-down" data-type="negative">👎</span>
@@ -481,12 +419,12 @@
                 <button type="submit">Senden</button>
             </form>
 
-            <!-- User Guidance Hinweis -->
+            <!-- User Guidance -->
             <div class="user-guidance">
                 <small>
                     Du chattest mit einer künstlichen Intelligenz, die aus sehr vielen Daten eine Antwort zusammenstellt.<br>
                     Je ausführlicher und präziser du deine Frage stellst, desto besser wird die Antwort.<br>
-                    Du kannst zum Beispiel Fragen zum CRM, zu weiteren Tools oder zum Umgang mit Kunden, Agenturen und Pflegekräften stellen.
+                    Du kannst z.B. Fragen zum CRM, zu weiteren Tools oder zum Umgang mit Kunden, Agenturen und Pflegekräften stellen.
                 </small>
                 <details>
                     <summary>Tipps für bessere Fragen</summary>
@@ -497,23 +435,31 @@
                         </li>
                         <li>
                             <strong>Statt:</strong> "Eine BK ist nicht angereist, kann ich die Stelle wieder freischalten?"<br>
-                            <strong>Besser:</strong> "Eine Betreuungskraft, die morgen hätte anreisen sollen, ist am heutigen Abend nicht in den Bus gestiegen. Deswegen wird der Kunde morgen keine Pflege bekommen. Meine Frage: Darf ich die Stellenausschreibung direkt wieder aktivieren und für alle anderen Agenturen freischalten?"
+                            <strong>Besser:</strong> 
+                            "Eine Betreuungskraft, die morgen hätte anreisen sollen, ist heute Abend nicht eingestiegen. 
+                             Deswegen hat der Kunde morgen keine Pflege. Darf ich die Stellenausschreibung sofort wieder aktivieren?"
                         </li>
                     </ul>
                 </details>
             </div>
 
-            <!-- Chatverlauf leeren -->
-            <form method="POST" action="{{ url_for('clear_chat_history') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="clear-chat-button">Chatverlauf leeren</button>
-            </form>
+            <!-- 3 BUTTONS Unten Rechts (Wunsch 1) -->
+            <div class="action-buttons">
+                <!-- Notfall-Button -->
+                <button id="notfallBtn" class="notfall-button">Notfall</button>
 
-            <!-- Admin-View Button -->
-            <a href="{{ url_for('login') }}" class="admin-button">Admin View</a>
+                <!-- Chatverlauf leeren -->
+                <form method="POST" action="{{ url_for('clear_chat_history') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="clear-chat-button">Leeren</button>
+                </form>
+
+                <!-- Admin View Button -->
+                <a href="{{ url_for('login') }}" class="admin-button">Admin</a>
+            </div>
         </div>
 
-        <!-- Stats Container (oben rechts daneben) -->
+        <!-- Stats Container (oben rechts) -->
         <div class="stats-container">
             <h3>So viele Fragen hat der Bot schon beantwortet</h3>
             <p>Gesamt: {{ stats.total }}</p>
@@ -529,9 +475,7 @@
         const chatForm = document.getElementById('chatForm');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        // -----------------------------------------------------------
-        // Notfall-Button + Panel
-        // -----------------------------------------------------------
+        // NOTFALL-BUTTON & PANEL
         const notfallBtn = document.getElementById('notfallBtn');
         const notfallOptionsContainer = document.getElementById('notfallOptions');
         let notfallActive = false;
@@ -565,7 +509,7 @@
                     },
                     body: new URLSearchParams({ 'activate': '0' })
                 }).catch(err => console.error(err));
-                notfallBtn.textContent = "Ich habe einen Notfall";
+                notfallBtn.textContent = "Notfall";
             }
         });
 
@@ -581,9 +525,7 @@
             });
         });
 
-        // -----------------------------------------------------------
-        // Scroll-Funktion
-        // -----------------------------------------------------------
+        // SCROLL-BEHAVIOR
         function forceScrollToBottom() {
             chatHistory.scrollTop = chatHistory.scrollHeight;
             if (chatHistory.lastElementChild) {
@@ -592,9 +534,7 @@
         }
         forceScrollToBottom();
 
-        // -----------------------------------------------------------
-        // Tippanimation
-        // -----------------------------------------------------------
+        // TIPP-ANIMATION
         function typeMessage(element, message, callback) {
             let index = 0;
             const speed = 20;
@@ -616,30 +556,27 @@
         function showTypingIndicator() {
             const bubble = document.createElement('div');
             bubble.classList.add('message', 'bot', 'typing');
-            bubble.innerHTML = "<strong>C-3PO:</strong> ...schreibt gerade...";
+            bubble.innerHTML = "<strong>C-3PO:</strong><span>...schreibt gerade...</span>";
             chatHistory.appendChild(bubble);
             forceScrollToBottom();
             return bubble;
         }
 
-        // -----------------------------------------------------------
-        // Chat abschicken
-        // -----------------------------------------------------------
+        // CHAT-FORM SENDEN
         chatForm.addEventListener('submit', function(event) {
             event.preventDefault();
-
             const userMessageText = new FormData(chatForm).get('message').trim();
             if (!userMessageText) return;
 
-            // User-Bubble
+            // User-Nachricht
             const userDiv = document.createElement('div');
             userDiv.classList.add('message', 'user', 'typing');
-            userDiv.innerHTML = "<strong>Sie:</strong> ";
+            userDiv.innerHTML = "<strong>Sie:</strong><span></span>";
             chatHistory.appendChild(userDiv);
 
             forceScrollToBottom();
 
-            typeMessage(userDiv, userMessageText, function() {
+            typeMessage(userDiv.querySelector('span'), userMessageText, function() {
                 const c3poTyping = showTypingIndicator();
 
                 const isNotfall = notfallActive ? '1' : '0';
@@ -664,12 +601,11 @@
                     c3poTyping.remove();
 
                     if (data.response) {
-                        // Bot-Bubble
                         const botDiv = document.createElement('div');
                         botDiv.classList.add('message', 'bot');
                         botDiv.innerHTML = `
                             <strong>C-3PO:</strong>
-                            <span style="white-space:pre-wrap;">${data.response}</span>
+                            <span>${data.response}</span>
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>
                                 <span class="thumb-down" data-type="negative">👎</span>
@@ -699,9 +635,7 @@
             chatForm.reset();
         });
 
-        // -----------------------------------------------------------
-        // Feedback-Funktion
-        // -----------------------------------------------------------
+        // FEEDBACK
         const feedbackOverlay = document.getElementById('feedbackOverlay');
         const feedbackTitle = document.getElementById('feedbackTitle');
         const feedbackComment = document.getElementById('feedbackComment');
@@ -709,6 +643,7 @@
         const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
 
         let currentFeedbackType = null;
+
         function attachFeedbackHandlers() {
             const thumbUps = document.querySelectorAll('.thumb-up');
             const thumbDowns = document.querySelectorAll('.thumb-down');

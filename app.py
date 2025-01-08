@@ -485,7 +485,8 @@ def chat():
                     "role": "user",
                     "content": (
                         "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
-                        "Deine Antworten sollen gut lesbar sein. Jedoch mnicht zu viele Absätze, damit die optische vertikale nicht zu groß wird."
+                        "Deine Antworten sollen gut lesbar durch absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird."
+                        "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
                         "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
                         "sondern sagst, dass du es nicht weißt. "
                         f"Hier die Frage:\n'''{user_message}'''\n\n"

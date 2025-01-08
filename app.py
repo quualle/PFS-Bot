@@ -485,9 +485,7 @@ def chat():
                     "role": "user",
                     "content": (
                         "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
-                        "Deine Antworten sollten in sinnvollen Absätzen strukturiert sein, um die Lesbarkeit zu erhöhen, "
-                        "du darfst gerne HTML-Markup verwenden (z.B. <b>, <ul>, <li>, <br>), "
-                        "aber bitte keine unnötigen Sonderzeichen. "
+                        "Deine Antworten sollen gut lesbar sein. Jedoch mnicht zu viele Absätze, damit die optische vertikale nicht zu groß wird."
                         "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
                         "sondern sagst, dass du es nicht weißt. "
                         f"Hier die Frage:\n'''{user_message}'''\n\n"

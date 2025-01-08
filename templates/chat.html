@@ -147,7 +147,7 @@
             border-bottom-left-radius: 0;
         }
 
-        /* LABELS (SIE / C3PO) LINKS OBEN, NACHRICHT DARUNTER */
+        /* LABELS (SIE / XORA) LINKS OBEN, NACHRICHT DARUNTER */
         .message strong {
             position: absolute;
             top: 12px; 
@@ -595,7 +595,7 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                const c3poTyping = showTypingIndicator();
+                const XORATyping = showTypingIndicator();
 
                 const isNotfall = notfallActive ? '1' : '0';
                 const joinedNotfallOptions = selectedNotfallOptions.join(', ');
@@ -616,7 +616,7 @@
                 })
                 .then(r => r.json())
                 .then(data => {
-                    c3poTyping.remove();
+                    XORATyping.remove();
 
                     if (data.response) {
                         const botDiv = document.createElement('div');
@@ -640,7 +640,7 @@
                     attachFeedbackHandlers();
                 })
                 .catch(err => {
-                    c3poTyping.remove();
+                    XORATyping.remove();
                     const errDiv = document.createElement('div');
                     errDiv.classList.add('flash', 'flash-danger');
                     errDiv.textContent = "Fehler beim Senden der Nachricht.";

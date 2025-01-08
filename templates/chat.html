@@ -14,17 +14,19 @@
     <style>
             /* Grundlegende Stile für das gesamte Dokument */
         body {
-            font-family: 'Roboto', sans-serif; /* Festlegung der Schriftart */
-            background: linear-gradient(135deg, #1f1c2c, #928dab); /* Hintergrundverlauf */
-            color: #ffffff; /* Textfarbe */
-            margin: 0; /* Entfernen von Standard-Margen */
-            padding: 0; /* Entfernen von Standard-Padding */
-            display: flex; /* Flexbox-Layout für zentrierte Ausrichtung */
-            justify-content: center; /* Horizontale Zentrierung */
-            align-items: center; /* Vertikale Zentrierung */
-            height: 100vh; /* Volle Höhe des Viewports */
-            text-align: center; /* Zentrierter Text */
-        }
+                font-family: 'Roboto', sans-serif; /* Festlegung der Schriftart */
+                background: linear-gradient(135deg, #1f1c2c, #928dab); /* Hintergrundverlauf */
+                background-image: url('path/to/your/texture.png'), linear-gradient(135deg, #1f1c2c, #928dab); /* Hinzufügen einer Textur */
+                background-blend-mode: overlay; /* Mischung von Farbverlauf und Textur */
+                color: #ffffff; /* Textfarbe */
+                margin: 0; /* Entfernen von Standard-Margen */
+                padding: 0; /* Entfernen von Standard-Padding */
+                display: flex; /* Flexbox-Layout für zentrierte Ausrichtung */
+                justify-content: center; /* Horizontale Zentrierung */
+                align-items: center; /* Vertikale Zentrierung */
+                height: 100vh; /* Volle Höhe des Viewports */
+                text-align: center; /* Zentrierter Text */
+            }
 
         /* Stile für den Notfallmodus */
         .notfall-active {
@@ -44,7 +46,10 @@
         /* Stile für die Chat-Box */
         .chat-box {
             background: rgba(0, 0, 0, 0.8); /* Halbtransparenter schwarzer Hintergrund */
-            padding: 30px; /* Innenabstand */
+            
+            /* Reduzierter Innenabstand */
+            padding: 15px 21px; /* 15px oben und unten, 21px links und rechts */
+            
             border-radius: 15px; /* Abgerundete Ecken */
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); /* Schattierungseffekt */
             max-width: 1000px; /* Maximale Breite */

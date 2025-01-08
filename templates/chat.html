@@ -44,21 +44,28 @@
 
         /* Container für Chat und Statistiken, sorgt für zentrierte Positionierung */
         .chat-container {
-            display: inline-block; /* Blockelement mit Inline-Verhalten */
+            display: block; /* Ändere von inline-block zu block, um die volle Breite nutzen zu können */
             position: relative; /* Relative Positionierung für absolute Elemente innerhalb */
+            width: 100%; /* Volle Breite des übergeordneten Containers */
+            padding: 0 10%; /* Optional: ein wenig Innenabstand links und rechts */
         }
 
+
+        /* Stile für die Chat-Box */
         /* Stile für die Chat-Box */
         .chat-box {
             background: rgba(0, 0, 0, 0.8); /* Halbtransparenter schwarzer Hintergrund */
             
             /* Reduzierter Innenabstand */
-            padding: 15px 21px; /* 15px oben und unten, 21px links und rechts */
+            padding: 15px 21px; /* 15px oben und unten, 21px links und rechts (30% weniger links und rechts) */
             
             border-radius: 15px; /* Abgerundete Ecken */
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); /* Schattierungseffekt */
-            max-width: 1000px; /* Maximale Breite */
-            width: 90vw; /* Breite relativ zur Viewport-Breite */
+            
+            /* Breite anpassen */
+            width: 100vw; /* Volle Breite des Viewports */
+            max-width: none; /* Keine maximale Breite Begrenzung */
+            
             height: 80vh; /* Höhe relativ zur Viewport-Höhe */
             display: flex; /* Flexbox-Layout */
             flex-direction: column; /* Vertikale Anordnung der Kinder */
@@ -132,7 +139,11 @@
         .message {
             border-radius: 20px; /* Abgerundete Ecken */
             margin-bottom: 15px; /* Abstand unter der Nachricht */
-            width: 700px; /* Feste Breite für Nachrichten */
+            
+            /* Entferne die feste Breite und mache die Nachrichten flexibel */
+            /* width: 700px; */ /* Entfernt */
+            max-width: 100%; /* Maximale Breite auf 100% der Chat-Box */
+            
             padding: 8px; /* Innenabstand */
             padding-bottom: 35px; /* Zusätzlicher Innenabstand unten */
             animation: slideIn 0.5s ease-out; /* Einfliegeanimation */
@@ -144,6 +155,7 @@
             overflow: visible; /* Sichtbarer Überlauf */
             position: relative; /* Relative Positionierung */
         }
+
 
         /* Stile für Benutzer-Nachrichten */
         .user {

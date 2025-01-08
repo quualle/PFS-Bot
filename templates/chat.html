@@ -13,20 +13,25 @@
 
     <style>
             /* Grundlegende Stile für das gesamte Dokument */
+        /* Grundlegende Stile für das gesamte Dokument */
         body {
-                font-family: 'Roboto', sans-serif; /* Festlegung der Schriftart */
-                background: linear-gradient(135deg, #1f1c2c, #928dab); /* Hintergrundverlauf */
-                background-image: url('path/to/your/texture.png'), linear-gradient(135deg, #1f1c2c, #928dab); /* Hinzufügen einer Textur */
-                background-blend-mode: overlay; /* Mischung von Farbverlauf und Textur */
-                color: #ffffff; /* Textfarbe */
-                margin: 0; /* Entfernen von Standard-Margen */
-                padding: 0; /* Entfernen von Standard-Padding */
-                display: flex; /* Flexbox-Layout für zentrierte Ausrichtung */
-                justify-content: center; /* Horizontale Zentrierung */
-                align-items: center; /* Vertikale Zentrierung */
-                height: 100vh; /* Volle Höhe des Viewports */
-                text-align: center; /* Zentrierter Text */
-            }
+            font-family: 'Roboto', sans-serif; /* Festlegung der Schriftart */
+            /* Hintergrund mit verbesserter Tiefe */
+            background: radial-gradient(circle at top left, #1f1c2c, #928dab, #1f1c2c); /* Radialer Verlauf für mehr Tiefe */
+            /* Alternativ Option 1 nutzen, wenn eine Textur hinzugefügt werden soll:
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            background-image: url('path/to/your/texture.png'), linear-gradient(135deg, #1f1c2c, #928dab);
+            background-blend-mode: overlay;
+            */
+            color: #ffffff; /* Textfarbe */
+            margin: 0; /* Entfernen von Standard-Margen */
+            padding: 0; /* Entfernen von Standard-Padding */
+            display: flex; /* Flexbox-Layout für zentrierte Ausrichtung */
+            justify-content: center; /* Horizontale Zentrierung */
+            align-items: center; /* Vertikale Zentrierung */
+            height: 100vh; /* Volle Höhe des Viewports */
+            text-align: center; /* Zentrierter Text */
+        }
 
         /* Stile für den Notfallmodus */
         .notfall-active {
@@ -303,7 +308,6 @@
             box-shadow: 0 0 0 3px rgba(240, 173, 78, 0.5); /* Benutzerdefinierter Fokusrahmen für Barrierefreiheit */
         }
 
-
         /* Stile für den Clear-Chat-Button */
         .clear-chat-button {
             background-color: #dc3545; /* Hintergrundfarbe */
@@ -442,7 +446,7 @@
         /* Responsive Stile für kleinere Bildschirme */
         @media (max-width: 768px) {
             .chat-box {
-                padding: 20px; /* Reduzierter Innenabstand */
+                padding: 10px 15px; /* Weitere Reduzierung des Innenabstands auf kleinen Bildschirmen */
                 height: 90vh; /* Anpassung der Höhe */
             }
             .message {

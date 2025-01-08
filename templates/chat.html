@@ -14,10 +14,7 @@
     <style>
         /* GRUNDLEGENDE STILE FÜR DAS GESAMTE DOKUMENT */
         body {
-            /* Wunsch 2: "Normalere" Schriftart statt Roboto */
             font-family: 'Arial', sans-serif; 
-            
-            /* Hintergrund mit radialem Verlauf */
             background: radial-gradient(circle at top left, #1f1c2c, #928dab, #1f1c2c);
             color: #ffffff;
             margin: 0;
@@ -60,14 +57,14 @@
             position: relative; 
         }
 
-        /* ÜBERSCHRIFT */
+        /* ÜBERSCHRIFT ZWEIZEILIG */
         h1 {
             font-family: 'Arial', sans-serif;
             text-align: center;
             color: #00ffff;
             margin-bottom: 20px;
             text-shadow: 0 0 10px #00ffff;
-            white-space: pre-line;
+            white-space: pre-line; /* ermöglicht Zeilenumbruch bei \n */
         }
 
         /* FLASH-NACHRICHTEN */
@@ -108,19 +105,17 @@
             border-radius: 20px;
             margin-bottom: 15px;
             max-width: 100%;
-            /* Wunsch 5: Mehr Abstand links, oben und rechts */
-            padding: 12px 16px 35px 16px; /* top/left/right = 12px/16px, bottom=35px wegen Feedback-Icons */
+            /* mehr Abstand oben, links, rechts */
+            padding: 12px 16px 35px 16px; 
             animation: slideIn 0.5s ease-out;
             word-wrap: break-word;
             white-space: pre-wrap;
             display: flex; 
             flex-direction: column;
             position: relative;
-            
-            /* Größere Schrift + etwas Zeilenabstand */
+
             font-size: 1.1em; 
             line-height: 1.4; 
-
             box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
 
@@ -140,18 +135,15 @@
             border-bottom-left-radius: 0;
         }
 
-        /* WUNSCH 3 & 4: "Sie"/"C3PO" LINKS OBEN + NACHRICHT DARUNTER */
-        /* Wir platzieren das Label "strong" links oben und geben der Nachricht eine Zeile darunter. */
+        /* LABELS (SIE / C3PO) LINKS OBEN, NACHRICHT DARUNTER */
         .message strong {
             position: absolute;
             top: 12px; 
-            left: 16px; /* Links ausrichten */
+            left: 16px; 
             margin-bottom: 0;
         }
-
-        /* Der eigentliche Nachrichtentext rutscht durch Padding + margin-top unter das Label */
         .message span {
-            margin-top: 30px; /* Platz für die Zeile unter "Sie"/"C3PO" */
+            margin-top: 30px; /* Platz unter Label */
         }
 
         /* FEEDBACK-ICONS (UNTEN RECHTS) */
@@ -168,7 +160,7 @@
             margin-left: 10px;
         }
 
-        /* ANIMATION TIPPEN */
+        /* TIPP-ANIMATION */
         .typing {
             border-right: 2px solid #00ffff;
             animation: blink-caret 0.75s step-end infinite;
@@ -212,81 +204,55 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* BUTTON */
+        /* ACTION-BUTTONS (3 BUTTONS Unten Rechts) */
+        .action-buttons {
+            position: absolute; 
+            bottom: 10px; 
+            right: 10px;
+            display: flex;
+            gap: 10px; 
+        }
+
+        /* BUTTON (DEFAULT) */
         button {
             padding: 15px 25px;
             border: none;
             border-radius: 8px;
-            background-color: #00ffff;
-            color: #000;
-            font-family: 'Arial', sans-serif;
             cursor: pointer;
             transition: transform 0.2s, background-color 0.3s;
-            box-shadow: 0 4px 6px rgba(0, 255, 255, 0.2);
+            font-family: 'Arial', sans-serif;
             line-height: 1.6;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
         button:hover {
-            background-color: #00e6e6;
             transform: translateY(-3px);
         }
 
-        /* WUNSCH 1: DIE 3 BUTTONS NEBENEINANDER Unten rechts */
-        /* Container für die 3 Buttons */
-        .action-buttons {
-            position: absolute; /* Fixe Position in der Chat-Box */
-            bottom: 10px; 
-            right: 10px;
-            display: flex;
-            gap: 10px; /* Abstand zwischen Buttons */
+        /* BUTTON FARBEN */
+        /* Wunsch: "Chat Leeren" (links, grün), "Ich habe einen Notfall" (rot), "Admin" (gelb) */
+        .clear-chat-button {
+            background-color: #28a745; /* Grün */
+            color: #fff;
+        }
+        .clear-chat-button:hover {
+            background-color: #218838; 
         }
 
-        /* ADMIN-BUTTON */
+        .notfall-button {
+            background-color: #dc3545; /* Rot */
+            color: #fff;
+        }
+        .notfall-button:hover {
+            background-color: #b52a3a; 
+        }
+
         .admin-button {
-            background-color: #f0ad4e;
+            background-color: #f0ad4e; /* Gelb */
             color: #000;
-            font-family: 'Arial', sans-serif;
             text-transform: uppercase;
-            padding: 10px 15px;
-            white-space: nowrap;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.3s;
-            box-shadow: 0 4px 6px rgba(240, 173, 78, 0.2);
         }
         .admin-button:hover {
             background-color: #ec971f;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(240, 173, 78, 0.3);
-        }
-        .admin-button:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(240, 173, 78, 0.5);
-        }
-
-        /* CLEAR-CHAT-BUTTON */
-        .clear-chat-button {
-            background-color: #dc3545;
-        }
-        .clear-chat-button:hover {
-            background-color: #c82333;
-            transform: translateY(-2px);
-        }
-
-        /* NOTFALL-BUTTON */
-        .notfall-button {
-            background-color: #dc3545;
-            color: #fff;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-family: 'Arial', sans-serif;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-        .notfall-button:hover {
-            background-color: #b52a3a;
         }
 
         /* USER-GUIDANCE */
@@ -310,17 +276,17 @@
             margin-top: 5px;
         }
 
-        /* STATISTIK-BOX OBEN RECHTS */
+        /* STATS-CONTAINER (OBEN RECHTS) */
         .stats-container {
-            position: absolute;
-            top: 0;
-            right: -240px;
-            width: 200px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.4);
-            text-align: left;
+            position: absolute; 
+            top: 0; 
+            right: -240px; 
+            width: 200px; 
+            background: rgba(255, 255, 255, 0.1); 
+            padding: 15px; 
+            border-radius: 10px; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.4); 
+            text-align: left; 
         }
 
         /* MODAL-OVERLAY */
@@ -385,7 +351,8 @@
 
     <div class="chat-container">
         <div class="chat-box">
-            <h1>Pflegehilfe für Senioren Companion</h1>
+            <!-- Zweizeilig: Pflegehilfe für Senioren / Companion -->
+            <h1>Pflegehilfe für Senioren\nCompanion</h1>
 
             <!-- Chat-Verlauf -->
             <div class="chat-history" id="chatHistory">
@@ -419,6 +386,21 @@
                 <button type="submit">Senden</button>
             </form>
 
+            <!-- 3 BUTTONS Unten Rechts -->
+            <div class="action-buttons">
+                <!-- Chat Leeren (Grün) -->
+                <form method="POST" action="{{ url_for('clear_chat_history') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="clear-chat-button">Chat Leeren</button>
+                </form>
+
+                <!-- Notfall (Rot) -->
+                <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
+
+                <!-- Admin (Gelb) -->
+                <a href="{{ url_for('login') }}" class="admin-button">Admin</a>
+            </div>
+
             <!-- User Guidance -->
             <div class="user-guidance">
                 <small>
@@ -442,21 +424,6 @@
                     </ul>
                 </details>
             </div>
-
-            <!-- 3 BUTTONS Unten Rechts (Wunsch 1) -->
-            <div class="action-buttons">
-                <!-- Notfall-Button -->
-                <button id="notfallBtn" class="notfall-button">Notfall</button>
-
-                <!-- Chatverlauf leeren -->
-                <form method="POST" action="{{ url_for('clear_chat_history') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="clear-chat-button">Leeren</button>
-                </form>
-
-                <!-- Admin View Button -->
-                <a href="{{ url_for('login') }}" class="admin-button">Admin</a>
-            </div>
         </div>
 
         <!-- Stats Container (oben rechts) -->
@@ -465,6 +432,7 @@
             <p>Gesamt: {{ stats.total }}</p>
             <p>Dieses Jahr: {{ stats.year }}</p>
             <p>Diesen Monat: {{ stats.month }}</p>
+            <p>Diese Woche: {{ stats.week }}</p>
             <p>Heute: {{ stats.today }}</p>
         </div>
     </div>
@@ -509,7 +477,7 @@
                     },
                     body: new URLSearchParams({ 'activate': '0' })
                 }).catch(err => console.error(err));
-                notfallBtn.textContent = "Notfall";
+                notfallBtn.textContent = "Ich habe einen Notfall";
             }
         });
 
@@ -562,13 +530,13 @@
             return bubble;
         }
 
-        // CHAT-FORM SENDEN
+        // CHAT-FORM
         chatForm.addEventListener('submit', function(event) {
             event.preventDefault();
             const userMessageText = new FormData(chatForm).get('message').trim();
             if (!userMessageText) return;
 
-            // User-Nachricht
+            // User Bubble
             const userDiv = document.createElement('div');
             userDiv.classList.add('message', 'user', 'typing');
             userDiv.innerHTML = "<strong>Sie:</strong><span></span>";

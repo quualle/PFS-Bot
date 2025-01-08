@@ -157,6 +157,14 @@
             position: relative; /* Relative Positionierung */
         }
 
+        .message.user {
+            display: flex;
+            align-items: center; /* Vertikale Zentrierung */
+            justify-content: center; /* Horizontale Zentrierung */
+            font-family: 'Orbitron', sans-serif; /* Gleiche Schriftart wie Bot */
+            text-align: center; /* Zentrierter Text */
+        }
+
 
         /* Stile für Benutzer-Nachrichten */
         .user {
@@ -164,7 +172,8 @@
             color: #000; /* Textfarbe */
             align-self: flex-end; /* Rechtsausrichtung innerhalb des Flex-Containers */
             border-bottom-right-radius: 0; /* Keine Abrundung an der unteren rechten Ecke */
-            text-align: left; /* Linksbündiger Text */
+            text-align: center; /* Zentrierter Text */
+            /* Entferne oder passe zusätzliche Styles an, falls erforderlich */
         }
 
         /* Stile für Bot-Nachrichten */

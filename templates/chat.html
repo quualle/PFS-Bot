@@ -12,338 +12,402 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
 
     <style>
-        /* Grundlegende Stile */
+            /* Grundlegende Stile für das gesamte Dokument */
         body {
-            font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #1f1c2c, #928dab);
-            color: #ffffff;
-            margin: 0;
-            padding: 0;
-            /* zentrieren */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center; /* damit wir das Inline-Block-Setup nutzen */
+            font-family: 'Roboto', sans-serif; /* Festlegung der Schriftart */
+            background: linear-gradient(135deg, #1f1c2c, #928dab); /* Hintergrundverlauf */
+            color: #ffffff; /* Textfarbe */
+            margin: 0; /* Entfernen von Standard-Margen */
+            padding: 0; /* Entfernen von Standard-Padding */
+            display: flex; /* Flexbox-Layout für zentrierte Ausrichtung */
+            justify-content: center; /* Horizontale Zentrierung */
+            align-items: center; /* Vertikale Zentrierung */
+            height: 100vh; /* Volle Höhe des Viewports */
+            text-align: center; /* Zentrierter Text */
         }
 
-        /* Rotfärbung bei Notfallmodus */
+        /* Stile für den Notfallmodus */
         .notfall-active {
-            background: linear-gradient(135deg, #8b0000, #ff0000) !important; /* Rot / Rot */
+            background: linear-gradient(135deg, #8b0000, #ff0000) !important; /* Roter Hintergrundverlauf */
         }
+
         .notfall-active .chat-box {
-            border: 3px solid red;
+            border: 3px solid red; /* Roter Rahmen um die Chat-Box */
         }
 
-        /* Container für Chat + Stats, damit Chat zentriert bleibt */
+        /* Container für Chat und Statistiken, sorgt für zentrierte Positionierung */
         .chat-container {
-            display: inline-block; /* Damit es mittig bleibt */
-            position: relative;    /* Für die Stats-Positionierung */
+            display: inline-block; /* Blockelement mit Inline-Verhalten */
+            position: relative; /* Relative Positionierung für absolute Elemente innerhalb */
         }
 
+        /* Stile für die Chat-Box */
         .chat-box {
-            background: rgba(0, 0, 0, 0.8);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-            max-width: 1000px;
-            width: 90vw;
-            height: 80vh;
-            display: flex;
-            flex-direction: column;
-            margin: 0 auto;
-            text-align: left; /* Chat-Inhalt linksbündig */
-            position: relative;
+            background: rgba(0, 0, 0, 0.8); /* Halbtransparenter schwarzer Hintergrund */
+            padding: 30px; /* Innenabstand */
+            border-radius: 15px; /* Abgerundete Ecken */
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); /* Schattierungseffekt */
+            max-width: 1000px; /* Maximale Breite */
+            width: 90vw; /* Breite relativ zur Viewport-Breite */
+            height: 80vh; /* Höhe relativ zur Viewport-Höhe */
+            display: flex; /* Flexbox-Layout */
+            flex-direction: column; /* Vertikale Anordnung der Kinder */
+            margin: 0 auto; /* Zentrierung */
+            text-align: left; /* Linksbündiger Text innerhalb der Chat-Box */
+            position: relative; /* Relative Positionierung für absolute Elemente innerhalb */
         }
 
+        /* Stile für Überschriften */
         h1 {
-            font-family: 'Orbitron', sans-serif;
-            text-align: center;
-            color: #00ffff;
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px #00ffff;
+            font-family: 'Orbitron', sans-serif; /* Spezielle Schriftart für Überschriften */
+            text-align: center; /* Zentrierter Text */
+            color: #00ffff; /* Textfarbe */
+            margin-bottom: 20px; /* Abstand unter der Überschrift */
+            text-shadow: 0 0 10px #00ffff; /* Textschatten für Glanzeffekt */
             white-space: pre-line; /* Ermöglicht Zeilenumbrüche */
         }
 
-        /* Flash-Nachrichten */
+        /* Stile für Flash-Nachrichten */
         .flashes {
-            list-style: none;
-            padding: 0;
-            margin-bottom: 20px;
+            list-style: none; /* Entfernen von Listenpunkten */
+            padding: 0; /* Entfernen von Padding */
+            margin-bottom: 20px; /* Abstand unter der Flash-Liste */
         }
+
         .flash {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            font-family: 'Roboto', sans-serif;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.5s ease-in-out;
+            padding: 15px; /* Innenabstand */
+            border-radius: 8px; /* Abgerundete Ecken */
+            margin-bottom: 10px; /* Abstand unter einzelnen Flash-Nachrichten */
+            font-family: 'Roboto', sans-serif; /* Schriftart */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Schattierungseffekt */
+            animation: fadeIn 0.5s ease-in-out; /* Einblendeanimation */
         }
-        .flash-danger { background-color: #ff4c4c; color: #fff; }
-        .flash-warning { background-color: #ffa500; color: #fff; }
-        .flash-info { background-color: #1e90ff; color: #fff; }
-        .flash-success { background-color: #28a745; color: #fff; }
 
-        /* Chat-Verlauf */
+        .flash-danger { 
+            background-color: #ff4c4c; /* Hintergrundfarbe für gefährliche Flash-Nachrichten */
+            color: #fff; /* Textfarbe */
+        }
+
+        .flash-warning { 
+            background-color: #ffa500; /* Hintergrundfarbe für Warnungen */
+            color: #fff; /* Textfarbe */
+        }
+
+        .flash-info { 
+            background-color: #1e90ff; /* Hintergrundfarbe für Informationsnachrichten */
+            color: #fff; /* Textfarbe */
+        }
+
+        .flash-success { 
+            background-color: #28a745; /* Hintergrundfarbe für Erfolgsmeldungen */
+            color: #fff; /* Textfarbe */
+        }
+
+        /* Stile für den Chat-Verlauf */
         .chat-history {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            position: relative;
+            flex: 1; /* Flexibler Raum, um den verfügbaren Platz zu nutzen */
+            overflow-y: auto; /* Vertikales Scrollen bei Überlauf */
+            padding: 20px; /* Innenabstand */
+            background: rgba(255, 255, 255, 0.1); /* Halbtransparenter Hintergrund */
+            border-radius: 10px; /* Abgerundete Ecken */
+            margin-bottom: 20px; /* Abstand unter dem Chat-Verlauf */
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5); /* Innerer Schattierungseffekt */
+            display: flex; /* Flexbox-Layout */
+            flex-direction: column; /* Vertikale Anordnung der Nachrichten */
+            gap: 10px; /* Abstand zwischen den Nachrichten */
+            position: relative; /* Relative Positionierung */
         }
 
+        /* Stile für einzelne Nachrichten */
         .message {
-            border-radius: 10px;
-            margin-bottom: 15px;
-            width: 500px;        /* Feste Breite, damit ein Umbruch erzwungen wird */
-            padding: 8px;
-            padding-bottom: 35px; 
-            animation: slideIn 0.5s ease-out;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            display: block;
-            font-family: 'Roboto', sans-serif;
-            line-height: 1.2;
-            overflow: visible;
-            position: relative;
+            border-radius: 20px; /* Abgerundete Ecken */
+            margin-bottom: 15px; /* Abstand unter der Nachricht */
+            width: 700px; /* Feste Breite für Nachrichten */
+            padding: 8px; /* Innenabstand */
+            padding-bottom: 35px; /* Zusätzlicher Innenabstand unten */
+            animation: slideIn 0.5s ease-out; /* Einfliegeanimation */
+            word-wrap: break-word; /* Umbruch langer Wörter */
+            white-space: pre-wrap; /* Erhaltung von Leerzeichen und Zeilenumbrüchen */
+            display: block; /* Blockanzeige */
+            font-family: 'Roboto', sans-serif; /* Schriftart */
+            line-height: 1.2; /* Zeilenhöhe */
+            overflow: visible; /* Sichtbarer Überlauf */
+            position: relative; /* Relative Positionierung */
         }
 
-        /* Farbe für User */
+        /* Stile für Benutzer-Nachrichten */
         .user {
-            background-color: #00ffff;
-            color: #000;
-            align-self: flex-end; /* Rechts ausrichten */
-            border-bottom-right-radius: 0;
-            text-align: left;     /* Text links in der Bubble */
+            background-color: #00ffff; /* Hintergrundfarbe für Benutzernachrichten */
+            color: #000; /* Textfarbe */
+            align-self: flex-end; /* Rechtsausrichtung innerhalb des Flex-Containers */
+            border-bottom-right-radius: 0; /* Keine Abrundung an der unteren rechten Ecke */
+            text-align: left; /* Linksbündiger Text */
         }
 
-        /* Farbe für Bot */
+        /* Stile für Bot-Nachrichten */
         .bot {
-            background-color: #2e2e2e;
-            color: #fff;
-            align-self: flex-start; /* Links ausrichten */
-            border-bottom-left-radius: 0;
-            text-align: left;
+            background-color: #2e2e2e; /* Hintergrundfarbe für Bot-Nachrichten */
+            color: #fff; /* Textfarbe */
+            align-self: flex-start; /* Linksausrichtung innerhalb des Flex-Containers */
+            border-bottom-left-radius: 0; /* Keine Abrundung an der unteren linken Ecke */
+            text-align: left; /* Linksbündiger Text */
         }
 
+        /* Stile für hervorgehobenen Text innerhalb von Nachrichten */
         .message strong {
-            display: block;
-            margin-bottom: 5px;
-            font-family: 'Orbitron', sans-serif;
+            display: block; /* Blockanzeige für Hervorhebungen */
+            margin-bottom: 5px; /* Abstand unter dem hervorgehobenen Text */
+            font-family: 'Orbitron', sans-serif; /* Spezielle Schriftart */
         }
 
-        /* Feedback-Icons (Daumen hoch / Daumen runter) */
+        /* Stile für Feedback-Icons (Daumen hoch / Daumen runter) */
         .feedback-icons {
-            position: absolute;
-            bottom: 5px;              /* Abstand vom unteren Rand der Bubble */
-            right: 5px;               /* Abstand vom rechten Rand der Bubble */
-            display: flex;            /* Icons nebeneinander */
-            gap: 10px;                /* Abstand zwischen den Icons */
-            font-size: 1.2em;
-            cursor: pointer;
-                .feedback-icons span {
-                    margin-left: 10px;
-                }
+            position: absolute; /* Absolute Positionierung innerhalb der Nachricht */
+            bottom: 5px; /* Abstand vom unteren Rand */
+            right: 5px; /* Abstand vom rechten Rand */
+            display: flex; /* Flexbox-Layout für Icons nebeneinander */
+            gap: 10px; /* Abstand zwischen den Icons */
+            font-size: 1.2em; /* Größere Schriftgröße für Icons */
+            cursor: pointer; /* Cursor zeigt auf interaktive Elemente */
         }
 
-        /* Tipp-Animation */
-        .typing {
-            border-right: 2px solid #00ffff;
-            animation: blink-caret 0.75s step-end infinite;
+        /* Stile für die einzelnen Feedback-Icons */
+        .feedback-icons span {
+            margin-left: 10px; /* Abstand links von jedem Icon */
         }
+
+        /* Animation für den "Tipps"-Cursor */
+        .typing {
+            border-right: 2px solid #00ffff; /* Blinker am Ende des Textes */
+            animation: blink-caret 0.75s step-end infinite; /* Blink-Animation */
+        }
+
+        /* Keyframes für das Slide-In-Animationseffekt */
         @keyframes slideIn {
             from { transform: translateX(-50px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+
+        /* Keyframes für das Fade-In-Animationseffekt */
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
+
+        /* Keyframes für die Blink-Caret-Animation */
         @keyframes blink-caret {
             from, to { border-color: transparent; }
             50% { border-color: #00ffff; }
         }
 
-        /* Formular unten */
+        /* Stile für das Eingabeformular am unteren Rand */
         form {
-            display: flex;
-            gap: 10px;
+            display: flex; /* Flexbox-Layout für Formularfelder */
+            gap: 10px; /* Abstand zwischen den Formularfeldern */
         }
+
+        /* Stile für Text-Eingabefelder */
         input[type="text"] {
-            flex: 1;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            font-size: 1em;
-            outline: none;
-            transition: background 0.3s ease;
-            font-family: 'Roboto', sans-serif;
+            flex: 1; /* Flexibler Raum, um die gesamte verfügbare Breite zu nutzen */
+            padding: 15px; /* Innenabstand */
+            border: none; /* Entfernen der Standardrahmen */
+            border-radius: 8px; /* Abgerundete Ecken */
+            background: rgba(255, 255, 255, 0.2); /* Halbtransparenter Hintergrund */
+            color: #fff; /* Textfarbe */
+            font-size: 1em; /* Schriftgröße */
+            outline: none; /* Entfernen der Standard-Fokusrahmen */
+            transition: background 0.3s ease; /* Übergangseffekt für Hintergrundfarbe */
+            font-family: 'Roboto', sans-serif; /* Schriftart */
         }
+
+        /* Platzhalter-Stile für Text-Eingabefelder */
         input[type="text"]::placeholder {
-            color: #e0e0e0;
+            color: #e0e0e0; /* Farbe des Platzhaltertextes */
         }
+
+        /* Stile für fokussierte Text-Eingabefelder */
         input[type="text"]:focus {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.3); /* Etwas hellerer Hintergrund bei Fokus */
         }
+
+        /* Stile für Buttons */
         button {
-            padding: 15px 25px;
-            border: none;
-            border-radius: 8px;
-            background-color: #00ffff;
-            color: #000;
-            font-family: 'Orbitron', sans-serif;
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.3s;
-            box-shadow: 0 4px 6px rgba(0, 255, 255, 0.2);
-            line-height: 1.6;
+            padding: 15px 25px; /* Innenabstand */
+            border: none; /* Entfernen der Standardrahmen */
+            border-radius: 8px; /* Abgerundete Ecken */
+            background-color: #00ffff; /* Hintergrundfarbe */
+            color: #000; /* Textfarbe */
+            font-family: 'Orbitron', sans-serif; /* Schriftart */
+            cursor: pointer; /* Cursor zeigt auf interaktive Elemente */
+            transition: transform 0.2s, background-color 0.3s; /* Übergangseffekte für Transformation und Farbe */
+            box-shadow: 0 4px 6px rgba(0, 255, 255, 0.2); /* Schattierungseffekt */
+            line-height: 1.6; /* Zeilenhöhe */
         }
+
+        /* Hover-Effekte für Buttons */
         button:hover {
-            background-color: #00e6e6;
-            transform: translateY(-3px);
+            background-color: #00e6e6; /* Änderung der Hintergrundfarbe bei Hover */
+            transform: translateY(-3px); /* Leichte Verschiebung nach oben bei Hover */
         }
 
+        /* Stile für den Admin-Button */
         .admin-button {
-            background-color: #f0ad4e;
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
+            background-color: #f0ad4e; /* Hintergrundfarbe */
+            position: absolute; /* Absolute Positionierung innerhalb des Containers */
+            bottom: 10px; /* Abstand vom unteren Rand */
+            right: 10px; /* Abstand vom rechten Rand */
         }
+
+        /* Hover-Effekte für den Admin-Button */
         .admin-button:hover {
-            background-color: #ec971f;
-            transform: translateY(-2px);
+            background-color: #ec971f; /* Änderung der Hintergrundfarbe bei Hover */
+            transform: translateY(-2px); /* Leichte Verschiebung nach oben bei Hover */
         }
 
+        /* Stile für den Clear-Chat-Button */
         .clear-chat-button {
-            background-color: #dc3545;
-            margin-top: 10px;
+            background-color: #dc3545; /* Hintergrundfarbe */
+            margin-top: 10px; /* Abstand oben */
         }
+
+        /* Hover-Effekte für den Clear-Chat-Button */
         .clear-chat-button:hover {
-            background-color: #c82333;
-            transform: translateY(-2px);
+            background-color: #c82333; /* Änderung der Hintergrundfarbe bei Hover */
+            transform: translateY(-2px); /* Leichte Verschiebung nach oben bei Hover */
         }
 
-        /* User Guidance */
+        /* Stile für Benutzeranleitungen */
         .user-guidance {
-            margin-top: 10px;
-            font-size: 0.85em;
-            color: #ccc;
-            line-height: 1.4;
+            margin-top: 10px; /* Abstand oben */
+            font-size: 0.85em; /* Kleinere Schriftgröße */
+            color: #ccc; /* Textfarbe */
+            line-height: 1.4; /* Zeilenhöhe */
         }
+
+        /* Stile für detaillierte Benutzeranleitungen */
         .user-guidance details {
-            margin-top: 8px;
-            cursor: pointer;
+            margin-top: 8px; /* Abstand oben */
+            cursor: pointer; /* Cursor zeigt auf interaktive Elemente */
         }
+
+        /* Stile für Zusammenfassungen in Benutzeranleitungen */
         .user-guidance summary {
-            font-weight: bold;
-            outline: none;
+            font-weight: bold; /* Fettdruck */
+            outline: none; /* Entfernen der Standard-Fokusrahmen */
         }
+
+        /* Stile für Listen innerhalb von Benutzeranleitungen */
         .user-guidance ul {
-            list-style: disc;
-            margin-left: 1.4em;
-            margin-top: 5px;
+            list-style: disc; /* Listenstil mit Punkten */
+            margin-left: 1.4em; /* Einzug links */
+            margin-top: 5px; /* Abstand oben */
         }
 
-        /* Statistik-Box oben rechts (innerhalb .chat-container) */
+        /* Stile für die Statistik-Box oben rechts im Chat-Container */
         .stats-container {
-            position: absolute;
-            top: 0;
-            right: -240px;
-            width: 200px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.4);
-            text-align: left;
+            position: absolute; /* Absolute Positionierung innerhalb des Containers */
+            top: 0; /* Oben ansetzen */
+            right: -240px; /* Rechts außerhalb des Containers positionieren */
+            width: 200px; /* Feste Breite */
+            background: rgba(255, 255, 255, 0.1); /* Halbtransparenter Hintergrund */
+            padding: 15px; /* Innenabstand */
+            border-radius: 10px; /* Abgerundete Ecken */
+            box-shadow: 0 0 15px rgba(0,0,0,0.4); /* Schattierungseffekt */
+            text-align: left; /* Linksbündiger Text */
         }
 
-        /* Modal für Feedback */
+        /* Stile für das Overlay des Modals */
         .modal-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
+            position: fixed; /* Fixierte Positionierung relativ zum Viewport */
+            top: 0; 
+            left: 0;
+            width: 100%; /* Volle Breite */
+            height: 100%; /* Volle Höhe */
+            background: rgba(0,0,0,0.6); /* Halbtransparentes schwarzes Overlay */
+            display: none; /* Standardmäßig versteckt */
+            justify-content: center; /* Zentrierung horizontal */
+            align-items: center; /* Zentrierung vertikal */
+            z-index: 9999; /* Hoher Z-Index für Vordergrundplatzierung */
         }
+
+        /* Stile für das Modal-Fenster */
         .modal {
-            background: #fff;
-            color: #000;
-            padding: 20px;
-            border-radius: 10px;
-            width: 400px;
-            max-width: 90%;
+            background: #fff; /* Weißer Hintergrund */
+            color: #000; /* Textfarbe */
+            padding: 20px; /* Innenabstand */
+            border-radius: 10px; /* Abgerundete Ecken */
+            width: 400px; /* Feste Breite */
+            max-width: 90%; /* Maximale Breite relativ zum Viewport */
         }
+
+        /* Stile für Überschriften im Modal */
         .modal h3 {
-            margin-top: 0;
+            margin-top: 0; /* Entfernen des oberen Abstands */
         }
 
-        /* Notfall-Button */
+        /* Stile für den Notfall-Button */
         .notfall-button {
-            background-color: #dc3545; /* Rot */
-            color: #fff;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-bottom: 1rem;
-            font-family: 'Orbitron', sans-serif;
-            text-transform: uppercase;
+            background-color: #dc3545; /* Rote Hintergrundfarbe */
+            color: #fff; /* Weiße Textfarbe */
+            padding: 10px 15px; /* Innenabstand */
+            border: none; /* Entfernen der Standardrahmen */
+            border-radius: 6px; /* Abgerundete Ecken */
+            cursor: pointer; /* Cursor zeigt auf interaktive Elemente */
+            margin-bottom: 1rem; /* Abstand unten */
+            font-family: 'Orbitron', sans-serif; /* Schriftart */
+            text-transform: uppercase; /* Großbuchstaben */
         }
+
+        /* Hover-Effekte für den Notfall-Button */
         .notfall-button:hover {
-            background-color: #b52a3a;
+            background-color: #b52a3a; /* Dunkleres Rot bei Hover */
         }
 
-        /* Panel mit allen Notfalloptionen */
+        /* Stile für das Panel mit allen Notfalloptionen */
         .notfall-options {
-            display: none; /* Erst sichtbar, wenn Notfall aktiv */
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 1rem;
-        }
-        .notfall-option {
-            border: 2px solid #aaa;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s, color 0.2s;
-            user-select: none;
-        }
-        .notfall-option.selected {
-            background-color: #ff4c4c;
-            color: #fff;
-            border-color: #ff4c4c;
+            display: none; /* Standardmäßig versteckt, sichtbar bei aktiviertem Notfall */
+            flex-wrap: wrap; /* Umschlag der Elemente bei Bedarf */
+            gap: 10px; /* Abstand zwischen den Optionen */
+            margin-bottom: 1rem; /* Abstand unten */
         }
 
-        /* Responsive */
+        /* Stile für einzelne Notfalloptionen */
+        .notfall-option {
+            border: 2px solid #aaa; /* Grauer Rahmen */
+            padding: 8px 12px; /* Innenabstand */
+            border-radius: 6px; /* Abgerundete Ecken */
+            cursor: pointer; /* Cursor zeigt auf interaktive Elemente */
+            transition: background-color 0.2s, color 0.2s; /* Übergangseffekte für Hintergrund und Farbe */
+            user-select: none; /* Verhindert Textauswahl */
+        }
+
+        /* Stile für ausgewählte Notfalloptionen */
+        .notfall-option.selected {
+            background-color: #ff4c4c; /* Rote Hintergrundfarbe */
+            color: #fff; /* Weiße Textfarbe */
+            border-color: #ff4c4c; /* Roter Rahmen */
+        }
+
+        /* Responsive Stile für kleinere Bildschirme */
         @media (max-width: 768px) {
             .chat-box {
-                padding: 20px;
-                height: 90vh;
+                padding: 20px; /* Reduzierter Innenabstand */
+                height: 90vh; /* Anpassung der Höhe */
             }
             .message {
-                width: 80%;
+                width: 80%; /* Anpassung der Breite für kleinere Bildschirme */
             }
             .stats-container {
-                position: static;
-                margin: 10px auto 0 auto;
-                width: auto;
+                position: static; /* Statische Positionierung für bessere Darstellung */
+                margin: 10px auto 0 auto; /* Zentrierung mit automatischen Rändern */
+                width: auto; /* Automatische Breite */
             }
             .admin-button {
-                bottom: 10px;
-                right: 10px;
+                bottom: 10px; /* Abstand vom unteren Rand */
+                right: 10px; /* Abstand vom rechten Rand */
             }
         }
+
     </style>
 </head>
 <body class="{% if session.get('notfall_mode') %}notfall-active{% endif %}">

@@ -64,5 +64,16 @@ Thema 8: Tests
 8a) tests
 
 Thema 9: Notfälle & Vertragsgefährdungen
-9a) Neukunde: BK vor Anreise abgebrochen			// Hier wird der Umgang erläutert um Neukunden wegen eines BK Abbruchs nicht direkt zu verlieren
+9a) Neukunde: BK vor Anreise abgebrochen		    // Hier wird der Umgang erläutert um Neukunden wegen eines BK Abbruchs nicht direkt zu verlieren
+9b) Bestandskunde: BK während des Einsatzes abgereist               //
+9c) Betrunkenheit Betreuungskraft
+9d) Streit/Gestörtes Sympathieverhältnis
+9e) Diebstahl
+9f) Verletzungen und Erkrankungen der Betreuungskraft
+9g) Sachschaden
+9h) Verweigerung bestimmter Aufgaben
+9i) Verschwinden der Betreuungskraft/Nichtauffinden
+9j) Betreuungskraft verlässt ihr Zimmer kaum noch
+9k) Aggressives Verhalten
+9l) Unzureichende Pflege oder Haushaltsführung
 

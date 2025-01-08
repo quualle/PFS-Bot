@@ -734,11 +734,14 @@ def debug_page():
 def get_unterthemen():
     thema = request.form.get('thema')
     themen_dict = lade_themen()
-    unterthemen = []
+    unterthemen_info = {}
     if thema in themen_dict:
         for key, value in themen_dict[thema].items():
-            unterthemen.append(f"{key}) {value['title']}")
-    return jsonify({'unterthemen': unterthemen})
+            unterthemen_info[key] = {
+                'title': value['title'],
+                'beschreibung': value.get('beschreibung', '')
+            }
+    return jsonify({'unterthemen': unterthemen_info})
 
 def verarbeite_eintrag(eingabe_text, ausgewähltes_thema, ausgewähltes_unterthema, beschreibung_text):
     messages = [

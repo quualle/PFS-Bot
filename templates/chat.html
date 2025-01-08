@@ -265,6 +265,32 @@
             background-color: #ec971f;
         }
 
+        /* Die Notfall-Bubbles (Themenauswahl) */
+        #notfallOptions {
+            display: none; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            justify-content: center; 
+            margin-bottom: 20px;
+        }
+        .notfall-option {
+            background-color: #ffcccc; 
+            color: #000; 
+            padding: 10px 15px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            transition: background-color 0.2s ease, color 0.2s ease, border 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .notfall-option:hover {
+            background-color: #ff9999;
+        }
+        .notfall-option.selected {
+            border-color: #fff;
+            background-color: #ff6666;
+            color: #fff;
+        }
+
         /* USER-GUIDANCE */
         .user-guidance {
             margin-top: 10px;
@@ -286,11 +312,11 @@
             margin-top: 5px;
         }
 
-        /* STATS-CONTAINER (OBEN RECHTS) */
+        /* STATS-CONTAINER (OBEN RECHTS) - immer sichtbar */
         .stats-container {
             position: absolute; 
-            top: 0; 
-            right: -240px; 
+            top: 20px; 
+            right: 20px; 
             width: 200px; 
             background: rgba(255, 255, 255, 0.1); 
             padding: 15px; 
@@ -334,15 +360,8 @@
             .message {
                 width: 100%;
             }
-            .stats-container {
-                position: static;
-                margin: 10px auto 0 auto;
-                width: auto;
-            }
-            .action-buttons {
-                bottom: 10px;
-                right: 10px;
-            }
+            /* Stats-Container bleibt nun auch in Mobile rechts, 
+               bei sehr schmalem Viewport könnte er ggf. überlappen */
         }
     </style>
 </head>
@@ -366,6 +385,23 @@
             <div class="title-container">
                 <h1 class="main-title">SORA</h1>
                 <p class="subtitle">Pflegehilfe für Senioren Companion</p>
+            </div>
+
+            <!-- NOTFALL-OPTIONEN (BUBBLES) -->
+            <div id="notfallOptions">
+                <!-- Beispielhafte Notfallthemen als "Bubbles" -->
+                <div class="notfall-option" data-value="9a) Neukunde: BK vor Anreise abgebrochen abgereist">9a) BK vor Anreise abgebrochen</div>
+                <div class="notfall-option" data-value="9c) Betrunkenheit Betreuungskraft">9c) Betrunkenheit Betreuungskraft</div>
+                <div class="notfall-option" data-value="9d) Streit/Gestörtes Sympathieverhältnis">9d) Streit/Gestörtes Sympathieverhältnis</div>
+                <div class="notfall-option" data-value="9e) Diebstahl">9e) Diebstahl</div>
+                <div class="notfall-option" data-value="9f) Verletzungen und Erkrankungen der Betreuungskraft">9f) Verletzungen/Erkrankungen BK</div>
+                <div class="notfall-option" data-value="9g) Sachschaden">9g) Sachschaden</div>
+                <div class="notfall-option" data-value="9h) Verweigerung bestimmter Aufgaben">9h) Verweigerung von Aufgaben</div>
+                <div class="notfall-option" data-value="9i) Verschwinden der Betreuungskraft/Nichtauffinden">9i) Verschwinden der BK</div>
+                <div class="notfall-option" data-value="9j) Betreuungskraft verlässt ihr Zimmer kaum noch">9j) BK verlässt ihr Zimmer kaum</div>
+                <div class="notfall-option" data-value="9k) Aggressives Verhalten">9k) Aggressives Verhalten</div>
+                <div class="notfall-option" data-value="9l) Unzureichende Pflege oder Haushaltsführung">9l) Unzureichende Pflege/Haushalt</div>
+                <div class="notfall-option" data-value="9m) Streit/Sympathieverhältnis zu Betreuungskraft gestört">9m) Streit / Sympathie gestört</div>
             </div>
 
             <!-- Chat-Verlauf -->
@@ -447,7 +483,6 @@
             <p>Gesamt: {{ stats.total }}</p>
             <p>Dieses Jahr: {{ stats.year }}</p>
             <p>Diesen Monat: {{ stats.month }}</p>
-            <p>Diese Woche: {{ stats.week }}</p>
             <p>Heute: {{ stats.today }}</p>
         </div>
     </div>

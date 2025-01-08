@@ -379,7 +379,9 @@ def count_tokens(messages, model=None):
     token_count = 0
     for msg in messages:
         token_count += len(encoding.encode(msg['content']))
+        # 4 tokens pro Nachricht (siehe OpenAI Doku)
         token_count += 4
+    # zusätzlich 2 tokens für das System
     token_count += 2
     return token_count
 
@@ -467,15 +469,15 @@ def chat():
 
             wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
 
-            # Notfallmodus
+            # Notfallmodus: Format laut Anforderung
             if notfall_aktiv:
                 session['notfall_mode'] = True
+                original_user_msg = user_message
                 user_message = (
-                    f"ACHTUNG NOTFALL - Thema 9: Notfälle & Vertragsgefährdungen.\n"
-                    f"Ausgewählte Notfalloption(en): {notfall_art}\n\n"
-                    + user_message
+                    f"Notfall vom User gemeldet: {original_user_msg}\n"
+                    f"Antworte mithilfe der Inhalte aus Kapitel 9, Thema {notfall_art}"
                 )
-                log_notfall_event(user_id, notfall_art, user_message)
+                log_notfall_event(user_id, notfall_art, original_user_msg)
             else:
                 session.pop('notfall_mode', None)
 
@@ -485,7 +487,7 @@ def chat():
                     "role": "user",
                     "content": (
                         "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
-                        "Deine Antworten sollen gut lesbar durch absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird."
+                        "Deine Antworten sollen gut lesbar durch absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
                         "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
                         "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
                         "sondern sagst, dass du es nicht weißt. "
@@ -520,7 +522,7 @@ def chat():
     except Exception as e:
         logging.exception("Fehler in chat-Funktion.")
         flash("Ein unerwarteter Fehler ist aufgetreten.", 'danger')
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if request.headers.get('X-Requested-With'):
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
 

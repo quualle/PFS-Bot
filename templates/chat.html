@@ -228,8 +228,7 @@
             transform: translateY(-3px);
         }
 
-        /* BUTTON FARBEN */
-        /* Wunsch: "Chat Leeren" (links, grün), "Ich habe einen Notfall" (rot), "Admin" (gelb) */
+        
         .clear-chat-button {
             background-color: #28a745; /* Grün */
             color: #fff;
@@ -249,7 +248,7 @@
         .admin-button {
             background-color: #f0ad4e; /* Gelb */
             color: #000;
-            text-transform: uppercase;
+            
         }
         .admin-button:hover {
             background-color: #ec971f;
@@ -398,7 +397,8 @@
                 <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
 
                 <!-- Admin (Gelb) -->
-                <a href="{{ url_for('login') }}" class="admin-button">Admin</a>
+                <button id="admin-button" class="admin-button">Admin</button>
+        
             </div>
 
             <!-- User Guidance -->

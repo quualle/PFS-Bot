@@ -139,30 +139,50 @@
         .message {
             border-radius: 20px; /* Abgerundete Ecken */
             margin-bottom: 15px; /* Abstand unter der Nachricht */
-            margin-top: 5px; /* Abstand über der Nachricht */
-            
-            /* Entferne die feste Breite und mache die Nachrichten flexibel */
-            /* width: 700px; */ /* Entfernt */
             max-width: 100%; /* Maximale Breite auf 100% der Chat-Box */
-            
             padding: 8px; /* Innenabstand */
             padding-bottom: 35px; /* Zusätzlicher Innenabstand unten */
             animation: slideIn 0.5s ease-out; /* Einfliegeanimation */
             word-wrap: break-word; /* Umbruch langer Wörter */
             white-space: pre-wrap; /* Erhaltung von Leerzeichen und Zeilenumbrüchen */
-            display: block; /* Blockanzeige */
+            display: flex; /* Flexbox-Layout */
+            flex-direction: column; /* Vertikale Anordnung der Kinder */
             font-family: 'Roboto', sans-serif; /* Schriftart */
             line-height: 1.2; /* Zeilenhöhe */
             overflow: visible; /* Sichtbarer Überlauf */
             position: relative; /* Relative Positionierung */
         }
 
-        .message.user {
+        /* Stile für die Nachricht-Header */
+        .message-header {
+            width: 100%;
             display: flex;
-            align-items: center; /* Vertikale Zentrierung */
-            justify-content: center; /* Horizontale Zentrierung */
-            font-family: 'Orbitron', sans-serif; /* Gleiche Schriftart wie Bot */
-            text-align: center; /* Zentrierter Text */
+            justify-content: flex-end; /* Label rechts ausrichten */
+            margin-bottom: 5px; /* Abstand zwischen Label und Text */
+            font-family: 'Orbitron', sans-serif; /* Gleiche Schriftart */
+        }
+
+                /* Stile für den Nachrichtentext */
+        .message-content {
+            text-align: left; /* Linksbündiger Text */
+            margin-top: 5px; /* Abstand nach dem Header */
+            font-family: 'Orbitron', sans-serif; /* Gleiche Schriftart */
+        }
+
+        /* Stile für Benutzer-Nachrichten */
+        .message.user {
+            background-color: #00ffff; /* Hintergrundfarbe für Benutzernachrichten */
+            color: #000; /* Textfarbe */
+            align-self: flex-end; /* Rechtsausrichtung innerhalb des Flex-Containers */
+            border-bottom-right-radius: 0; /* Keine Abrundung an der unteren rechten Ecke */
+        }
+
+        /* Stile für Bot-Nachrichten */
+        .message.bot {
+            background-color: #2e2e2e; /* Hintergrundfarbe für Bot-Nachrichten */
+            color: #fff; /* Textfarbe */
+            align-self: flex-start; /* Linksausrichtung innerhalb des Flex-Containers */
+            border-bottom-left-radius: 0; /* Keine Abrundung an der unteren linken Ecke */
         }
 
 
@@ -192,7 +212,7 @@
             font-family: 'Orbitron', sans-serif; /* Spezielle Schriftart */
         }
 
-        /* Stile für Feedback-Icons (Daumen hoch / Daumen runter) */
+        /* Optional: Anpassung der Feedback-Icons */
         .feedback-icons {
             position: absolute; /* Absolute Positionierung innerhalb der Nachricht */
             bottom: 5px; /* Abstand vom unteren Rand */
@@ -555,7 +575,7 @@
                         </div>
                         <div class="message bot typing" style="border-right:none;">
                             <strong>C-3PO:</strong> 
-                            <span style="white-space:pre-wrap;">{{ chat.bot|safe }}</span>
+                            <span style="white-space: normal;">{{ chat.bot|safe }}</span>
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>
                                 <span class="thumb-down" data-type="negative">👎</span>

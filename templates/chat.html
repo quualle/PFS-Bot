@@ -408,7 +408,7 @@
             <div class="chat-history" id="chatHistory">
                 {% if chat_history|length == 0 %}
                     <div class="message bot">
-                        <strong>C-3PO:</strong>
+                        <strong>XORA:</strong>
                         <span>Willkommen! Wie kann ich Ihnen heute helfen?</span>
                     </div>
                 {% else %}
@@ -418,7 +418,7 @@
                             <span>{{ chat.user }}</span>
                         </div>
                         <div class="message bot typing" style="border-right:none;">
-                            <strong>C-3PO:</strong>
+                            <strong>XORA:</strong>
                             <span>{{ chat.bot|safe }}</span>
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>
@@ -574,7 +574,7 @@
         function showTypingIndicator() {
             const bubble = document.createElement('div');
             bubble.classList.add('message', 'bot', 'typing');
-            bubble.innerHTML = "<strong>C-3PO:</strong><span>...schreibt gerade...</span>";
+            bubble.innerHTML = "<strong>XORA:</strong><span>...schreibt gerade...</span>";
             chatHistory.appendChild(bubble);
             forceScrollToBottom();
             return bubble;
@@ -622,7 +622,7 @@
                         const botDiv = document.createElement('div');
                         botDiv.classList.add('message', 'bot');
                         botDiv.innerHTML = `
-                            <strong>C-3PO:</strong>
+                            <strong>XORA:</strong>
                             <span>${data.response}</span>
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>

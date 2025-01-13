@@ -18,6 +18,8 @@ from werkzeug.utils import secure_filename
 import openai
 import tiktoken
 
+import pinecone
+
 # Zusätzliche Importe für Dateiverarbeitung
 from PyPDF2 import PdfReader
 import docx
@@ -50,6 +52,25 @@ csrf = CSRFProtect(app)
 openai.api_key = os.getenv('OPENAI_API_KEY')
 if not openai.api_key:
     raise ValueError("Der OpenAI API-Schlüssel ist nicht gesetzt.")
+
+# Pinecone-Initialisierung
+pinecone_api_key = os.getenv('PINECONE_API_KEY')
+pinecone_env = os.getenv('PINECONE_ENV')
+pinecone_index_name = os.getenv('PINECONE_INDEX_NAME')
+
+if not pinecone_api_key or not pinecone_env or not pinecone_index_name:
+    raise ValueError("Bitte Pinecone API-Key, ENV und INDEX_NAME in .env setzen.")
+
+pinecone.init(
+    api_key=pinecone_api_key,
+    environment=pinecone_env
+)
+
+# Prüfen, ob Index existiert; sonst erstellen
+if pinecone_index_name not in pinecone.list_indexes():
+    pinecone.create_index(name=pinecone_index_name, dimension=3072)  # dimension=1536 für text-embedding-ada-002
+pinecone_index = pinecone.Index(pinecone_index_name)
+
 
 service_account_path = '/home/PfS/service_account_key.json'
 if not os.path.exists(service_account_path):
@@ -89,6 +110,46 @@ if not os.path.exists(CHATLOG_FOLDER):
 FEEDBACK_FOLDER = 'feedback'
 if not os.path.exists(FEEDBACK_FOLDER):
     os.makedirs(FEEDBACK_FOLDER)
+
+
+
+def embed_text(text: str) -> list:
+    """
+    Nutzt OpenAI Embeddings, um aus einem beliebigen Text einen Vektor zu erzeugen.
+    """
+    try:
+        response = openai.Embedding.create(
+            model="text-embedding-ada-002",
+            input=text
+        )
+        embedding = response['data'][0]['embedding']
+        return embedding
+    except Exception as e:
+        print("Fehler bei Embedding:", e)
+        return []
+
+def pinecone_upsert(doc_id: str, text: str):
+    """
+    Erzeugt ein Embedding des Textes und speichert es in Pinecone mit doc_id.
+    """
+    embedding = embed_text(text)
+    if not embedding:
+        return
+    pinecone_index.upsert(vectors=[(doc_id, embedding, {})])
+
+def pinecone_query(query_text: str, top_k: int = 3) -> list:
+    """
+    Fragt Pinecone ab und liefert die Top-K-Einträge zurück,
+    die am besten zum Query passen.
+    """
+    query_emb = embed_text(query_text)
+    if not query_emb:
+        return []
+    result = pinecone_index.query(vector=query_emb, top_k=top_k, include_metadata=True)
+    matches = result['matches']
+    # matches enthält Distanz + ggf. Metadata
+    return matches
+
 
 def store_chatlog(user_id, chat_history):
     """
@@ -303,6 +364,8 @@ def speichere_wissensbasis(eintrag):
 
         debug_print("Bearbeiten von Einträgen", f"Eintrag hinzugefügt/aktualisiert: {eintrag}")
         upload_wissensbasis(wissensbasis)
+        pinecone_upsert(doc_id=f"{thema}-{unterthema_full_key}-{uuid.uuid4()}", text=inhalt)
+
     else:
         flash("Thema und Unterthema müssen angegeben werden.", 'warning')
 
@@ -451,8 +514,9 @@ def chat():
 
         if request.method == 'POST':
             user_message = request.form.get('message', '').strip()
+            selected_source = request.form.get('source', 'json')  # <-- NEU: Quelle aus dem Formular
             notfall_aktiv = (request.form.get('notfallmodus') == '1')
-            notfall_art = request.form.get('notfallart', '').strip()  # ggf. kommaseparierte Liste
+            notfall_art = request.form.get('notfallart', '').strip()
 
             if not user_message:
                 flash("Bitte geben Sie eine Nachricht ein.", 'warning')
@@ -460,16 +524,7 @@ def chat():
                     return jsonify({'error': 'Bitte geben Sie eine Nachricht ein.'}), 400
                 return redirect(url_for('chat'))
 
-            wissensbasis = download_wissensbasis()
-            if not wissensbasis:
-                flash("Die Wissensbasis konnte nicht geladen werden.", 'danger')
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'error': 'Die Wissensbasis konnte nicht geladen werden.'}), 500
-                return redirect(url_for('chat'))
-
-            wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
-
-            # Notfallmodus: Format laut Anforderung
+            # Notfallmodus vorbereiten
             if notfall_aktiv:
                 session['notfall_mode'] = True
                 original_user_msg = user_message
@@ -481,33 +536,81 @@ def chat():
             else:
                 session.pop('notfall_mode', None)
 
-            # Prompt
-            messages = [
-                {
-                    "role": "user",
-                    "content": (
-                        "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
-                        "Deine Antworten sollen gut lesbar durch absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
-                        "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
-                        "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
-                        "sondern sagst, dass du es nicht weißt. "
-                        f"Hier die Frage:\n'''{user_message}'''\n\n"
-                        f"Dies ist die Wissensbasis:\n{wissens_text}"
-                    )
-                }
-            ]
+            # -----------------------
+            # 1) JSON-Wissensbasis
+            # -----------------------
+            if selected_source == 'json':
+                wissensbasis = download_wissensbasis()
+                if not wissensbasis:
+                    flash("Die Wissensbasis konnte nicht geladen werden.", 'danger')
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({'error': 'Die Wissensbasis konnte nicht geladen werden.'}), 500
+                    return redirect(url_for('chat'))
 
+                wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
+
+                # Prompt für JSON-Modus
+                messages = [
+                    {
+                        "role": "user",
+                        "content": (
+                            "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
+                            "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, "
+                            "damit die optische vertikale Streckung nicht zu groß wird. "
+                            "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
+                            "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
+                            "sondern sagst, dass du es nicht weißt. "
+                            f"Hier die Frage:\n'''{user_message}'''\n\n"
+                            f"Dies ist die Wissensbasis:\n{wissens_text}"
+                        )
+                    }
+                ]
+
+            # -----------------------
+            # 2) VectorDB-Wissensbasis
+            # -----------------------
+            else:
+                # Hier wird ein Pinecone-Query ausgeführt (oder deine eigene Vector-Logik)
+                top_matches = pinecone_query(user_message, top_k=5)
+                # Text der "besten" Pinecone-Ergebnisse zusammenbauen (z.B. in match['metadata'])
+                vectorkb_text = ""
+                for match in top_matches:
+                    # Beispiel: Wir hängen die IDs + ggf. Metadata oder Originaltext an
+                    match_id = match['id']
+                    score = match['score']
+                    # Wenn du in match['metadata'] noch mehr Text hast, kannst du den anhängen
+                    vectorkb_text += f"DokID: {match_id} (Score: {score})\n"
+
+                # Prompt für VectorDB-Modus
+                messages = [
+                    {
+                        "role": "user",
+                        "content": (
+                            "Du bist ein hilfreicher Assistent, der Fragen anhand einer Vektor-Datenbank beantwortet. "
+                            "Deine Antworten sollen gut lesbar sein und nicht erfunden wirken. "
+                            "Wenn du keine passenden Inhalte in der Datenbank findest, sage, dass du es nicht weißt. "
+                            f"Hier die Frage:\n'''{user_message}'''\n\n"
+                            f"Dies sind die relevantesten Auszüge aus der VectorDB:\n{vectorkb_text}"
+                        )
+                    }
+                ]
+
+            # -----------------------
+            # Ab hier wieder gemeinsam
+            # -----------------------
             token_count = count_tokens(messages, model='o1-preview')
             debug_print("API Calls", f"Anzahl Tokens: {token_count}")
 
             antwort = contact_openai(messages, model='o1-preview')
             if antwort:
+                # Im Chatverlauf immer den user_message mitspeichern,
+                # ACHTUNG: im Notfallmodus haben wir user_message überschrieben
+                # (du kannst bei Bedarf original_user_msg stattdessen speichern)
                 session[chat_key].append({'user': user_message, 'bot': antwort})
                 store_chatlog(user_id, session[chat_key])
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'response': antwort}), 200
-
                 return redirect(url_for('chat'))
             else:
                 flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", 'danger')
@@ -525,6 +628,7 @@ def chat():
         if request.headers.get('X-Requested-With'):
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
+
 
 ###########################################
 # CSRF & Session Hooks

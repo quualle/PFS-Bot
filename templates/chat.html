@@ -436,6 +436,21 @@
                 <button type="submit">Senden</button>
             </form>
 
+            <div style="margin-bottom: 10px;">
+                <label style="margin-right: 15px; font-size: 0.9em;">
+                    <input type="radio" name="source" value="json" checked> JSON-Wissensbasis
+                </label>
+                <label style="margin-right: 15px; font-size: 0.9em;">
+                    <input type="radio" name="source" value="vector"> Vector DB
+                </label>
+            </div>
+            
+            <form id="chatForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="text" name="message" placeholder="Ihre Nachricht..." required>
+                <button type="submit">Senden</button>
+            </form>
+
             <!-- 3 BUTTONS Unten Rechts -->
             <div class="action-buttons">
                 <!-- Chat Leeren (Grün) -->
@@ -611,7 +626,8 @@
                         'csrf_token': csrfToken,
                         'message': userMessageText,
                         'notfallmodus': isNotfall,
-                        'notfallart': joinedNotfallOptions
+                        'notfallart': joinedNotfallOptions,
+                        'source': selectedSource
                     })
                 })
                 .then(r => r.json())

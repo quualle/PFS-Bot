@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 import openai
 import tiktoken
 
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 
 # Zusätzliche Importe für Dateiverarbeitung
 from PyPDF2 import PdfReader
@@ -61,15 +61,29 @@ pinecone_index_name = os.getenv('PINECONE_INDEX_NAME')
 if not pinecone_api_key or not pinecone_env or not pinecone_index_name:
     raise ValueError("Bitte Pinecone API-Key, ENV und INDEX_NAME in .env setzen.")
 
-pinecone.init(
-    api_key=pinecone_api_key,
-    environment=pinecone_env
+pc = Pinecone(
+    api_key=pinecone_api_key
 )
 
 # Prüfen, ob Index existiert; sonst erstellen
-if pinecone_index_name not in pinecone.list_indexes():
-    pinecone.create_index(name=pinecone_index_name, dimension=3072)  # dimension=1536 für text-embedding-ada-002
-pinecone_index = pinecone.Index(pinecone_index_name)
+# Index-Liste abrufen
+index_list = pc.list_indexes().names()
+
+if pinecone_index_name not in index_list:
+    # Index anlegen, falls er nicht existiert
+    pc.create_index(
+        name=pinecone_index_name,
+        dimension=1536,
+        metric='cosine',  # oder 'euclidean'
+        spec=ServerlessSpec(
+            cloud='aws',
+            region='us-west-2'  # oder dein region-code
+        )
+    )
+
+# Index-Handle abrufen
+index = pc.index(pinecone_index_name)
+
 
 
 service_account_path = '/home/PfS/service_account_key.json'
@@ -129,26 +143,20 @@ def embed_text(text: str) -> list:
         return []
 
 def pinecone_upsert(doc_id: str, text: str):
-    """
-    Erzeugt ein Embedding des Textes und speichert es in Pinecone mit doc_id.
-    """
-    embedding = embed_text(text)
+    embedding = embed_text(text)   # z.B. dein OpenAI-Embedding
     if not embedding:
         return
-    pinecone_index.upsert(vectors=[(doc_id, embedding, {})])
+
+    index.upsert(
+        vectors=[(doc_id, embedding, {"original_text": text})]
+    )
 
 def pinecone_query(query_text: str, top_k: int = 3) -> list:
-    """
-    Fragt Pinecone ab und liefert die Top-K-Einträge zurück,
-    die am besten zum Query passen.
-    """
     query_emb = embed_text(query_text)
     if not query_emb:
         return []
-    result = pinecone_index.query(vector=query_emb, top_k=top_k, include_metadata=True)
-    matches = result['matches']
-    # matches enthält Distanz + ggf. Metadata
-    return matches
+    result = index.query(vector=query_emb, top_k=top_k, include_metadata=True)
+    return result.get('matches', [])
 
 
 def store_chatlog(user_id, chat_history):

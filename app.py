@@ -18,14 +18,18 @@ from werkzeug.utils import secure_filename
 import openai
 import tiktoken
 
-from pinecone import Pinecone, Index, ServerlessSpec
 
+from pinecone.grpc import PineconeGRPC as Pinecone
+from pinecone import ServerlessSpec
 
 # Zusätzliche Importe für Dateiverarbeitung
 from PyPDF2 import PdfReader
 import docx
 
 # Für Datum / Statistik
+
+
+
 from datetime import datetime
 
 # Laden der Umgebungsvariablen aus .env
@@ -157,8 +161,12 @@ def pinecone_upsert(doc_id: str, text: str):
         return
 
     index.upsert(
-        vectors=[(doc_id, embedding, {"original_text": text})]
-    )
+    vectors=[{
+        "id": doc_id,
+        "values": embedding,
+        "metadata": {"original_text": text}
+    }]
+)
 
 def pinecone_query(query_text: str, top_k: int = 3) -> list:
     query_emb = embed_text(query_text)
@@ -651,6 +659,7 @@ def chat():
 # CSRF & Session Hooks
 ###########################################
 from flask_wtf.csrf import generate_csrf
+from pinecone import Pinecone, Index, ServerlessSpec
 
 @app.context_processor
 def inject_csrf_token():

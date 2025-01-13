@@ -78,11 +78,11 @@ index_list = pc.list_indexes().names()
 if pinecone_index_name not in index_list:
     pc.create_index(
         name=pinecone_index_name,
-        dimension=1536,
+        dimension=3072,
         metric='cosine',
         spec=ServerlessSpec(
             cloud='aws',
-            region='us-west-2'
+            region='us-east-1'
         )
     )
 

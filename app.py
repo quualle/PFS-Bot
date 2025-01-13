@@ -65,23 +65,32 @@ if not pinecone_api_key or not pinecone_env or not pinecone_index_name:
 # Pinecone initialisieren (API-Key + environment)
 pc = Pinecone(
     api_key=pinecone_api_key,
-    environment=pinecone_env  # <--- hier das Env hinterlegen (z.B. "us-west1-gcp")
+    environment=pinecone_env  # z.B. "us-west1-gcp"
 )
+
 
 # Index-Liste abrufen
 index_list = pc.list_indexes().names()
-
-# Falls Index noch nicht existiert, neu anlegen:
 if pinecone_index_name not in index_list:
     pc.create_index(
         name=pinecone_index_name,
         dimension=1536,
-        metric='cosine',  # z.B. 'cosine' oder 'euclidean'
-        spec=ServerlessSpec(cloud='aws', region='us-west-2')
+        metric='cosine',
+        spec=ServerlessSpec(
+            cloud='aws',
+            region='us-west-2'
+        )
     )
 
-# Index-Handle erzeugen
-index = Index(name=pinecone_index_name, pinecone=pc)
+desc = pc.describe_index(pinecone_index_name)
+# Je nach Pinecone-Version kann es 'desc.status.host' oder 'desc.index_endpoint' sein.
+# Oft ist es:
+host = desc.status.host
+index = Index(
+    name=pinecone_index_name,
+    api_key=pinecone_api_key,  # <-- Dein API-Key
+    host=host                  # <-- Der Host aus describe_index
+)
 
 
 

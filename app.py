@@ -18,7 +18,8 @@ from werkzeug.utils import secure_filename
 import openai
 import tiktoken
 
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone, Index, ServerlessSpec
+
 
 # Zusätzliche Importe für Dateiverarbeitung
 from PyPDF2 import PdfReader
@@ -61,28 +62,27 @@ pinecone_index_name = os.getenv('PINECONE_INDEX_NAME')
 if not pinecone_api_key or not pinecone_env or not pinecone_index_name:
     raise ValueError("Bitte Pinecone API-Key, ENV und INDEX_NAME in .env setzen.")
 
+# Pinecone initialisieren (API-Key + environment)
 pc = Pinecone(
-    api_key=pinecone_api_key
+    api_key=pinecone_api_key,
+    environment=pinecone_env  # <--- hier das Env hinterlegen (z.B. "us-west1-gcp")
 )
 
-# Prüfen, ob Index existiert; sonst erstellen
 # Index-Liste abrufen
 index_list = pc.list_indexes().names()
 
+# Falls Index noch nicht existiert, neu anlegen:
 if pinecone_index_name not in index_list:
-    # Index anlegen, falls er nicht existiert
     pc.create_index(
         name=pinecone_index_name,
         dimension=1536,
-        metric='cosine',  # oder 'euclidean'
-        spec=ServerlessSpec(
-            cloud='aws',
-            region='us-west-2'  # oder dein region-code
-        )
+        metric='cosine',  # z.B. 'cosine' oder 'euclidean'
+        spec=ServerlessSpec(cloud='aws', region='us-west-2')
     )
 
-# Index-Handle abrufen
-index = pc.index(pinecone_index_name)
+# Index-Handle erzeugen
+index = Index(name=pinecone_index_name, pinecone=pc)
+
 
 
 

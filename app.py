@@ -85,7 +85,7 @@ if pinecone_index_name not in index_list:
 desc = pc.describe_index(pinecone_index_name)
 # Je nach Pinecone-Version kann es 'desc.status.host' oder 'desc.index_endpoint' sein.
 # Oft ist es:
-host = desc.status.host
+host = desc.index_endpoint
 index = Index(
     name=pinecone_index_name,
     api_key=pinecone_api_key,  # <-- Dein API-Key

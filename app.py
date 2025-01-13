@@ -18,7 +18,9 @@ from werkzeug.utils import secure_filename
 import openai
 import tiktoken
 
-
+###########################################
+# PINECONE: gRPC-Variante laut Quickstart
+###########################################
 from pinecone.grpc import PineconeGRPC as Pinecone
 from pinecone import ServerlessSpec
 
@@ -27,9 +29,6 @@ from PyPDF2 import PdfReader
 import docx
 
 # Für Datum / Statistik
-
-
-
 from datetime import datetime
 
 # Laden der Umgebungsvariablen aus .env
@@ -58,47 +57,43 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 if not openai.api_key:
     raise ValueError("Der OpenAI API-Schlüssel ist nicht gesetzt.")
 
-# Pinecone-Initialisierung
+###########################################
+# Pinecone-Initialisierung (gRPC)
+###########################################
 pinecone_api_key = os.getenv('PINECONE_API_KEY')
-pinecone_env = os.getenv('PINECONE_ENV')
+pinecone_env = os.getenv('PINECONE_ENV')  # z.B. 'us-east-1'
 pinecone_index_name = os.getenv('PINECONE_INDEX_NAME')
 
-if not pinecone_api_key or not pinecone_env or not pinecone_index_name:
-    raise ValueError("Bitte Pinecone API-Key, ENV und INDEX_NAME in .env setzen.")
+if not pinecone_api_key or not pinecone_index_name:
+    raise ValueError("Bitte Pinecone API-Key und INDEX_NAME in .env setzen.")
 
-# Pinecone initialisieren (API-Key + environment)
-pc = Pinecone(
-    api_key=pinecone_api_key,
-    environment=pinecone_env  # z.B. "us-west1-gcp"
-)
+# Pinecone-Client erstellen
+pc = Pinecone(api_key=pinecone_api_key)
+# Du kannst pinecone_env hier ggf. nicht explizit angeben – 
+# Pinecone gRPC nutzt 'us-west1-gcp' oder 'us-east-1' ggf. 
+# laut Projekt-Einstellungen.
 
-
-# Index-Liste abrufen
-index_list = pc.list_indexes().names()
-if pinecone_index_name not in index_list:
+# Index ggf. anlegen (Dimension=1536 für text-embedding-ada-002)
+if not pc.has_index(pinecone_index_name):
     pc.create_index(
         name=pinecone_index_name,
         dimension=3072,
-        metric='cosine',
+        metric="cosine",
         spec=ServerlessSpec(
-            cloud='aws',
-            region='us-east-1'
+            cloud="aws",
+            region=pinecone_env or "us-east-1"
         )
     )
+# Optional: Warten, bis Index ready
+while not pc.describe_index(pinecone_index_name).status["ready"]:
+    time.sleep(1)
 
-desc = pc.describe_index(pinecone_index_name)
-# Je nach Pinecone-Version kann es 'desc.status.host' oder 'desc.index_endpoint' sein.
-# Oft ist es:
-host = desc.index_endpoint
-index = Index(
-    name=pinecone_index_name,
-    api_key=pinecone_api_key,  # <-- Dein API-Key
-    host=host                  # <-- Der Host aus describe_index
-)
+# Index-Handle holen
+index = pc.Index(pinecone_index_name)
 
-
-
-
+###########################################
+# Google Cloud Storage + Sonstige Einstellungen
+###########################################
 service_account_path = '/home/PfS/service_account_key.json'
 if not os.path.exists(service_account_path):
     raise FileNotFoundError(f"Service Account Datei nicht gefunden: {service_account_path}")
@@ -139,10 +134,13 @@ if not os.path.exists(FEEDBACK_FOLDER):
     os.makedirs(FEEDBACK_FOLDER)
 
 
-
+###########################################
+# EMBEDDING mit OpenAI
+###########################################
 def embed_text(text: str) -> list:
     """
-    Nutzt OpenAI Embeddings, um aus einem beliebigen Text einen Vektor zu erzeugen.
+    Nutzt OpenAI Embeddings (text-embedding-ada-002, Dimension=1536),
+    um aus beliebigem Text einen Vektor zu erzeugen.
     """
     try:
         response = openai.Embedding.create(
@@ -155,32 +153,48 @@ def embed_text(text: str) -> list:
         print("Fehler bei Embedding:", e)
         return []
 
-def pinecone_upsert(doc_id: str, text: str):
-    embedding = embed_text(text)   # z.B. dein OpenAI-Embedding
+
+###########################################
+# Pinecone: Upsert + Query
+###########################################
+def pinecone_upsert(doc_id: str, text: str, namespace="default"):
+    """
+    Erzeugt ein Embedding und upsertet es in Pinecone (gRPC).
+    Format: [{"id": "...", "values": [...], "metadata": {...}}]
+    """
+    embedding = embed_text(text)
     if not embedding:
         return
 
-    index.upsert(
-    vectors=[{
+    record = {
         "id": doc_id,
         "values": embedding,
         "metadata": {"original_text": text}
-    }]
-)
+    }
+    index.upsert(vectors=[record], namespace=namespace)
 
-def pinecone_query(query_text: str, top_k: int = 3) -> list:
+
+def pinecone_query(query_text: str, top_k: int = 3, namespace="default") -> list:
+    """
+    Konvertiert den Query-Text zum Embedding und führt ein Pinecone-Query aus.
+    """
     query_emb = embed_text(query_text)
     if not query_emb:
         return []
-    result = index.query(vector=query_emb, top_k=top_k, include_metadata=True)
+    result = index.query(
+        vector=query_emb,
+        top_k=top_k,
+        namespace=namespace,
+        include_values=False,
+        include_metadata=True
+    )
     return result.get('matches', [])
 
 
+###########################################
+# Chat-Logs und Feedback
+###########################################
 def store_chatlog(user_id, chat_history):
-    """
-    Speichert den Chatverlauf als Textdatei in CHATLOG_FOLDER.
-    Dateiname enthält Datum + Uhrzeit, damit man es leicht zuordnen kann.
-    """
     timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{timestamp_str}_user-{user_id}.txt"
     filepath = os.path.join(CHATLOG_FOLDER, filename)
@@ -194,12 +208,6 @@ def store_chatlog(user_id, chat_history):
             f.write(f"  Bot : {bot_msg}\n\n")
 
 def store_feedback(feedback_type, comment, chat_history):
-    """
-    Speichert das Feedback + gesamten Chat in FEEDBACK_FOLDER.
-    feedback_type: "positive" oder "negative"
-    comment: user-Kommentar
-    chat_history: Liste mit {user, bot}
-    """
     timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{timestamp_str}_feedback.txt"
     filepath = os.path.join(FEEDBACK_FOLDER, filename)
@@ -215,11 +223,11 @@ def store_feedback(feedback_type, comment, chat_history):
             f.write(f"  User: {user_msg}\n")
             f.write(f"  Bot : {bot_msg}\n\n")
 
+
+###########################################
+# Chat-Statistik
+###########################################
 def calculate_chat_stats():
-    """
-    Liest alle Chatlog-Dateien aus CHATLOG_FOLDER und zählt die Gesamtanzahl an Nachrichten (User-Bot).
-    Außerdem: Zählung nur für dieses Jahr, diesen Monat, heute.
-    """
     total_count = 0
     year_count = 0
     month_count = 0
@@ -242,13 +250,12 @@ def calculate_chat_stats():
         message_pairs = content.count("User:")
         total_count += message_pairs
 
-        # Datum aus dem Dateinamen parsen: "YYYY-mm-dd_HH-MM-SS_user-xxxx.txt"
+        # Datum aus Dateiname (YYYY-mm-dd_HH-MM-SS_user-xxx.txt)
         try:
             date_str = filename.split("_")[0]  # "YYYY-mm-dd"
             y, m, d = date_str.split("-")
             y, m, d = int(y), int(m), int(d)
         except:
-            # Falls das nicht parsebar ist, zählen wir die Datei nicht in year/month/day
             continue
 
         if y == current_year:
@@ -264,6 +271,20 @@ def calculate_chat_stats():
         'month': month_count,
         'today': day_count
     }
+
+
+###########################################
+# Download/Upload Wissensbasis (JSON)
+###########################################
+service_account_path = '/home/PfS/service_account_key.json'
+if not os.path.exists(service_account_path):
+    raise FileNotFoundError(f"Service Account Datei nicht gefunden: {service_account_path}")
+
+credentials = service_account.Credentials.from_service_account_file(service_account_path)
+client = storage.Client(credentials=credentials)
+bucket_name = 'wissensbasis'
+bucket = client.bucket(bucket_name)
+wissensbasis_blob_name = 'wissensbasis.json'
 
 def download_wissensbasis(max_retries=5, backoff_factor=1):
     debug_print("Wissensbasis Download/Upload", f"Versuche, Wissensbasis von '{wissensbasis_blob_name}' herunterzuladen.")
@@ -319,13 +340,11 @@ def upload_wissensbasis(wissensbasis, max_retries=5, backoff_factor=1):
             else:
                 flash(f"Fehler beim Hochladen der Wissensbasis: {e}", 'danger')
 
-def get_next_thema_number(themen_dict):
-    numbers = []
-    for thema in themen_dict.keys():
-        match = re.match(r'Thema\s+(\d+):\s+.*', thema)
-        if match:
-            numbers.append(int(match.group(1)))
-    return max(numbers)+1 if numbers else 1
+
+###########################################
+# Themen (themen.txt) laden/aktualisieren
+###########################################
+themen_datei = '/home/PfS/themen.txt'
 
 def lese_themenhierarchie(dateipfad):
     if not os.path.exists(dateipfad):
@@ -357,6 +376,42 @@ def lese_themenhierarchie(dateipfad):
                 }
     return themen_dict
 
+def lade_themen():
+    return lese_themenhierarchie(themen_datei)
+
+def get_next_thema_number(themen_dict):
+    numbers = []
+    for thema in themen_dict.keys():
+        match = re.match(r'Thema\s+(\d+):\s+.*', thema)
+        if match:
+            numbers.append(int(match.group(1)))
+    return max(numbers) + 1 if numbers else 1
+
+def aktualisiere_themen(themen_dict):
+    def sort_key(k):
+        match = re.match(r'(\d+)([a-z]*)', k)
+        if match:
+            num = int(match.group(1))
+            suf = match.group(2)
+            return (num, suf)
+        return (0, k)
+    with open(themen_datei, 'w', encoding='utf-8') as file:
+        for thema, unterpunkte in themen_dict.items():
+            file.write(f"{thema}\n")
+            sorted_up = sorted(unterpunkte.items(), key=lambda x: sort_key(x[0]))
+            for punkt_nummer, punkt_info in sorted_up:
+                punkt_titel = punkt_info['title']
+                punkt_beschreibung = punkt_info.get('beschreibung', '')
+                if punkt_beschreibung:
+                    file.write(f"{punkt_nummer}) {punkt_titel}\t\t\t// {punkt_beschreibung}\n")
+                else:
+                    file.write(f"{punkt_nummer}) {punkt_titel}\n")
+            file.write("\n")
+
+
+###########################################
+# Wissenseintrag in JSON + Pinecone speichern
+###########################################
 def speichere_wissensbasis(eintrag):
     wissensbasis = download_wissensbasis()
     thema = eintrag.get("thema", "").strip()
@@ -389,34 +444,14 @@ def speichere_wissensbasis(eintrag):
 
         debug_print("Bearbeiten von Einträgen", f"Eintrag hinzugefügt/aktualisiert: {eintrag}")
         upload_wissensbasis(wissensbasis)
-        pinecone_upsert(doc_id=f"{thema}-{unterthema_full_key}-{uuid.uuid4()}", text=inhalt)
+
+        # Pinecone: Upsert
+        doc_id = f"{thema}-{unterthema_full_key}-{uuid.uuid4()}"
+        pinecone_upsert(doc_id=doc_id, text=inhalt, namespace="default")
 
     else:
         flash("Thema und Unterthema müssen angegeben werden.", 'warning')
 
-def lade_themen():
-    return lese_themenhierarchie(themen_datei)
-
-def aktualisiere_themen(themen_dict):
-    def sort_key(k):
-        match = re.match(r'(\d+)([a-z]*)', k)
-        if match:
-            num = int(match.group(1))
-            suf = match.group(2)
-            return (num, suf)
-        return (0, k)
-    with open(themen_datei, 'w', encoding='utf-8') as file:
-        for thema, unterpunkte in themen_dict.items():
-            file.write(f"{thema}\n")
-            sorted_up = sorted(unterpunkte.items(), key=lambda x: sort_key(x[0]))
-            for punkt_nummer, punkt_info in sorted_up:
-                punkt_titel = punkt_info['title']
-                punkt_beschreibung = punkt_info.get('beschreibung', '')
-                if punkt_beschreibung:
-                    file.write(f"{punkt_nummer}) {punkt_titel}\t\t\t// {punkt_beschreibung}\n")
-                else:
-                    file.write(f"{punkt_nummer}) {punkt_titel}\n")
-            file.write("\n")
 
 ###########################################
 # Notfall-LOG-Funktion
@@ -440,8 +475,12 @@ def log_notfall_event(user_id, notfall_art, user_message):
     with open(log_path, 'w', encoding='utf-8') as f:
         json.dump(logs, f, ensure_ascii=False, indent=2)
 
+
+###########################################
+# Kontakt mit OpenAI
+###########################################
 def contact_openai(messages, model=None):
-    model = 'o1-preview'
+    model = 'o1-preview'  # dein Model (z.B. GPT-3.5-turbo, etc.)
     debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o1-preview gesetzt.")
     try:
         response = openai.chat.completions.create(model=model, messages=messages)
@@ -473,8 +512,9 @@ def count_tokens(messages, model=None):
     token_count += 2
     return token_count
 
+
 ###########################################
-# Neue Route: Toggle Notfall Mode
+# Flask-Routen
 ###########################################
 @app.route('/toggle_notfall_mode', methods=['POST'])
 def toggle_notfall_mode():
@@ -491,17 +531,9 @@ def toggle_notfall_mode():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-###########################################
-# Feedback speichern
-###########################################
+
 @app.route('/store_feedback', methods=['POST'])
 def store_feedback_route():
-    """
-    Erwartet:
-      - feedback_type (str): "positive" oder "negative"
-      - comment (str): Kommentar
-    Speichert das Feedback inkl. Chatverlauf in feedback/.
-    """
     try:
         data = request.get_json()
         feedback_type = data.get("feedback_type", "")
@@ -515,11 +547,11 @@ def store_feedback_route():
         chat_history = session.get(chat_key, [])
 
         store_feedback(feedback_type, comment, chat_history)
-
         return jsonify({"success": True}), 200
     except Exception as e:
         logging.exception("Fehler beim Speichern des Feedbacks.")
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 ###########################################
 # Chat Route
@@ -539,7 +571,7 @@ def chat():
 
         if request.method == 'POST':
             user_message = request.form.get('message', '').strip()
-            selected_source = request.form.get('source', 'json')  # <-- NEU: Quelle aus dem Formular
+            selected_source = request.form.get('source', 'json')
             notfall_aktiv = (request.form.get('notfallmodus') == '1')
             notfall_art = request.form.get('notfallart', '').strip()
 
@@ -549,7 +581,7 @@ def chat():
                     return jsonify({'error': 'Bitte geben Sie eine Nachricht ein.'}), 400
                 return redirect(url_for('chat'))
 
-            # Notfallmodus vorbereiten
+            # Notfallmodus
             if notfall_aktiv:
                 session['notfall_mode'] = True
                 original_user_msg = user_message
@@ -561,9 +593,7 @@ def chat():
             else:
                 session.pop('notfall_mode', None)
 
-            # -----------------------
-            # 1) JSON-Wissensbasis
-            # -----------------------
+            # JSON-Wissensbasis?
             if selected_source == 'json':
                 wissensbasis = download_wissensbasis()
                 if not wissensbasis:
@@ -573,64 +603,47 @@ def chat():
                     return redirect(url_for('chat'))
 
                 wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
-
-                # Prompt für JSON-Modus
                 messages = [
                     {
                         "role": "user",
                         "content": (
                             "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
-                            "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, "
-                            "damit die optische vertikale Streckung nicht zu groß wird. "
-                            "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
-                            "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
-                            "sondern sagst, dass du es nicht weißt. "
+                            "Deine Antworten sollen gut lesbar durch Absätze sein, aber nicht zu viele. "
+                            "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts. "
                             f"Hier die Frage:\n'''{user_message}'''\n\n"
                             f"Dies ist die Wissensbasis:\n{wissens_text}"
                         )
                     }
                 ]
-
-            # -----------------------
-            # 2) VectorDB-Wissensbasis
-            # -----------------------
             else:
-                # Hier wird ein Pinecone-Query ausgeführt (oder deine eigene Vector-Logik)
-                top_matches = pinecone_query(user_message, top_k=5)
-                # Text der "besten" Pinecone-Ergebnisse zusammenbauen (z.B. in match['metadata'])
+                # VectorDB via Pinecone
+                top_matches = pinecone_query(user_message, top_k=5, namespace="default")
                 vectorkb_text = ""
                 for match in top_matches:
-                    # Beispiel: Wir hängen die IDs + ggf. Metadata oder Originaltext an
                     match_id = match['id']
                     score = match['score']
-                    # Wenn du in match['metadata'] noch mehr Text hast, kannst du den anhängen
-                    vectorkb_text += f"DokID: {match_id} (Score: {score})\n"
+                    meta = match.get('metadata', {})
+                    partial_text = meta.get('original_text', '')
+                    vectorkb_text += f"[{match_id} | Score: {score}] => {partial_text}\n"
 
-                # Prompt für VectorDB-Modus
                 messages = [
                     {
                         "role": "user",
                         "content": (
                             "Du bist ein hilfreicher Assistent, der Fragen anhand einer Vektor-Datenbank beantwortet. "
-                            "Deine Antworten sollen gut lesbar sein und nicht erfunden wirken. "
-                            "Wenn du keine passenden Inhalte in der Datenbank findest, sage, dass du es nicht weißt. "
+                            "Wenn du nichts findest, sag, dass du es nicht weißt. "
                             f"Hier die Frage:\n'''{user_message}'''\n\n"
-                            f"Dies sind die relevantesten Auszüge aus der VectorDB:\n{vectorkb_text}"
+                            f"Relevanteste Auszüge:\n{vectorkb_text}"
                         )
                     }
                 ]
 
-            # -----------------------
-            # Ab hier wieder gemeinsam
-            # -----------------------
+            # OpenAI
             token_count = count_tokens(messages, model='o1-preview')
             debug_print("API Calls", f"Anzahl Tokens: {token_count}")
 
             antwort = contact_openai(messages, model='o1-preview')
             if antwort:
-                # Im Chatverlauf immer den user_message mitspeichern,
-                # ACHTUNG: im Notfallmodus haben wir user_message überschrieben
-                # (du kannst bei Bedarf original_user_msg stattdessen speichern)
                 session[chat_key].append({'user': user_message, 'bot': antwort})
                 store_chatlog(user_id, session[chat_key])
 
@@ -643,7 +656,6 @@ def chat():
                     return jsonify({'error': 'Problem bei Kommunikation'}), 500
                 return redirect(url_for('chat'))
 
-        # Statistik abrufen und an Template übergeben
         stats = calculate_chat_stats()
         return render_template('chat.html', chat_history=chat_history, stats=stats)
 
@@ -659,7 +671,6 @@ def chat():
 # CSRF & Session Hooks
 ###########################################
 from flask_wtf.csrf import generate_csrf
-from pinecone import Pinecone, Index, ServerlessSpec
 
 @app.context_processor
 def inject_csrf_token():
@@ -737,6 +748,7 @@ def lade_themen_route():
     themen_dict = lade_themen()
     return jsonify(themen_dict), 200
 
+
 ###########################################
 # Admin
 ###########################################
@@ -754,7 +766,7 @@ def admin():
 
             ki_aktiviert = (request.form.get('ki_var') == 'on')
             if ki_aktiviert:
-                # KI-Extraktion
+                # KI-Extraktion (Beispiel)
                 extraktion_messages = [
                     {"role": "user", "content": "Du bist ein Experte, der aus Transkripten Wissen extrahiert..."},
                     {"role": "user", "content": f"Extrahiere ohne Verluste:\n'''{eingabe_text}'''"}
@@ -772,7 +784,7 @@ def admin():
                     flash("Fehler bei der Wissensextraktion.", 'danger')
                     return redirect(url_for('admin'))
 
-                # Kategorisierung
+                # Kategorisierung (Beispiel)
                 themen_hierarchie = ''
                 if os.path.exists(themen_datei):
                     with open(themen_datei, 'r', encoding='utf-8') as f:
@@ -840,6 +852,7 @@ def admin():
         flash("Ein unerwarteter Fehler ist aufgetreten.", 'danger')
         return render_template('admin.html', themen_dict={})
 
+
 @app.route('/edit', methods=['GET'])
 @login_required
 def edit():
@@ -859,6 +872,7 @@ def debug_page():
         flash("Debug-Einstellungen aktualisiert.", 'success')
         return redirect(url_for('admin'))
     return render_template('debug.html', debug_categories=DEBUG_CATEGORIES)
+
 
 @app.route('/get_unterthemen', methods=['POST'])
 @login_required
@@ -937,12 +951,12 @@ def move_entry():
             return jsonify({'success': False, 'message': 'Eintrag nicht gefunden.'}), 404
 
         unterthemen = list(wissensbasis[thema].keys())
-        index = unterthemen.index(unterthema)
+        idx = unterthemen.index(unterthema)
 
-        if direction == 'up' and index > 0:
-            unterthemen[index], unterthemen[index-1] = unterthemen[index-1], unterthemen[index]
-        elif direction == 'down' and index < len(unterthemen) - 1:
-            unterthemen[index], unterthemen[index+1] = unterthemen[index+1], unterthemen[index]
+        if direction == 'up' and idx > 0:
+            unterthemen[idx], unterthemen[idx-1] = unterthemen[idx-1], unterthemen[idx]
+        elif direction == 'down' and idx < len(unterthemen) - 1:
+            unterthemen[idx], unterthemen[idx+1] = unterthemen[idx+1], unterthemen[idx]
         else:
             return jsonify({'success': False, 'message': 'Verschieben nicht möglich.'}), 400
 
@@ -1253,5 +1267,10 @@ def process_file_manual():
         logging.exception("Fehler bei der manuellen Verarbeitung.")
         return jsonify({'success': False, 'message': 'Ein interner Fehler ist aufgetreten.'}), 500
 
+
+###########################################
+# App Start
+###########################################
 if __name__ == "__main__":
+    # Wichtig: Stelle sicher, dass du pip install "pinecone[grpc]" genutzt hast.
     app.run(debug=True)

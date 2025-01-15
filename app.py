@@ -159,15 +159,12 @@ def calculate_chat_stats():
         message_pairs = content.count("User:")
         total_count += message_pairs
 
-        # Datum aus dem Dateinamen parsen: "Name_YYYY-mm-dd_HH-MM-SS.txt"
+        # Name_YYYY-mm-dd_HH-MM-SS.txt
         try:
-            # Split am Unterstrich => [Name, YYYY-mm-dd, HH-MM-SS.txt]
-            # Wir holen uns Element 1 => 'YYYY-mm-dd'
-            date_str = filename.split("_")[1]  # "YYYY-mm-dd"
+            date_str = filename.split("_")[1]  # => "YYYY-mm-dd"
             y, m, d = date_str.split("-")
             y, m, d = int(y), int(m), int(d)
         except:
-            # Falls das nicht parsebar ist, zählen wir die Datei nicht in year/month/day
             continue
 
         if y == current_year:
@@ -454,7 +451,6 @@ def set_username():
         if len(username) < 3:
             return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
         
-        # Im Session-Objekt ablegen
         session['user_name'] = username
         
         return jsonify({'success': True}), 200
@@ -472,15 +468,12 @@ def chat():
             flash("Bitte loggen Sie sich ein.", 'danger')
             return redirect(url_for('login'))
 
-        # Überprüfen, ob der Nutzername vorhanden ist
         user_name = session.get('user_name')
         if not user_name:
-            # Wenn kein Name in der Session, Template mit leerem Chat rendern,
-            # damit im Frontend das Namens-Overlay angezeigt wird.
+            # Nur das Template rendern, damit das Overlay im Frontend erscheint
             stats = calculate_chat_stats()
             return render_template('chat.html', chat_history=[], stats=stats)
 
-        # Ab hier: user_name ist gesetzt -> normaler Chatflow
         chat_key = f'chat_history_{user_id}'
         if chat_key not in session:
             session[chat_key] = []
@@ -506,7 +499,6 @@ def chat():
 
             wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
 
-            # Notfallmodus
             if notfall_aktiv:
                 session['notfall_mode'] = True
                 user_message = (
@@ -518,13 +510,13 @@ def chat():
             else:
                 session.pop('notfall_mode', None)
 
-            # Prompt inkl. Nutzername
+            # Prompt inkl. Name
             messages = [
                 {
                     "role": "user",
                     "content": (
                         f"Der Name deines Gesprächspartners lautet {user_name}.\n"
-                        "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
+                        "Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. "
                         "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
                         "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
                         "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
@@ -540,10 +532,8 @@ def chat():
 
             antwort = contact_openai(messages, model='o1-preview')
             if antwort:
-                # Chatverlauf aktualisieren
                 chat_history.append({'user': user_message, 'bot': antwort})
                 session[chat_key] = chat_history
-                # Chatlog speichern
                 store_chatlog(user_name, chat_history)
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -556,7 +546,6 @@ def chat():
                     return jsonify({'error': 'Problem bei Kommunikation'}), 500
                 return redirect(url_for('chat'))
 
-        # Statistik abrufen und an Template übergeben
         stats = calculate_chat_stats()
         return render_template('chat.html', chat_history=chat_history, stats=stats)
 

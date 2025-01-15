@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Pflegehilfe für Senioren Companion</title>
+    <title>XORA - Pflegehilfe für Senioren Companion</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 
     <!-- Google Fonts: Falls du noch eine andere Schriftart willst, hier anpassen -->
@@ -58,11 +58,11 @@
         }
 
         /* TITEL (XORA) */
-        h1 {
+        h1.main-title {
             font-family: 'Arial', sans-serif;
             text-align: center;
             color: #00ffff;
-            margin-bottom: 20px;
+            margin-bottom: 0px;
             text-shadow: 0 0 10px #00ffff;
             white-space: pre-line; /* ermöglicht Zeilenumbruch bei \n */
         }
@@ -73,7 +73,7 @@
             text-shadow: 0 0 10px #00ffff;
             font-family: 'Arial', sans-serif;
             font-style: italic;
-            margin-top: -15px; 
+            margin-top: 0px; 
             margin-bottom: 20px;
             font-size: 1.2em;
             text-align: center;
@@ -117,7 +117,6 @@
             border-radius: 20px;
             margin-bottom: 15px;
             max-width: 100%;
-            /* mehr Abstand oben, links, rechts */
             padding: 12px 16px 35px 16px; 
             animation: slideIn 0.5s ease-out;
             word-wrap: break-word;
@@ -155,7 +154,7 @@
             margin-bottom: 0;
         }
         .message span {
-            margin-top: 30px; /* Platz unter Label */
+            margin-top: 30px; 
         }
 
         /* FEEDBACK-ICONS (UNTEN RECHTS) */
@@ -240,7 +239,6 @@
             transform: translateY(-3px);
         }
 
-        
         .clear-chat-button {
             background-color: #28a745; /* Grün */
             color: #fff;
@@ -265,7 +263,7 @@
             background-color: #ec971f;
         }
 
-        /* Die Notfall-Bubbles (Themenauswahl) */
+        /* OPTIONAL Notfall-Bubbles */
         #notfallOptions {
             display: none; 
             flex-wrap: wrap; 
@@ -312,7 +310,7 @@
             margin-top: 5px;
         }
 
-        /* STATS-CONTAINER (OBEN RECHTS) - immer sichtbar */
+        /* STATS-CONTAINER (OBEN RECHTS) */
         .stats-container {
             position: absolute; 
             top: 20px; 
@@ -350,6 +348,49 @@
             margin-top: 0;
         }
 
+        /* NAME-OVERLAY - Mittig */
+        .name-overlay {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.8);
+            display: none; 
+            justify-content: center; 
+            align-items: center;
+            z-index: 10000;
+        }
+        .name-modal {
+            background: #fff; 
+            color: #000; 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            width: 400px;
+            max-width: 90%;
+        }
+        .name-modal input[type="text"] {
+            width: 80%;
+            padding: 8px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .name-modal button {
+            padding: 10px 20px;
+            background-color: #00ffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .name-modal button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .chat-box {
@@ -360,8 +401,6 @@
             .message {
                 width: 100%;
             }
-            /* Stats-Container bleibt nun auch in Mobile rechts, 
-               bei sehr schmalem Viewport könnte er ggf. überlappen */
         }
     </style>
 </head>
@@ -390,13 +429,17 @@
 
     <div class="chat-container">
         <div class="chat-box">
-            <!-- Zweizeilig: Pflegehilfe für Senioren / Companion -->
-            <h1>Pflegehilfe für Senioren Companion</h1>
+
+            <!-- Zweizeiliger Titel -->
+            <div class="title-container">
+                <h1 class="main-title">XORA</h1>
+                <p class="subtitle">Pflegehilfe für Senioren Companion</p>
+            </div>
 
             <!-- Chat-Verlauf -->
             <div class="chat-history" id="chatHistory">
                 {% if chat_history|length == 0 %}
-                    <!-- Die erste Nachricht wird durch das Script hinzugefügt, wenn der Name gesetzt ist -->
+                    <!-- Die erste Nachricht wird dynamisch erzeugt, sobald der Name gesetzt ist -->
                 {% else %}
                     {% for chat in chat_history %}
                         <div class="message user">
@@ -404,7 +447,7 @@
                             <span>{{ chat.user }}</span>
                         </div>
                         <div class="message bot">
-                            <strong>C-3PO:</strong>
+                            <strong>XORA:</strong>
                             <span>{{ chat.bot|safe }}</span>
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>
@@ -494,7 +537,7 @@
         let currentFeedbackType = null;
         let userName = null;
 
-        // Funktion zum Scrollen
+        // Funktion zum automatischen Scrollen
         function forceScrollToBottom() {
             chatHistory.scrollTop = chatHistory.scrollHeight;
             if (chatHistory.lastElementChild) {
@@ -524,13 +567,13 @@
         function showTypingIndicator() {
             const bubble = document.createElement('div');
             bubble.classList.add('message', 'bot', 'typing');
-            bubble.innerHTML = "<strong>C-3PO:</strong><span>...schreibt gerade...</span>";
+            bubble.innerHTML = "<strong>XORA:</strong><span>...schreibt gerade...</span>";
             chatHistory.appendChild(bubble);
             forceScrollToBottom();
             return bubble;
         }
 
-        // Initiale Funktion zum Überprüfen des Nutzernamens
+        // Überprüfen, ob der Nutzername schon gesetzt ist
         function checkUserName() {
             fetch("{{ url_for('get_username') }}", {
                 method: 'GET',
@@ -547,14 +590,14 @@
                         const botDiv = document.createElement('div');
                         botDiv.classList.add('message', 'bot');
                         botDiv.innerHTML = `
-                            <strong>C-3PO:</strong>
+                            <strong>XORA:</strong>
                             <span>Hi ${userName}, wie kann ich dir heute helfen?</span>
                         `;
                         chatHistory.appendChild(botDiv);
                         forceScrollToBottom();
                     }
                 } else {
-                    // Name-Overlay anzeigen
+                    // Overlay anzeigen, falls Name noch nicht gesetzt
                     nameOverlay.style.display = 'flex';
                 }
             })
@@ -570,10 +613,10 @@
             }
         });
 
-        // "Los gehts!" Button Click
+        // "Los gehts!" Button
         startBtn.addEventListener('click', () => {
             const nameValue = userNameInput.value.trim();
-            if(nameValue.length < 3) return; // nur zur Sicherheit
+            if (nameValue.length < 3) return; 
 
             // Senden des Namens an den Server
             fetch("{{ url_for('set_username') }}", {
@@ -588,13 +631,11 @@
             .then(data => {
                 if (data.success) {
                     userName = nameValue;
-                    // Overlay ausblenden
                     nameOverlay.style.display = 'none';
-                    // Erste Nachricht anzeigen
                     const botDiv = document.createElement('div');
                     botDiv.classList.add('message', 'bot');
                     botDiv.innerHTML = `
-                        <strong>C-3PO:</strong>
+                        <strong>XORA:</strong>
                         <span>Hi ${userName}, wie kann ich dir heute helfen?</span>
                     `;
                     chatHistory.appendChild(botDiv);
@@ -606,7 +647,7 @@
             .catch(err => console.error('Fehler beim Senden des Namens:', err));
         });
 
-        // NOTFALL-BUTTON & PANEL
+        // NOTFALL-BUTTON
         const notfallBtn = document.getElementById('notfallBtn');
         let notfallActive = false;
         let selectedNotfallOptions = [];
@@ -615,18 +656,14 @@
             notfallActive = !notfallActive;
             if (notfallActive) {
                 document.body.classList.add('notfall-active');
-                // Anzeige der Notfall-Optionen falls vorhanden
-                // (Falls Du ein Panel mit Optionen hast, hier sichtbar machen)
                 notfallBtn.textContent = "Notfall beenden";
             } else {
                 document.body.classList.remove('notfall-active');
                 selectedNotfallOptions = [];
-                // Verstecke Notfall-Optionen falls vorhanden
                 notfallBtn.textContent = "Ich habe einen Notfall";
             }
         });
 
-        // SCROLL-BEHAVIOR
         forceScrollToBottom();
 
         // CHAT-FORM
@@ -644,12 +681,10 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                const c3poTyping = showTypingIndicator();
-
+                const xoraTyping = showTypingIndicator();
                 const isNotfall = notfallActive ? '1' : '0';
                 const joinedNotfallOptions = selectedNotfallOptions.join(', ');
 
-                // API Call Payload inklusive Name-Info
                 const payload = new URLSearchParams({
                     'csrf_token': csrfToken,
                     'message': userMessageText,
@@ -668,13 +703,13 @@
                 })
                 .then(r => r.json())
                 .then(data => {
-                    c3poTyping.remove();
+                    xoraTyping.remove();
 
                     if (data.response) {
                         const botDiv = document.createElement('div');
                         botDiv.classList.add('message', 'bot');
                         botDiv.innerHTML = `
-                            <strong>C-3PO:</strong>
+                            <strong>XORA:</strong>
                             <span>${data.response}</span>
                             <div class="feedback-icons">
                                 <span class="thumb-up" data-type="positive">👍</span>
@@ -692,7 +727,7 @@
                     attachFeedbackHandlers();
                 })
                 .catch(err => {
-                    c3poTyping.remove();
+                    xoraTyping.remove();
                     const errDiv = document.createElement('div');
                     errDiv.classList.add('flash', 'flash-danger');
                     errDiv.textContent = "Fehler beim Senden der Nachricht.";
@@ -737,7 +772,7 @@
             feedbackOverlay.style.display = "none";
         });
 
-        // FEEDBACK HANDLER ANFÜGEN
+        // FEEDBACK HANDLER
         function attachFeedbackHandlers() {
             const thumbUps = document.querySelectorAll('.thumb-up');
             const thumbDowns = document.querySelectorAll('.thumb-down');

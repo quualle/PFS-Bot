@@ -377,6 +377,7 @@
             margin-bottom: 20px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            color: #000; 
         }
         .name-modal button {
             padding: 10px 20px;
@@ -746,7 +747,8 @@
             fetch("{{ url_for('store_feedback_route') }}", {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({
                     feedback_type: currentFeedbackType,

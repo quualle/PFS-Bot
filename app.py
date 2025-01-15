@@ -90,13 +90,15 @@ FEEDBACK_FOLDER = 'feedback'
 if not os.path.exists(FEEDBACK_FOLDER):
     os.makedirs(FEEDBACK_FOLDER)
 
-def store_chatlog(user_id, chat_history):
+def store_chatlog(user_name, chat_history):
     """
     Speichert den Chatverlauf als Textdatei in CHATLOG_FOLDER.
-    Dateiname enthält Datum + Uhrzeit, damit man es leicht zuordnen kann.
+    Dateiname enthält den user_name und Datum + Uhrzeit.
     """
+    if not user_name:
+        user_name = "Unbekannt"
     timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"{timestamp_str}_user-{user_id}.txt"
+    filename = f"{user_name}_{timestamp_str}.txt"
     filepath = os.path.join(CHATLOG_FOLDER, filename)
 
     with open(filepath, 'w', encoding='utf-8') as f:
@@ -114,8 +116,9 @@ def store_feedback(feedback_type, comment, chat_history):
     comment: user-Kommentar
     chat_history: Liste mit {user, bot}
     """
+    name_in_session = session.get('user_name', 'Unbekannt')
     timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"{timestamp_str}_feedback.txt"
+    filename = f"{name_in_session}_{feedback_type}_{timestamp_str}.txt"
     filepath = os.path.join(FEEDBACK_FOLDER, filename)
 
     with open(filepath, 'w', encoding='utf-8') as f:
@@ -156,9 +159,11 @@ def calculate_chat_stats():
         message_pairs = content.count("User:")
         total_count += message_pairs
 
-        # Datum aus dem Dateinamen parsen: "YYYY-mm-dd_HH-MM-SS_user-xxxx.txt"
+        # Datum aus dem Dateinamen parsen: "Name_YYYY-mm-dd_HH-MM-SS.txt"
         try:
-            date_str = filename.split("_")[0]  # "YYYY-mm-dd"
+            # Split am Unterstrich => [Name, YYYY-mm-dd, HH-MM-SS.txt]
+            # Wir holen uns Element 1 => 'YYYY-mm-dd'
+            date_str = filename.split("_")[1]  # "YYYY-mm-dd"
             y, m, d = date_str.split("-")
             y, m, d = int(y), int(m), int(d)
         except:
@@ -379,9 +384,7 @@ def count_tokens(messages, model=None):
     token_count = 0
     for msg in messages:
         token_count += len(encoding.encode(msg['content']))
-        # 4 tokens pro Nachricht (siehe OpenAI Doku)
         token_count += 4
-    # zusätzlich 2 tokens für das System
     token_count += 2
     return token_count
 
@@ -434,6 +437,31 @@ def store_feedback_route():
         return jsonify({"success": False, "error": str(e)}), 500
 
 ###########################################
+# Neue Routen: Username setzen/auslesen
+###########################################
+@app.route('/get_username', methods=['GET'])
+def get_username():
+    try:
+        user_name = session.get('user_name')
+        return jsonify({'user_name': user_name}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/set_username', methods=['POST'])
+def set_username():
+    try:
+        username = request.form.get('username', '').strip()
+        if len(username) < 3:
+            return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
+        
+        # Im Session-Objekt ablegen
+        session['user_name'] = username
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+###########################################
 # Chat Route
 ###########################################
 @app.route('/', methods=['GET', 'POST'])
@@ -444,6 +472,15 @@ def chat():
             flash("Bitte loggen Sie sich ein.", 'danger')
             return redirect(url_for('login'))
 
+        # Überprüfen, ob der Nutzername vorhanden ist
+        user_name = session.get('user_name')
+        if not user_name:
+            # Wenn kein Name in der Session, Template mit leerem Chat rendern,
+            # damit im Frontend das Namens-Overlay angezeigt wird.
+            stats = calculate_chat_stats()
+            return render_template('chat.html', chat_history=[], stats=stats)
+
+        # Ab hier: user_name ist gesetzt -> normaler Chatflow
         chat_key = f'chat_history_{user_id}'
         if chat_key not in session:
             session[chat_key] = []
@@ -452,7 +489,7 @@ def chat():
         if request.method == 'POST':
             user_message = request.form.get('message', '').strip()
             notfall_aktiv = (request.form.get('notfallmodus') == '1')
-            notfall_art = request.form.get('notfallart', '').strip()  # ggf. kommaseparierte Liste
+            notfall_art = request.form.get('notfallart', '').strip()
 
             if not user_message:
                 flash("Bitte geben Sie eine Nachricht ein.", 'warning')
@@ -469,25 +506,26 @@ def chat():
 
             wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
 
-            # Notfallmodus: Format laut Anforderung
+            # Notfallmodus
             if notfall_aktiv:
                 session['notfall_mode'] = True
-                original_user_msg = user_message
                 user_message = (
-                    f"Notfall vom User gemeldet: {original_user_msg}\n"
-                    f"Antworte mithilfe der Inhalte aus Kapitel 9, Thema {notfall_art}"
+                    f"ACHTUNG NOTFALL - Thema 9: Notfälle & Vertragsgefährdungen.\n"
+                    f"Ausgewählte Notfalloption(en): {notfall_art}\n\n"
+                    + user_message
                 )
-                log_notfall_event(user_id, notfall_art, original_user_msg)
+                log_notfall_event(user_id, notfall_art, user_message)
             else:
                 session.pop('notfall_mode', None)
 
-            # Prompt
+            # Prompt inkl. Nutzername
             messages = [
                 {
                     "role": "user",
                     "content": (
+                        f"Der Name deines Gesprächspartners lautet {user_name}.\n"
                         "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
-                        "Deine Antworten sollen gut lesbar durch absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
+                        "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
                         "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
                         "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
                         "sondern sagst, dass du es nicht weißt. "
@@ -502,8 +540,11 @@ def chat():
 
             antwort = contact_openai(messages, model='o1-preview')
             if antwort:
-                session[chat_key].append({'user': user_message, 'bot': antwort})
-                store_chatlog(user_id, session[chat_key])
+                # Chatverlauf aktualisieren
+                chat_history.append({'user': user_message, 'bot': antwort})
+                session[chat_key] = chat_history
+                # Chatlog speichern
+                store_chatlog(user_name, chat_history)
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'response': antwort}), 200
@@ -522,7 +563,7 @@ def chat():
     except Exception as e:
         logging.exception("Fehler in chat-Funktion.")
         flash("Ein unerwarteter Fehler ist aufgetreten.", 'danger')
-        if request.headers.get('X-Requested-With'):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
 

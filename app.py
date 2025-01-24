@@ -46,7 +46,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
 # OAuth-Client anlegen (wird später benutzt)
-client = WebApplicationClient(GOOGLE_CLIENT_ID)
+oauth_client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 Session(app)
 
@@ -651,7 +651,7 @@ def login_google():
 
     # (2) Baue die Redirect-URL zu Google
     #     scope enthält openid, email, profile
-    request_uri = client.prepare_request_uri(
+    request_uri = oauth_client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=request.base_url.replace("/google", "") + "/callback",
         scope=["openid", "email", "profile"]
@@ -687,7 +687,7 @@ def login_callback():
         auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
     )
     # (5) Token auswerten
-    client.parse_request_body_response(json.dumps(token_response.json()))
+    oauth_client.parse_request_body_response(json.dumps(token_response.json()))
 
     # (6) Hole User-Daten (userinfo)
     userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]

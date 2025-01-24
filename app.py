@@ -36,9 +36,9 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 # Sicherheitskonfiguration der Session
-app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 
 # Die drei ENV Variablen, die du für Google brauchst:
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")

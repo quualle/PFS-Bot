@@ -17,6 +17,8 @@ from google.oauth2 import service_account
 from werkzeug.utils import secure_filename
 import openai
 import tiktoken
+from oauthlib.oauth2 import WebApplicationClient
+import requests
 
 # Zusätzliche Importe für Dateiverarbeitung
 from PyPDF2 import PdfReader
@@ -37,6 +39,14 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Die drei ENV Variablen, die du für Google brauchst:
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
+
+# OAuth-Client anlegen (wird später benutzt)
+client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 Session(app)
 
@@ -89,6 +99,11 @@ if not os.path.exists(CHATLOG_FOLDER):
 FEEDBACK_FOLDER = 'feedback'
 if not os.path.exists(FEEDBACK_FOLDER):
     os.makedirs(FEEDBACK_FOLDER)
+
+
+def get_google_provider_cfg():
+    return requests.get(GOOGLE_DISCOVERY_URL).json()
+
 
 def store_chatlog(user_name, chat_history):
     """
@@ -462,6 +477,12 @@ def set_username():
 ###########################################
 @app.route('/', methods=['GET', 'POST'])
 def chat():
+
+    # AN DIESEM STELLE: NUR REINLASSEN, WENN session["is_logged_via_google"] == True
+    if not session.get("is_logged_via_google"):
+        flash("Bitte zuerst via Google-Login anmelden!", "warning")
+        return redirect(url_for('login_google'))
+
     try:
         user_id = session.get('user_id')
         if not user_id:
@@ -620,6 +641,89 @@ def login():
             flash('Falsches Passwort.', 'danger')
             return redirect(url_for('login'))
     return render_template('login.html')
+
+@app.route("/login/google")
+def login_google():
+    """Benutzer wird zu Google umgeleitet, um sich mit Google-Account anzumelden."""
+    # (1) Hole Googles config (Authorization Endpoint)
+    google_provider_cfg = get_google_provider_cfg()
+    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
+
+    # (2) Baue die Redirect-URL zu Google
+    #     scope enthält openid, email, profile
+    request_uri = client.prepare_request_uri(
+        authorization_endpoint,
+        redirect_uri=request.base_url.replace("/google", "") + "/callback",
+        scope=["openid", "email", "profile"]
+    )
+
+    return redirect(request_uri)
+
+@app.route("/login/callback")
+def login_callback():
+    """Google schickt den user mit code=? zurück an diese Callback-URL."""
+    # (1) Den code aus den URL-Parametern abholen
+    code = request.args.get("code")
+    if not code:
+        return "Fehler: Kein code Parameter zurückbekommen", 400
+
+    # (2) Hole Googles config (Token Endpoint)
+    google_provider_cfg = get_google_provider_cfg()
+    token_endpoint = google_provider_cfg["token_endpoint"]
+
+    # (3) Baue Request-Objekt
+    token_url, headers, body = client.prepare_token_request(
+        token_endpoint,
+        authorization_response=request.url,        # die komplette URL 
+        redirect_url=request.base_url,             # https://.../login/callback
+        code=code
+    )
+
+    # (4) Request an Google schicken, um Tokens zu erhalten
+    token_response = requests.post(
+        token_url,
+        headers=headers,
+        data=body,
+        auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+    )
+    # (5) Token auswerten
+    client.parse_request_body_response(json.dumps(token_response.json()))
+
+    # (6) Hole User-Daten (userinfo)
+    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
+    uri, headers, body = client.add_token(userinfo_endpoint)
+    userinfo_response = requests.get(uri, headers=headers, data=body)
+
+    # Die JSON-Daten checken
+    if not userinfo_response.json().get("email_verified"):
+        return "Deine Google-Email ist nicht verifiziert!", 400
+
+    # Email & Name
+    google_email = userinfo_response.json()["email"]
+    google_name = userinfo_response.json().get("name", "")
+
+    # OPTIONAL: Prüfen, ob die Email zum Firmendomain passt
+    # Beispiel: Nur @example.com zulassen
+    # if not google_email.endswith("@example.com"):
+    #     return "Sie haben keine Firmen-E-Mail. Zugriff verweigert.", 403
+
+    # OK, wir nehmen die Person an, in Session speichern
+    session["google_user_email"] = google_email
+    session["google_user_name"] = google_name
+    session["is_logged_via_google"] = True
+
+    # Weiterleiten zu /chat
+    return redirect(url_for("chat"))
+
+
+@app.route("/logout_google")
+def logout_google():
+    # nur Session-Einträge löschen
+    session.pop("google_user_email", None)
+    session.pop("google_user_name", None)
+    session.pop("is_logged_via_google", None)
+    return redirect(url_for("chat"))
+
 
 @app.route('/logout')
 @login_required

@@ -68,9 +68,9 @@ if not os.path.exists(service_account_path):
     raise FileNotFoundError(f"Service Account Datei nicht gefunden: {service_account_path}")
 
 credentials = service_account.Credentials.from_service_account_file(service_account_path)
-client = storage.Client(credentials=credentials)
+storage_client = storage.Client(credentials=credentials)
 bucket_name = 'wissensbasis'
-bucket = client.bucket(bucket_name)
+bucket = storage_client.bucket(bucket_name)
 wissensbasis_blob_name = 'wissensbasis.json'
 
 DEBUG_CATEGORIES = {
@@ -674,7 +674,7 @@ def login_callback():
     token_endpoint = google_provider_cfg["token_endpoint"]
 
     # (3) Baue Request-Objekt
-    token_url, headers, body = client.prepare_token_request(
+    token_url, headers, body = oauth_client.prepare_token_request(
         token_endpoint,
         authorization_response=request.url,        # die komplette URL 
         redirect_url=request.base_url,             # https://.../login/callback
@@ -693,7 +693,7 @@ def login_callback():
 
     # (6) Hole User-Daten (userinfo)
     userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
-    uri, headers, body = client.add_token(userinfo_endpoint)
+    uri, headers, body = oauth_client.add_token(userinfo_endpoint)
     userinfo_response = requests.get(uri, headers=headers, data=body)
 
     # Die JSON-Daten checken

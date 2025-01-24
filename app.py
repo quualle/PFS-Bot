@@ -54,6 +54,8 @@ UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'uploaded_files')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+print("DEBUG: GOOGLE_CLIENT_ID =", repr(GOOGLE_CLIENT_ID))
+
 # CSRF-Schutz
 csrf = CSRFProtect(app)
 

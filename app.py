@@ -17,6 +17,8 @@ from google.oauth2 import service_account
 from werkzeug.utils import secure_filename
 import openai
 import tiktoken
+from oauthlib.oauth2 import WebApplicationClient
+import requests
 
 ###########################################
 # PINECONE: gRPC-Variante laut Quickstart
@@ -44,11 +46,21 @@ app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
+# Die drei ENV Variablen, die du für Google brauchst:
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
+
+# OAuth-Client anlegen (wird später benutzt)
+oauth_client = WebApplicationClient(GOOGLE_CLIENT_ID)
+
 Session(app)
 
 UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'uploaded_files')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+print("DEBUG: GOOGLE_CLIENT_ID =", repr(GOOGLE_CLIENT_ID))
 
 # CSRF-Schutz
 csrf = CSRFProtect(app)
@@ -99,9 +111,9 @@ if not os.path.exists(service_account_path):
     raise FileNotFoundError(f"Service Account Datei nicht gefunden: {service_account_path}")
 
 credentials = service_account.Credentials.from_service_account_file(service_account_path)
-client = storage.Client(credentials=credentials)
+storage_client = storage.Client(credentials=credentials)
 bucket_name = 'wissensbasis'
-bucket = client.bucket(bucket_name)
+bucket = storage_client.bucket(bucket_name)
 wissensbasis_blob_name = 'wissensbasis.json'
 
 DEBUG_CATEGORIES = {
@@ -134,69 +146,22 @@ if not os.path.exists(FEEDBACK_FOLDER):
     os.makedirs(FEEDBACK_FOLDER)
 
 
-###########################################
-# EMBEDDING mit OpenAI
-###########################################
-def embed_text(text: str) -> list:
+
+
+def get_google_provider_cfg():
+    return requests.get(GOOGLE_DISCOVERY_URL).json()
+
+
+def store_chatlog(user_name, chat_history):
     """
-    Nutzt OpenAI Embeddings (text-embedding-ada-002, Dimension=1536),
-    um aus beliebigem Text einen Vektor zu erzeugen.
+    Speichert den Chatverlauf als Textdatei in CHATLOG_FOLDER.
+    Dateiname enthält den user_name und Datum + Uhrzeit.
     """
-    try:
-        response = openai.Embedding.create(
-            model="text-embedding-ada-002",
-            input=text
-        )
-        embedding = response['data'][0]['embedding']
-        return embedding
-    except Exception as e:
-        print("Fehler bei Embedding:", e)
-        return []
+    if not user_name:
+        user_name = "Unbekannt"
 
-
-###########################################
-# Pinecone: Upsert + Query
-###########################################
-def pinecone_upsert(doc_id: str, text: str, namespace="default"):
-    """
-    Erzeugt ein Embedding und upsertet es in Pinecone (gRPC).
-    Format: [{"id": "...", "values": [...], "metadata": {...}}]
-    """
-    embedding = embed_text(text)
-    if not embedding:
-        return
-
-    record = {
-        "id": doc_id,
-        "values": embedding,
-        "metadata": {"original_text": text}
-    }
-    index.upsert(vectors=[record], namespace=namespace)
-
-
-def pinecone_query(query_text: str, top_k: int = 3, namespace="default") -> list:
-    """
-    Konvertiert den Query-Text zum Embedding und führt ein Pinecone-Query aus.
-    """
-    query_emb = embed_text(query_text)
-    if not query_emb:
-        return []
-    result = index.query(
-        vector=query_emb,
-        top_k=top_k,
-        namespace=namespace,
-        include_values=False,
-        include_metadata=True
-    )
-    return result.get('matches', [])
-
-
-###########################################
-# Chat-Logs und Feedback
-###########################################
-def store_chatlog(user_id, chat_history):
     timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"{timestamp_str}_user-{user_id}.txt"
+    filename = f"{user_name}_{timestamp_str}.txt"
     filepath = os.path.join(CHATLOG_FOLDER, filename)
 
     with open(filepath, 'w', encoding='utf-8') as f:
@@ -208,8 +173,9 @@ def store_chatlog(user_id, chat_history):
             f.write(f"  Bot : {bot_msg}\n\n")
 
 def store_feedback(feedback_type, comment, chat_history):
+    name_in_session = session.get('user_name', 'Unbekannt')
     timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"{timestamp_str}_feedback.txt"
+    filename = f"{name_in_session}_{feedback_type}_{timestamp_str}.txt"
     filepath = os.path.join(FEEDBACK_FOLDER, filename)
 
     with open(filepath, 'w', encoding='utf-8') as f:
@@ -250,9 +216,9 @@ def calculate_chat_stats():
         message_pairs = content.count("User:")
         total_count += message_pairs
 
-        # Datum aus Dateiname (YYYY-mm-dd_HH-MM-SS_user-xxx.txt)
+
         try:
-            date_str = filename.split("_")[0]  # "YYYY-mm-dd"
+            date_str = filename.split("_")[1]  # => "YYYY-mm-dd"
             y, m, d = date_str.split("-")
             y, m, d = int(y), int(m), int(d)
         except:
@@ -447,8 +413,7 @@ def speichere_wissensbasis(eintrag):
 
         # Pinecone: Upsert
         doc_id = f"{thema}-{unterthema_full_key}-{uuid.uuid4()}"
-        pinecone_upsert(doc_id=doc_id, text=inhalt, namespace="default")
-
+       
     else:
         flash("Thema und Unterthema müssen angegeben werden.", 'warning')
 
@@ -506,9 +471,7 @@ def count_tokens(messages, model=None):
     token_count = 0
     for msg in messages:
         token_count += len(encoding.encode(msg['content']))
-        # 4 tokens pro Nachricht (siehe OpenAI Doku)
         token_count += 4
-    # zusätzlich 2 tokens für das System
     token_count += 2
     return token_count
 
@@ -554,15 +517,51 @@ def store_feedback_route():
 
 
 ###########################################
+# Neue Routen: Username setzen/auslesen
+###########################################
+@app.route('/get_username', methods=['GET'])
+def get_username():
+    try:
+        user_name = session.get('user_name')
+        return jsonify({'user_name': user_name}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/set_username', methods=['POST'])
+def set_username():
+    try:
+        username = request.form.get('username', '').strip()
+        if len(username) < 3:
+            return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
+        
+        session['user_name'] = username
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+###########################################
 # Chat Route
 ###########################################
 @app.route('/', methods=['GET', 'POST'])
 def chat():
+
+    # AN DIESEM STELLE: NUR REINLASSEN, WENN session["is_logged_via_google"] == True
+    if not session.get("is_logged_via_google"):
+        flash("Bitte zuerst via Google-Login anmelden!", "warning")
+        return redirect(url_for('login_google'))
+
     try:
         user_id = session.get('user_id')
         if not user_id:
             flash("Bitte loggen Sie sich ein.", 'danger')
             return redirect(url_for('login'))
+
+        user_name = session.get('user_name')
+        if not user_name:
+            # Nur das Template rendern, damit das Overlay im Frontend erscheint
+            stats = calculate_chat_stats()
+            return render_template('chat.html', chat_history=[], stats=stats)
 
         chat_key = f'chat_history_{user_id}'
         if chat_key not in session:
@@ -581,29 +580,52 @@ def chat():
                     return jsonify({'error': 'Bitte geben Sie eine Nachricht ein.'}), 400
                 return redirect(url_for('chat'))
 
-            # Notfallmodus
+
+
+            wissensbasis = download_wissensbasis()
+            if not wissensbasis:
+                flash("Die Wissensbasis konnte nicht geladen werden.", 'danger')
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'error': 'Die Wissensbasis konnte nicht geladen werden.'}), 500
+                return redirect(url_for('chat'))
+
+            wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
+
+
             if notfall_aktiv:
                 session['notfall_mode'] = True
-                original_user_msg = user_message
                 user_message = (
-                    f"Notfall vom User gemeldet: {original_user_msg}\n"
-                    f"Antworte mithilfe der Inhalte aus Kapitel 9, Thema {notfall_art}"
+                    f"ACHTUNG NOTFALL - Thema 9: Notfälle & Vertragsgefährdungen.\n"
+                    f"Ausgewählte Notfalloption(en): {notfall_art}\n\n"
+                    + user_message
                 )
-                log_notfall_event(user_id, notfall_art, original_user_msg)
+                log_notfall_event(user_id, notfall_art, user_message)
             else:
                 session.pop('notfall_mode', None)
 
-            # JSON-Wissensbasis?
-            if selected_source == 'json':
-                wissensbasis = download_wissensbasis()
-                if not wissensbasis:
-                    flash("Die Wissensbasis konnte nicht geladen werden.", 'danger')
-                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                        return jsonify({'error': 'Die Wissensbasis konnte nicht geladen werden.'}), 500
-                    return redirect(url_for('chat'))
 
-                wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
-                messages = [
+
+
+            # Prompt inkl. Name
+            messages = [
+                {
+                    "role": "user",
+                    "content": (
+                        f"Der Name deines Gesprächspartners lautet {user_name}.\n"
+                        "Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. "
+                        "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
+                        "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
+                        "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
+                        "sondern sagst, dass du es nicht weißt. "
+                        f"Hier die Frage:\n'''{user_message}'''\n\n"
+                        f"Dies ist die Wissensbasis:\n{wissens_text}"
+                    )
+                }
+            ]
+
+
+            wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
+            messages = [
                     {
                         "role": "user",
                         "content": (
@@ -615,28 +637,7 @@ def chat():
                         )
                     }
                 ]
-            else:
-                # VectorDB via Pinecone
-                top_matches = pinecone_query(user_message, top_k=5, namespace="default")
-                vectorkb_text = ""
-                for match in top_matches:
-                    match_id = match['id']
-                    score = match['score']
-                    meta = match.get('metadata', {})
-                    partial_text = meta.get('original_text', '')
-                    vectorkb_text += f"[{match_id} | Score: {score}] => {partial_text}\n"
-
-                messages = [
-                    {
-                        "role": "user",
-                        "content": (
-                            "Du bist ein hilfreicher Assistent, der Fragen anhand einer Vektor-Datenbank beantwortet. "
-                            "Wenn du nichts findest, sag, dass du es nicht weißt. "
-                            f"Hier die Frage:\n'''{user_message}'''\n\n"
-                            f"Relevanteste Auszüge:\n{vectorkb_text}"
-                        )
-                    }
-                ]
+            
 
             # OpenAI
             token_count = count_tokens(messages, model='o1-preview')
@@ -644,8 +645,9 @@ def chat():
 
             antwort = contact_openai(messages, model='o1-preview')
             if antwort:
-                session[chat_key].append({'user': user_message, 'bot': antwort})
-                store_chatlog(user_id, session[chat_key])
+                chat_history.append({'user': user_message, 'bot': antwort})
+                session[chat_key] = chat_history
+                store_chatlog(user_name, chat_history)
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'response': antwort}), 200
@@ -662,7 +664,7 @@ def chat():
     except Exception as e:
         logging.exception("Fehler in chat-Funktion.")
         flash("Ein unerwarteter Fehler ist aufgetreten.", 'danger')
-        if request.headers.get('X-Requested-With'):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
 
@@ -731,6 +733,89 @@ def login():
             flash('Falsches Passwort.', 'danger')
             return redirect(url_for('login'))
     return render_template('login.html')
+
+@app.route("/login/google")
+def login_google():
+    """Benutzer wird zu Google umgeleitet, um sich mit Google-Account anzumelden."""
+    # (1) Hole Googles config (Authorization Endpoint)
+    google_provider_cfg = get_google_provider_cfg()
+    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
+
+    # (2) Baue die Redirect-URL zu Google
+    #     scope enthält openid, email, profile
+    request_uri = oauth_client.prepare_request_uri(
+        authorization_endpoint,
+        redirect_uri=request.base_url.replace("/google", "") + "/callback",
+        scope=["openid", "email", "profile"]
+    )
+
+    return redirect(request_uri)
+
+@app.route("/login/callback")
+def login_callback():
+    """Google schickt den user mit code=? zurück an diese Callback-URL."""
+    # (1) Den code aus den URL-Parametern abholen
+    code = request.args.get("code")
+    if not code:
+        return "Fehler: Kein code Parameter zurückbekommen", 400
+
+    # (2) Hole Googles config (Token Endpoint)
+    google_provider_cfg = get_google_provider_cfg()
+    token_endpoint = google_provider_cfg["token_endpoint"]
+
+    # (3) Baue Request-Objekt
+    token_url, headers, body = oauth_client.prepare_token_request(
+        token_endpoint,
+        authorization_response=request.url,        # die komplette URL 
+        redirect_url=request.base_url,             # https://.../login/callback
+        code=code
+    )
+
+    # (4) Request an Google schicken, um Tokens zu erhalten
+    token_response = requests.post(
+        token_url,
+        headers=headers,
+        data=body,
+        auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+    )
+    # (5) Token auswerten
+    oauth_client.parse_request_body_response(json.dumps(token_response.json()))
+
+    # (6) Hole User-Daten (userinfo)
+    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
+    uri, headers, body = oauth_client.add_token(userinfo_endpoint)
+    userinfo_response = requests.get(uri, headers=headers, data=body)
+
+    # Die JSON-Daten checken
+    if not userinfo_response.json().get("email_verified"):
+        return "Deine Google-Email ist nicht verifiziert!", 400
+
+    # Email & Name
+    google_email = userinfo_response.json()["email"]
+    google_name = userinfo_response.json().get("name", "")
+
+    # OPTIONAL: Prüfen, ob die Email zum Firmendomain passt
+    # Beispiel: Nur @example.com zulassen
+    # if not google_email.endswith("@example.com"):
+    #     return "Sie haben keine Firmen-E-Mail. Zugriff verweigert.", 403
+
+    # OK, wir nehmen die Person an, in Session speichern
+    session["google_user_email"] = google_email
+    session["google_user_name"] = google_name
+    session["is_logged_via_google"] = True
+
+    # Weiterleiten zu /chat
+    return redirect(url_for("chat"))
+
+
+@app.route("/logout_google")
+def logout_google():
+    # nur Session-Einträge löschen
+    session.pop("google_user_email", None)
+    session.pop("google_user_name", None)
+    session.pop("is_logged_via_google", None)
+    return redirect(url_for("chat"))
+
 
 @app.route('/logout')
 @login_required

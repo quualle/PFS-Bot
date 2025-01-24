@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Pflegehilfe für Senioren Companion</title>
+    <title>XORA - Pflegehilfe für Senioren Companion</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 
     <!-- Google Fonts: Falls du noch eine andere Schriftart willst, hier anpassen -->
@@ -58,13 +58,13 @@
         }
 
         /* TITEL (XORA) */
-        h1 {
+        h1.main-title {
             font-family: 'Arial', sans-serif;
             text-align: center;
             color: #00ffff;
-            margin-bottom: 20px;
+            margin-bottom: 0px;
             text-shadow: 0 0 10px #00ffff;
-            white-space: pre-line; /* ermöglicht Zeilenumbruch bei \n */
+            white-space: pre-line; 
         }
 
         /* UNTERTITEL (Pflegehilfe für Senioren Companion) */
@@ -73,7 +73,7 @@
             text-shadow: 0 0 10px #00ffff;
             font-family: 'Arial', sans-serif;
             font-style: italic;
-            margin-top: -15px; 
+            margin-top: 0px; 
             margin-bottom: 20px;
             font-size: 1.2em;
             text-align: center;
@@ -117,7 +117,6 @@
             border-radius: 20px;
             margin-bottom: 15px;
             max-width: 100%;
-            /* mehr Abstand oben, links, rechts */
             padding: 12px 16px 35px 16px; 
             animation: slideIn 0.5s ease-out;
             word-wrap: break-word;
@@ -155,7 +154,7 @@
             margin-bottom: 0;
         }
         .message span {
-            margin-top: 30px; /* Platz unter Label */
+            margin-top: 30px; 
         }
 
         /* FEEDBACK-ICONS (UNTEN RECHTS) */
@@ -178,7 +177,6 @@
             animation: blink-caret 0.75s step-end infinite;
         }
 
-        /* KEYFRAMES */
         @keyframes slideIn {
             from { transform: translateX(-50px); opacity: 0; }
             to   { transform: translateX(0); opacity: 1; }
@@ -192,7 +190,7 @@
             50%      { border-color: #00ffff; }
         }
 
-        /* CHAT-FORMULAR (UNTEN) */
+        /* CHAT-FORMULAR */
         form {
             display: flex;
             gap: 10px;
@@ -225,7 +223,7 @@
             gap: 10px; 
         }
 
-        /* BUTTON (DEFAULT) */
+        /* BUTTONS */
         button {
             padding: 15px 25px;
             border: none;
@@ -240,9 +238,8 @@
             transform: translateY(-3px);
         }
 
-        
         .clear-chat-button {
-            background-color: #28a745; /* Grün */
+            background-color: #28a745; 
             color: #fff;
         }
         .clear-chat-button:hover {
@@ -250,7 +247,7 @@
         }
 
         .notfall-button {
-            background-color: #dc3545; /* Rot */
+            background-color: #dc3545; 
             color: #fff;
         }
         .notfall-button:hover {
@@ -258,14 +255,14 @@
         }
 
         .admin-button {
-            background-color: #f0ad4e; /* Gelb */
+            background-color: #f0ad4e; 
             color: #000;
         }
         .admin-button:hover {
             background-color: #ec971f;
         }
 
-        /* Die Notfall-Bubbles (Themenauswahl) */
+        /* OPTIONAL Notfall-Bubbles */
         #notfallOptions {
             display: none; 
             flex-wrap: wrap; 
@@ -312,7 +309,7 @@
             margin-top: 5px;
         }
 
-        /* STATS-CONTAINER (OBEN RECHTS) - immer sichtbar */
+        /* STATS-CONTAINER (OBEN RECHTS) */
         .stats-container {
             position: absolute; 
             top: 20px; 
@@ -350,6 +347,50 @@
             margin-top: 0;
         }
 
+        /* NAME-OVERLAY - Mittig & Textfarbe fix */
+        .name-overlay {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.8);
+            display: none; 
+            justify-content: center; 
+            align-items: center;
+            z-index: 10000;
+        }
+        .name-modal {
+            background: #fff; 
+            color: #000; 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            width: 400px;
+            max-width: 90%;
+        }
+        .name-modal input[type="text"] {
+            width: 80%;
+            padding: 8px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            color: #000; /* Sichtbarer Text */
+        }
+        .name-modal button {
+            padding: 10px 20px;
+            background-color: #00ffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .name-modal button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .chat-box {
@@ -360,12 +401,20 @@
             .message {
                 width: 100%;
             }
-            /* Stats-Container bleibt nun auch in Mobile rechts, 
-               bei sehr schmalem Viewport könnte er ggf. überlappen */
         }
     </style>
 </head>
 <body class="{% if session.get('notfall_mode') %}notfall-active{% endif %}">
+
+    <!-- Name-Eingabe Overlay -->
+    <div class="name-overlay" id="nameOverlay">
+        <div class="name-modal">
+            <p>Wie lautet dein Name?</p>
+            <input type="text" id="userNameInput" placeholder="Dein Name" maxlength="50" />
+            <br>
+            <button id="startBtn" disabled>Los gehts!</button>
+        </div>
+    </div>
 
     <!-- Feedback Modal -->
     <div class="modal-overlay" id="feedbackOverlay">
@@ -387,37 +436,17 @@
                 <p class="subtitle">Pflegehilfe für Senioren Companion</p>
             </div>
 
-            <!-- NOTFALL-OPTIONEN (BUBBLES) -->
-            <div id="notfallOptions">
-                <!-- Beispielhafte Notfallthemen als "Bubbles" -->
-                <div class="notfall-option" data-value="9a) Neukunde: BK vor Anreise abgebrochen abgereist">9a) BK vor Anreise abgebrochen</div>
-                <div class="notfall-option" data-value="9c) Betrunkenheit Betreuungskraft">9c) Betrunkenheit Betreuungskraft</div>
-                <div class="notfall-option" data-value="9d) Streit/Gestörtes Sympathieverhältnis">9d) Streit/Gestörtes Sympathieverhältnis</div>
-                <div class="notfall-option" data-value="9e) Diebstahl">9e) Diebstahl</div>
-                <div class="notfall-option" data-value="9f) Verletzungen und Erkrankungen der Betreuungskraft">9f) Verletzungen/Erkrankungen BK</div>
-                <div class="notfall-option" data-value="9g) Sachschaden">9g) Sachschaden</div>
-                <div class="notfall-option" data-value="9h) Verweigerung bestimmter Aufgaben">9h) Verweigerung von Aufgaben</div>
-                <div class="notfall-option" data-value="9i) Verschwinden der Betreuungskraft/Nichtauffinden">9i) Verschwinden der BK</div>
-                <div class="notfall-option" data-value="9j) Betreuungskraft verlässt ihr Zimmer kaum noch">9j) BK verlässt ihr Zimmer kaum</div>
-                <div class="notfall-option" data-value="9k) Aggressives Verhalten">9k) Aggressives Verhalten</div>
-                <div class="notfall-option" data-value="9l) Unzureichende Pflege oder Haushaltsführung">9l) Unzureichende Pflege/Haushalt</div>
-                <div class="notfall-option" data-value="9m) Streit/Sympathieverhältnis zu Betreuungskraft gestört">9m) Streit / Sympathie gestört</div>
-            </div>
-
             <!-- Chat-Verlauf -->
             <div class="chat-history" id="chatHistory">
                 {% if chat_history|length == 0 %}
-                    <div class="message bot">
-                        <strong>XORA:</strong>
-                        <span>Willkommen! Wie kann ich Ihnen heute helfen?</span>
-                    </div>
+                    <!-- Die erste Nachricht wird dynamisch erzeugt, sobald der Name gesetzt ist -->
                 {% else %}
                     {% for chat in chat_history %}
-                        <div class="message user typing" style="border-right:none;">
+                        <div class="message user">
                             <strong>Sie:</strong>
                             <span>{{ chat.user }}</span>
                         </div>
-                        <div class="message bot typing" style="border-right:none;">
+                        <div class="message bot">
                             <strong>XORA:</strong>
                             <span>{{ chat.bot|safe }}</span>
                             <div class="feedback-icons">
@@ -494,11 +523,11 @@
 
         <!-- Stats Container (oben rechts) -->
         <div class="stats-container">
-            <h3>So viele Fragen hat XORA schon beantwortet</h3>
+            <h3>So viele Fragen hat der Bot schon beantwortet</h3>
             <p>Gesamt: {{ stats.total }}</p>
             <p>Dieses Jahr: {{ stats.year }}</p>
             <p>Diesen Monat: {{ stats.month }}</p>
-            <p>Heute: {{ stats.today }}</p>
+            <p>Diesen Tag: {{ stats.today }}</p>
         </div>
     </div>
 
@@ -508,64 +537,28 @@
         const chatForm = document.getElementById('chatForm');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        // NOTFALL-BUTTON & PANEL
-        const notfallBtn = document.getElementById('notfallBtn');
-        const notfallOptionsContainer = document.getElementById('notfallOptions');
-        let notfallActive = false;
-        let selectedNotfallOptions = [];
+        // Name-Overlay-Elemente
+        const nameOverlay = document.getElementById('nameOverlay');
+        const userNameInput = document.getElementById('userNameInput');
+        const startBtn = document.getElementById('startBtn');
 
-        notfallBtn.addEventListener('click', function() {
-            notfallActive = !notfallActive;
-            if (notfallActive) {
-                document.body.classList.add('notfall-active');
-                notfallOptionsContainer.style.display = 'flex';
-                fetch("{{ url_for('toggle_notfall_mode') }}", {
-                    method: "POST",
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: new URLSearchParams({ 'activate': '1' })
-                }).catch(err => console.error(err));
-                notfallBtn.textContent = "Notfall beenden";
-            } else {
-                document.body.classList.remove('notfall-active');
-                notfallOptionsContainer.style.display = 'none';
-                selectedNotfallOptions = [];
-                document.querySelectorAll('.notfall-option').forEach(opt => opt.classList.remove('selected'));
+        // Feedback Modal Elemente
+        const feedbackOverlay = document.getElementById('feedbackOverlay');
+        const feedbackTitle = document.getElementById('feedbackTitle');
+        const feedbackComment = document.getElementById('feedbackComment');
+        const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
+        const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
 
-                fetch("{{ url_for('toggle_notfall_mode') }}", {
-                    method: "POST",
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: new URLSearchParams({ 'activate': '0' })
-                }).catch(err => console.error(err));
-                notfallBtn.textContent = "Ich habe einen Notfall";
-            }
-        });
+        let currentFeedbackType = null;
+        let userName = null;
 
-        document.querySelectorAll('.notfall-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                opt.classList.toggle('selected');
-                const val = opt.dataset.value;
-                if (selectedNotfallOptions.includes(val)) {
-                    selectedNotfallOptions = selectedNotfallOptions.filter(x => x !== val);
-                } else {
-                    selectedNotfallOptions.push(val);
-                }
-            });
-        });
-
-        // SCROLL-BEHAVIOR
+        // Funktion zum Scrollen
         function forceScrollToBottom() {
             chatHistory.scrollTop = chatHistory.scrollHeight;
             if (chatHistory.lastElementChild) {
                 chatHistory.lastElementChild.scrollIntoView({ block: "end", inline: "nearest" });
             }
         }
-        forceScrollToBottom();
 
         // TIPP-ANIMATION
         function typeMessage(element, message, callback) {
@@ -595,6 +588,97 @@
             return bubble;
         }
 
+        // Namens-Check
+        function checkUserName() {
+            fetch("{{ url_for('get_username') }}", {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.user_name) {
+                    userName = data.user_name;
+                    if (chatHistory.children.length === 0) {
+                        // Erste Nachricht anzeigen
+                        const botDiv = document.createElement('div');
+                        botDiv.classList.add('message', 'bot');
+                        botDiv.innerHTML = `
+                            <strong>XORA:</strong>
+                            <span>Hi ${userName}, wie kann ich dir heute helfen?</span>
+                        `;
+                        chatHistory.appendChild(botDiv);
+                        forceScrollToBottom();
+                    }
+                } else {
+                    // Overlay anzeigen
+                    nameOverlay.style.display = 'flex';
+                }
+            })
+            .catch(err => console.error('Fehler beim Abrufen des Nutzernamens:', err));
+        }
+
+        userNameInput.addEventListener('input', () => {
+            if (userNameInput.value.trim().length >= 3) {
+                startBtn.disabled = false;
+            } else {
+                startBtn.disabled = true;
+            }
+        });
+
+        startBtn.addEventListener('click', () => {
+            const nameValue = userNameInput.value.trim();
+            if (nameValue.length < 3) return; 
+
+            fetch("{{ url_for('set_username') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: new URLSearchParams({ 'username': nameValue })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    userName = nameValue;
+                    nameOverlay.style.display = 'none';
+
+                    const botDiv = document.createElement('div');
+                    botDiv.classList.add('message', 'bot');
+                    botDiv.innerHTML = `
+                        <strong>XORA:</strong>
+                        <span>Hi ${userName}, wie kann ich dir heute helfen?</span>
+                    `;
+                    chatHistory.appendChild(botDiv);
+                    forceScrollToBottom();
+                } else {
+                    alert(data.message || 'Fehler beim Setzen des Namens.');
+                }
+            })
+            .catch(err => console.error('Fehler beim Senden des Namens:', err));
+        });
+
+        // NOTFALL-BUTTON
+        const notfallBtn = document.getElementById('notfallBtn');
+        let notfallActive = false;
+        let selectedNotfallOptions = [];
+
+        notfallBtn.addEventListener('click', function() {
+            notfallActive = !notfallActive;
+            if (notfallActive) {
+                document.body.classList.add('notfall-active');
+                notfallBtn.textContent = "Notfall beenden";
+            } else {
+                document.body.classList.remove('notfall-active');
+                selectedNotfallOptions = [];
+                notfallBtn.textContent = "Ich habe einen Notfall";
+            }
+        });
+
+        forceScrollToBottom();
+
         // CHAT-FORM
         chatForm.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -610,10 +694,16 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                const XORATyping = showTypingIndicator();
-
+                const xoraTyping = showTypingIndicator();
                 const isNotfall = notfallActive ? '1' : '0';
                 const joinedNotfallOptions = selectedNotfallOptions.join(', ');
+
+                const payload = new URLSearchParams({
+                    'csrf_token': csrfToken,
+                    'message': userMessageText,
+                    'notfallmodus': isNotfall,
+                    'notfallart': joinedNotfallOptions
+                });
 
                 fetch("{{ url_for('chat') }}", {
                     method: 'POST',
@@ -622,17 +712,13 @@
                         'X-CSRFToken': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: new URLSearchParams({
-                        'csrf_token': csrfToken,
-                        'message': userMessageText,
-                        'notfallmodus': isNotfall,
-                        'notfallart': joinedNotfallOptions,
-                        'source': selectedSource
-                    })
+
+                    body: payload
+
                 })
                 .then(r => r.json())
                 .then(data => {
-                    XORATyping.remove();
+                    xoraTyping.remove();
 
                     if (data.response) {
                         const botDiv = document.createElement('div');
@@ -656,7 +742,7 @@
                     attachFeedbackHandlers();
                 })
                 .catch(err => {
-                    XORATyping.remove();
+                    xoraTyping.remove();
                     const errDiv = document.createElement('div');
                     errDiv.classList.add('flash', 'flash-danger');
                     errDiv.textContent = "Fehler beim Senden der Nachricht.";
@@ -670,43 +756,13 @@
         });
 
         // FEEDBACK
-        const feedbackOverlay = document.getElementById('feedbackOverlay');
-        const feedbackTitle = document.getElementById('feedbackTitle');
-        const feedbackComment = document.getElementById('feedbackComment');
-        const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
-        const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
-
-        let currentFeedbackType = null;
-
-        function attachFeedbackHandlers() {
-            const thumbUps = document.querySelectorAll('.thumb-up');
-            const thumbDowns = document.querySelectorAll('.thumb-down');
-
-            thumbUps.forEach(el => {
-                el.addEventListener('click', () => {
-                    currentFeedbackType = 'positive';
-                    feedbackTitle.textContent = "Positives Feedback geben";
-                    feedbackComment.value = "";
-                    feedbackOverlay.style.display = "flex";
-                });
-            });
-            thumbDowns.forEach(el => {
-                el.addEventListener('click', () => {
-                    currentFeedbackType = 'negative';
-                    feedbackTitle.textContent = "Negatives Feedback geben";
-                    feedbackComment.value = "";
-                    feedbackOverlay.style.display = "flex";
-                });
-            });
-        }
-        attachFeedbackHandlers();
-
         sendFeedbackBtn.addEventListener('click', () => {
             const commentVal = feedbackComment.value.trim();
             fetch("{{ url_for('store_feedback_route') }}", {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({
                     feedback_type: currentFeedbackType,
@@ -731,6 +787,31 @@
         cancelFeedbackBtn.addEventListener('click', () => {
             feedbackOverlay.style.display = "none";
         });
+
+        function attachFeedbackHandlers() {
+            const thumbUps = document.querySelectorAll('.thumb-up');
+            const thumbDowns = document.querySelectorAll('.thumb-down');
+
+            thumbUps.forEach(el => {
+                el.addEventListener('click', () => {
+                    currentFeedbackType = 'positive';
+                    feedbackTitle.textContent = "Positives Feedback geben";
+                    feedbackComment.value = "";
+                    feedbackOverlay.style.display = "flex";
+                });
+            });
+            thumbDowns.forEach(el => {
+                el.addEventListener('click', () => {
+                    currentFeedbackType = 'negative';
+                    feedbackTitle.textContent = "Negatives Feedback geben";
+                    feedbackComment.value = "";
+                    feedbackOverlay.style.display = "flex";
+                });
+            });
+        }
+
+        // Initialer Check des Nutzernamens
+        checkUserName();
     });
     </script>
 </body>

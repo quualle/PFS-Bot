@@ -445,8 +445,8 @@ def log_notfall_event(user_id, notfall_art, user_message):
 # Kontakt mit OpenAI
 ###########################################
 def contact_openai(messages, model=None):
-    model = 'o1-preview'  # dein Model (z.B. GPT-3.5-turbo, etc.)
-    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o1-preview gesetzt.")
+    model = 'o3-mini'  # dein Model (z.B. GPT-3.5-turbo, etc.)
+    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o3-mini gesetzt.")
     try:
         response = openai.chat.completions.create(model=model, messages=messages)
         if response and response.choices:
@@ -463,7 +463,7 @@ def contact_openai(messages, model=None):
         return None
 
 def count_tokens(messages, model=None):
-    model = 'o1-preview'
+    model = 'o3-mini'
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -640,10 +640,10 @@ def chat():
             
 
             # OpenAI
-            token_count = count_tokens(messages, model='o1-preview')
+            token_count = count_tokens(messages, model='o3-mini')
             debug_print("API Calls", f"Anzahl Tokens: {token_count}")
 
-            antwort = contact_openai(messages, model='o1-preview')
+            antwort = contact_openai(messages, model='o3-mini')
             if antwort:
                 chat_history.append({'user': user_message, 'bot': antwort})
                 session[chat_key] = chat_history

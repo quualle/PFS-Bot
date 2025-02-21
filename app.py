@@ -486,10 +486,8 @@ def chat():
         return redirect(url_for('login_google'))
 
     try:
+        # user_id wird im before_request Hook immer gesetzt; ein expliziter Check ist nicht mehr nötig.
         user_id = session.get('user_id')
-        if not user_id:
-            flash("Bitte loggen Sie sich ein.", 'danger')
-            return redirect(url_for('login'))
 
         user_name = session.get('user_name')
         if not user_name:

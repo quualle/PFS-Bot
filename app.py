@@ -37,9 +37,9 @@ def configure_google_auth(app):
     if not os.getenv('GOOGLE_CLIENT_ID') or not os.getenv('GOOGLE_CLIENT_SECRET'):
         print("WARNUNG: Google OAuth-Credentials nicht gesetzt!")
     
-    # Direkten Login-Endpoint definieren
+    # Direkten Login-Endpoint definieren - make route path and function name match
     @app.route('/google_login')
-    def direct_google_login():
+    def google_login():
         """Eine direkte Google-Login-Route"""
         # Erstelle eine URL für die Google OAuth-Seite
         google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -150,13 +150,13 @@ def configure_google_auth(app):
         session_values = {k: v for k, v in session.items()}
         output += f"<pre>{json.dumps(session_values, indent=2)}</pre>"
         
-        # Test Links
+        # Test Links - FIXED THIS LINE TO USE THE CORRECT FUNCTION NAME
         output += "<h2>Test Links</h2>"
-        output += f"<p><a href='{url_for('direct_google_login')}'>Google Login</a></p>"
+        output += f"<p><a href='{url_for('google_login')}'>Google Login</a></p>"
         
         return output
     
-    return app 
+    return app
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_default_secret_key')

@@ -1072,68 +1072,54 @@ def google_login():
         return redirect(url_for('google.login'))
     return redirect(url_for('google_login_callback'))
 
+
 @app.route('/login/google/callback')
 def google_login_callback():
     """Callback nach erfolgreicher Google-Anmeldung."""
-    logging.debug("Google-Callback aufgerufen")
-    
     if not google.authorized:
-        logging.debug("Google nicht autorisiert")
         flash('Login fehlgeschlagen.', 'danger')
         return redirect(url_for('login'))
     
     # Benutzerinformationen von Google abrufen
-    try:
-        resp = google.get('/oauth2/v1/userinfo')
-        logging.debug(f"Google-Antwort Status: {resp.status_code}")
-        
-        if not resp.ok:
-            logging.debug("Fehler beim Abrufen der Google-Infos")
-            flash('Fehler beim Abrufen der Benutzerinformationen.', 'danger')
-            return redirect(url_for('login'))
-        
-        # Google-Benutzerinformationen extrahieren
-        google_info = resp.json()
-        logging.debug(f"Google Info: {google_info}")
-        
-        email = google_info.get('email')
-        name = google_info.get('name', '')
-        
-        logging.debug(f"Extrahierte E-Mail: {email}, Name: {name}")
-        
-        if not email:
-            logging.debug("Keine E-Mail gefunden")
-            flash('E-Mail-Adresse konnte nicht abgerufen werden.', 'danger')
-            return redirect(url_for('login'))
-        
-        # Benutzer-ID aus BigQuery abrufen
-        logging.debug(f"Rufe seller_id für E-Mail {email} ab")
-        seller_id = get_user_id_from_email(email)
-        logging.debug(f"Abgerufene seller_id: {seller_id}")
-        
-        # In Session speichern
-        user_id = session.get('user_id')
-        if not user_id:
-            user_id = str(uuid.uuid4())
-            session['user_id'] = user_id
-        
-        # Werte explizit setzen und Session speichern
-        session['user_name'] = name
-        session['email'] = email
-        session['seller_id'] = seller_id
-        
-        # Force session update
-        session.modified = True
-        
-        logging.debug(f"Session nach dem Setzen: {dict(session)}")
-        
-        flash('Login erfolgreich!', 'success')
-        return redirect(url_for('chat'))
-    except Exception as e:
-        logging.exception("Fehler im Google-Callback")
-        flash(f'Ein Fehler ist aufgetreten: {str(e)}', 'danger')
+    resp = google.get('/oauth2/v1/userinfo')
+    if not resp.ok:
+        flash('Fehler beim Abrufen der Benutzerinformationen.', 'danger')
         return redirect(url_for('login'))
-
+    
+    # Google-Benutzerinformationen extrahieren
+    google_info = resp.json()
+    
+    # Überprüfen, ob E-Mail bereits in der Session ist
+    email = session.get('google_user_email')
+    if not email and 'email' in google_info:
+        email = google_info.get('email')
+    
+    name = session.get('google_user_name')
+    if not name and 'name' in google_info:
+        name = google_info.get('name')
+    
+    if not email:
+        flash('E-Mail-Adresse konnte nicht abgerufen werden.', 'danger')
+        return redirect(url_for('login'))
+    
+    # Benutzer-ID aus BigQuery abrufen
+    seller_id = get_user_id_from_email(email)
+    
+    # In Session speichern (wichtig: die richtigen Schlüssel benutzen)
+    user_id = session.get('user_id')
+    if not user_id:
+        user_id = str(uuid.uuid4())
+        session['user_id'] = user_id
+    
+    session['email'] = email            # Diese Zeile ist wichtig!
+    session['user_name'] = name
+    session['seller_id'] = seller_id    # Diese Zeile ist wichtig!
+    
+    # Sicherstellen, dass Änderungen gespeichert werden
+    session.modified = True
+    
+    flash('Login erfolgreich!', 'success')
+    return redirect(url_for('chat'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

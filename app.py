@@ -361,17 +361,20 @@ def get_user_id_from_email(email):
     """
     Ruft die _id eines Benutzers aus BigQuery basierend auf seiner E-Mail-Adresse ab.
     """
-    logging.debug(f"get_user_id_from_email aufgerufen mit E-Mail: {email}")
+    if not email:
+        print("Keine E-Mail-Adresse angegeben")
+        return None
+        
     try:
-        # Service-Account-Datei aus dem gleichen Verzeichnis laden
+        # Service-Account-Datei für BigQuery
         service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
         if not os.path.exists(service_account_path):
-            logging.debug(f"Service-Account-Datei nicht gefunden: {service_account_path}")
+            print(f"Service Account Datei nicht gefunden: {service_account_path}")
             return None
         
         client = bigquery.Client.from_service_account_json(service_account_path)
         
-        # SQL-Abfrage, um den Benutzer nach E-Mail zu finden
+        # SQL-Abfrage mit Parameter
         query = """
         SELECT _id
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.proto_users`
@@ -385,23 +388,20 @@ def get_user_id_from_email(email):
             ]
         )
         
-        logging.debug(f"BigQuery-Abfrage wird ausgeführt für E-Mail: {email}")
+        print(f"Abfrage seller_id für E-Mail: {email}")
         query_job = client.query(query, job_config=job_config)
         results = query_job.result()
         
-        # Überprüfen, ob ein Ergebnis zurückgegeben wurde
-        result_found = False
+        # Ergebnis verarbeiten
         for row in results:
-            result_found = True
-            logging.debug(f"BigQuery-Ergebnis gefunden: {row['_id']}")
+            print(f"Seller-ID gefunden: {row['_id']}")
             return row['_id']
-        
-        if not result_found:
-            logging.debug("Keine Ergebnisse in BigQuery gefunden")
+            
+        print(f"Keine Seller-ID für E-Mail {email} gefunden")
         return None
     
     except Exception as e:
-        logging.exception(f"Fehler beim Abrufen der Benutzer-ID aus BigQuery: {e}")
+        print(f"Fehler beim Abrufen der seller_id: {str(e)}")
         return None
 
 def get_bigquery_client():
@@ -730,18 +730,30 @@ def test_bigquery():
         service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
         client = bigquery.Client.from_service_account_json(service_account_path)
         
-        # Einfache Abfrage, um alle E-Mails zu holen
+        # E-Mail aus Session holen
+        email = session.get('email') or session.get('google_user_email', '')
+        
+        # Abfrage mit WHERE-Klausel
         query = """
         SELECT email, _id 
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.proto_users` 
         WHERE email = @email
+        LIMIT 10
         """
         
-        query_job = client.query(query)
+        # Parameter definieren - DAS IST DER WICHTIGE TEIL
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("email", "STRING", email)
+            ]
+        )
+        
+        # Abfrage mit Parametern ausführen
+        query_job = client.query(query, job_config=job_config)
         results = query_job.result()
         
         output = "<h1>BigQuery-Test</h1>"
-        output += "<p>Abfrage: SELECT email, _id FROM proto_users LIMIT 10</p>"
+        output += f"<p>Abfrage für E-Mail: {email}</p>"
         output += "<table border='1'><tr><th>E-Mail</th><th>ID</th></tr>"
         
         rows_found = False
@@ -752,13 +764,50 @@ def test_bigquery():
         output += "</table>"
         
         if not rows_found:
-            output += "<p>Keine Daten gefunden!</p>"
+            output += f"<p>Keine Daten für E-Mail '{email}' gefunden!</p>"
             
         return output
     except Exception as e:
         return f"Fehler: {str(e)}"
-    
 
+@app.route('/check_login')
+def check_login():
+    # Alle relevanten Session-Daten anzeigen
+    session_data = {
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'email': session.get('email'),
+        'google_user_email': session.get('google_user_email'),
+        'seller_id': session.get('seller_id'),
+        'is_logged_via_google': session.get('is_logged_via_google')
+    }
+    
+    output = "<h1>Login-Status</h1>"
+    output += "<pre>" + json.dumps(session_data, indent=2) + "</pre>"
+    
+    # Wenn E-Mail vorhanden ist, teste BigQuery-Abfrage
+    email = session.get('email') or session.get('google_user_email')
+    if email:
+        output += f"<h2>Test der seller_id-Abfrage für {email}</h2>"
+        try:
+            seller_id = get_user_id_from_email(email)
+            output += f"<p>Gefundene seller_id: {seller_id}</p>"
+        except Exception as e:
+            output += f"<p style='color:red'>Fehler: {str(e)}</p>"
+    
+    # Link zum Zurücksetzen der Session
+    output += "<p><a href='/reset_session'>Session zurücksetzen</a></p>"
+    
+    return output
+
+@app.route('/reset_session')
+def reset_session():
+    # Alle Session-Daten löschen, außer user_id
+    user_id = session.get('user_id')
+    session.clear()
+    session['user_id'] = user_id
+    session.modified = True
+    return redirect('/check_login')
 
 @app.route('/check_seller_id')
 def check_seller_id():
@@ -1080,46 +1129,55 @@ def google_login_callback():
         flash('Login fehlgeschlagen.', 'danger')
         return redirect(url_for('login'))
     
-    # Benutzerinformationen von Google abrufen
-    resp = google.get('/oauth2/v1/userinfo')
-    if not resp.ok:
-        flash('Fehler beim Abrufen der Benutzerinformationen.', 'danger')
-        return redirect(url_for('login'))
-    
-    # Google-Benutzerinformationen extrahieren
-    google_info = resp.json()
-    
-    # Überprüfen, ob E-Mail bereits in der Session ist
-    email = session.get('google_user_email')
-    if not email and 'email' in google_info:
+    try:
+        # Benutzerinformationen von Google abrufen
+        resp = google.get('/oauth2/v1/userinfo')
+        if not resp.ok:
+            flash('Fehler beim Abrufen der Benutzerinformationen.', 'danger')
+            return redirect(url_for('login'))
+        
+        # Google-Benutzerinformationen extrahieren
+        google_info = resp.json()
+        print(f"Google Info: {google_info}")  # Debugging
+        
+        # E-Mail und Name aus Google-Infos abrufen
         email = google_info.get('email')
-    
-    name = session.get('google_user_name')
-    if not name and 'name' in google_info:
-        name = google_info.get('name')
-    
-    if not email:
-        flash('E-Mail-Adresse konnte nicht abgerufen werden.', 'danger')
+        name = google_info.get('name', '')
+        
+        if not email:
+            flash('E-Mail-Adresse konnte nicht abgerufen werden.', 'danger')
+            return redirect(url_for('login'))
+        
+        # Aktuelle Sitzungs-ID beibehalten oder eine neue erstellen
+        user_id = session.get('user_id')
+        if not user_id:
+            user_id = str(uuid.uuid4())
+        
+        # User-Informationen in Session speichern
+        session['user_id'] = user_id
+        session['user_name'] = name
+        session['email'] = email
+        session['google_user_email'] = email  # Für Kompatibilität
+        session['is_logged_via_google'] = True
+        
+        # Jetzt die seller_id aus BigQuery mit der E-Mail abrufen
+        seller_id = get_user_id_from_email(email)
+        session['seller_id'] = seller_id
+        
+        # Session-Änderungen explizit speichern
+        session.modified = True
+        
+        if seller_id:
+            flash(f'Login erfolgreich! Ihre Verkäufer-ID ist: {seller_id}', 'success')
+        else:
+            flash('Login erfolgreich, aber keine Verkäufer-ID gefunden.', 'warning')
+            
+        return redirect(url_for('chat'))
+    except Exception as e:
+        print(f"Fehler im Callback: {str(e)}")  # Debugging
+        flash(f'Fehler bei der Anmeldung: {str(e)}', 'danger')
         return redirect(url_for('login'))
     
-    # Benutzer-ID aus BigQuery abrufen
-    seller_id = get_user_id_from_email(email)
-    
-    # In Session speichern (wichtig: die richtigen Schlüssel benutzen)
-    user_id = session.get('user_id')
-    if not user_id:
-        user_id = str(uuid.uuid4())
-        session['user_id'] = user_id
-    
-    session['email'] = email            # Diese Zeile ist wichtig!
-    session['user_name'] = name
-    session['seller_id'] = seller_id    # Diese Zeile ist wichtig!
-    
-    # Sicherstellen, dass Änderungen gespeichert werden
-    session.modified = True
-    
-    flash('Login erfolgreich!', 'success')
-    return redirect(url_for('chat'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

@@ -14,9 +14,12 @@ from flask_session import Session
 from dotenv import load_dotenv
 from google.cloud import storage
 from google.oauth2 import service_account
+from google.cloud import bigquery
 from werkzeug.utils import secure_filename
 import openai
 import tiktoken
+
+from flask_dance.contrib.google import make_google_blueprint, google
 
 # Zusätzliche Importe für Dateiverarbeitung
 from PyPDF2 import PdfReader
@@ -27,6 +30,23 @@ from datetime import datetime
 
 # Laden der Umgebungsvariablen aus .env
 load_dotenv()
+
+
+def setup_google_oauth(app):
+    """Konfiguriert Google OAuth für die Flask-App."""
+    # OAuth-Blueprint erstellen
+    google_bp = make_google_blueprint(
+        client_id=os.getenv('GOOGLE_CLIENT_ID'),
+        client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+        scope=["profile", "email"],
+        redirect_to="google_login_callback"
+    )
+    
+    # Blueprint bei der App registrieren
+    app.register_blueprint(google_bp, url_prefix="/login")
+    
+    return app
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_default_secret_key')
@@ -331,6 +351,288 @@ def aktualisiere_themen(themen_dict):
                 else:
                     file.write(f"{punkt_nummer}) {punkt_titel}\n")
             file.write("\n")
+
+
+def get_user_id_from_email(email):
+    """
+    Ruft die _id eines Benutzers aus BigQuery basierend auf seiner E-Mail-Adresse ab.
+    """
+    try:
+        # Service-Account-Datei aus dem gleichen Verzeichnis laden
+        service_account_path = '/home/PfS/service_account_key.json'
+        client = bigquery.Client.from_service_account_json(service_account_path)
+        
+        # SQL-Abfrage, um den Benutzer nach E-Mail zu finden
+        query = """
+        SELECT _id
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.proto_users`
+        WHERE email = @email
+        LIMIT 1
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("email", "STRING", email)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        # Überprüfen, ob ein Ergebnis zurückgegeben wurde
+        for row in results:
+            return row['_id']
+            
+        # Wenn keine Zeile gefunden wurde
+        return None
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Abrufen der Benutzer-ID aus BigQuery: {e}")
+        return None
+    
+def get_bigquery_client():
+    """Erstellt und gibt einen BigQuery-Client zurück."""
+    service_account_path = '/home/PfS/service_account_key.json'
+    return bigquery.Client.from_service_account_json(service_account_path)
+
+def get_leads_for_seller(seller_id):
+    """Ruft die Leads für einen bestimmten Verkäufer aus BigQuery ab."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        SELECT 
+            l._id, 
+            l.first_name,
+            l.last_name,
+            l.email,
+            l.phone,
+            l.created_at,
+            l.updated_at,
+            l.status
+        FROM 
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l
+        WHERE 
+            l.seller_id = @seller_id
+        ORDER BY 
+            l.created_at DESC
+        LIMIT 50
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        leads = []
+        for row in results:
+            lead = dict(row.items())
+            # Konvertieren von datetime-Objekten zu Strings für JSON-Serialisierung
+            for key, value in lead.items():
+                if hasattr(value, 'isoformat'):
+                    lead[key] = value.isoformat()
+            leads.append(lead)
+            
+        return leads
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Abrufen der Leads aus BigQuery: {e}")
+        return []
+
+def get_contracts_for_seller(seller_id):
+    """Ruft die Verträge für einen bestimmten Verkäufer aus BigQuery ab."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        SELECT 
+            c._id,
+            c.contract_number,
+            c.created_at,
+            c.start_date,
+            c.status,
+            c.customer_id,
+            c.household_id
+        FROM 
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c
+        WHERE 
+            c.seller_id = @seller_id
+        ORDER BY 
+            c.created_at DESC
+        LIMIT 50
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        contracts = []
+        for row in results:
+            contract = dict(row.items())
+            # Konvertieren von datetime-Objekten zu Strings für JSON-Serialisierung
+            for key, value in contract.items():
+                if hasattr(value, 'isoformat'):
+                    contract[key] = value.isoformat()
+            contracts.append(contract)
+            
+        return contracts
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Abrufen der Verträge aus BigQuery: {e}")
+        return []
+
+def get_households_for_seller(seller_id):
+    """Ruft die Haushalte für einen bestimmten Verkäufer aus BigQuery ab."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        SELECT 
+            h._id,
+            h.address,
+            h.zip,
+            h.city,
+            h.created_at,
+            h.status
+        FROM 
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h
+        WHERE 
+            h.seller_id = @seller_id
+        ORDER BY 
+            h.created_at DESC
+        LIMIT 50
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        households = []
+        for row in results:
+            household = dict(row.items())
+            # Konvertieren von datetime-Objekten zu Strings für JSON-Serialisierung
+            for key, value in household.items():
+                if hasattr(value, 'isoformat'):
+                    household[key] = value.isoformat()
+            households.append(household)
+            
+        return households
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Abrufen der Haushalte aus BigQuery: {e}")
+        return []
+
+def calculate_kpis_for_seller(seller_id):
+    """Berechnet KPIs für einen bestimmten Verkäufer aus BigQuery-Daten."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        WITH 
+        lead_metrics AS (
+            SELECT 
+                COUNT(*) AS total_leads,
+                COUNTIF(status = 'converted') AS converted_leads,
+                COUNTIF(DATE(created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)) AS new_leads_30d
+            FROM 
+                `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads`
+            WHERE 
+                seller_id = @seller_id
+        ),
+        contract_metrics AS (
+            SELECT 
+                COUNT(*) AS total_contracts,
+                COUNTIF(DATE(created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)) AS new_contracts_30d,
+                COUNTIF(status = 'active') AS active_contracts
+            FROM 
+                `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts`
+            WHERE 
+                seller_id = @seller_id
+        ),
+        household_metrics AS (
+            SELECT 
+                COUNT(*) AS total_households
+            FROM 
+                `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households`
+            WHERE 
+                seller_id = @seller_id
+        )
+        
+        SELECT 
+            l.total_leads,
+            l.converted_leads,
+            l.new_leads_30d,
+            c.total_contracts,
+            c.new_contracts_30d,
+            c.active_contracts,
+            h.total_households,
+            SAFE_DIVIDE(c.total_contracts, l.total_leads) AS conversion_rate
+        FROM 
+            lead_metrics l,
+            contract_metrics c,
+            household_metrics h
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        # Es sollte nur eine Zeile geben
+        for row in results:
+            kpis = dict(row.items())
+            return kpis
+            
+        return {}
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Berechnen der KPIs aus BigQuery: {e}")
+        return {}
+
+def get_seller_data(seller_id, data_type=None):
+    """
+    Holt Verkäuferdaten basierend auf dem angegebenen Datentyp.
+    
+    Args:
+        seller_id (str): Die Verkäufer-ID (_id aus proto_users)
+        data_type (str, optional): Der Typ der abzurufenden Daten ('leads', 'contracts', 'households', 'kpis', oder None für alles)
+    """
+    result = {}
+    
+    if not seller_id:
+        return {"error": "Keine Verkäufer-ID angegeben"}
+    
+    if data_type == 'leads' or data_type is None:
+        result['leads'] = get_leads_for_seller(seller_id)
+        
+    if data_type == 'contracts' or data_type is None:
+        result['contracts'] = get_contracts_for_seller(seller_id)
+        
+    if data_type == 'households' or data_type is None:
+        result['households'] = get_households_for_seller(seller_id)
+        
+    if data_type == 'kpis' or data_type is None:
+        result['kpis'] = calculate_kpis_for_seller(seller_id)
+    
+    return result
 
 ###########################################
 # Notfall-LOG-Funktion

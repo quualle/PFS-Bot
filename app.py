@@ -690,6 +690,43 @@ def count_tokens(messages, model=None):
     token_count += 2
     return token_count
 
+
+@app.route('/check_seller_id')
+def check_seller_id():
+    """Zeigt Informationen über die aktuelle Benutzer-Session an."""
+    session_info = {
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'email': session.get('email'),
+        'seller_id': session.get('seller_id'),
+        'is_admin': session.get('admin_logged_in', False)
+    }
+    
+    # Formatieren als HTML für einfaches Lesen
+    output = "<h1>Benutzer-Informationen</h1>"
+    output += "<pre>" + json.dumps(session_info, indent=2, ensure_ascii=False) + "</pre>"
+    
+    # Wenn seller_id vorhanden ist, zeige einige Beispieldaten aus BigQuery
+    seller_id = session.get('seller_id')
+    if seller_id:
+        output += "<h2>BigQuery-Test</h2>"
+        try:
+            # Versuche, KPIs zu berechnen
+            kpis = calculate_kpis_for_seller(seller_id)
+            output += "<h3>KPIs:</h3>"
+            output += "<pre>" + json.dumps(kpis, indent=2, ensure_ascii=False) + "</pre>"
+            
+            # Prüfe, ob Leads abgerufen werden können
+            leads = get_leads_for_seller(seller_id)
+            output += f"<p>Anzahl gefundener Leads: {len(leads)}</p>"
+            
+            # Prüfe, ob Verträge abgerufen werden können
+            contracts = get_contracts_for_seller(seller_id)
+            output += f"<p>Anzahl gefundener Verträge: {len(contracts)}</p>"
+        except Exception as e:
+            output += f"<p style='color: red;'>Fehler beim Abrufen von BigQuery-Daten: {str(e)}</p>"
+    
+    return output
 ###########################################
 # Neue Route: Toggle Notfall Mode
 ###########################################

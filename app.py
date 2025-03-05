@@ -800,6 +800,18 @@ def check_login():
     
     return output
 
+
+@app.route('/login/google')
+def google_login():
+    """Leitet zur Google-Anmeldeseite weiter."""
+    print("Google Login Route aufgerufen!")
+    if not google.authorized:
+        print("User nicht autorisiert, leite zu google.login weiter")
+        return redirect(url_for('google.login'))
+    print("User bereits autorisiert, leite zu callback weiter")
+    return redirect(url_for('google_login_callback'))
+
+
 @app.route('/reset_session')
 def reset_session():
     # Alle Session-Daten löschen, außer user_id
@@ -1125,59 +1137,135 @@ def google_login():
 @app.route('/login/google/callback')
 def google_login_callback():
     """Callback nach erfolgreicher Google-Anmeldung."""
+    print("Google Login Callback aufgerufen!")
+    
     if not google.authorized:
+        print("google.authorized ist False!")
         flash('Login fehlgeschlagen.', 'danger')
         return redirect(url_for('login'))
     
+    print("google.authorized ist True!")
+    
+    # Benutzerinformationen von Google abrufen
     try:
-        # Benutzerinformationen von Google abrufen
+        print("Versuche Google-Userinfo abzurufen...")
         resp = google.get('/oauth2/v1/userinfo')
+        print(f"Google API Response Status: {resp.status_code}")
+        
         if not resp.ok:
+            print(f"Google API Fehler: {resp.text}")
             flash('Fehler beim Abrufen der Benutzerinformationen.', 'danger')
             return redirect(url_for('login'))
         
         # Google-Benutzerinformationen extrahieren
         google_info = resp.json()
-        print(f"Google Info: {google_info}")  # Debugging
+        print(f"Google Info erhalten: {google_info}")
         
-        # E-Mail und Name aus Google-Infos abrufen
         email = google_info.get('email')
         name = google_info.get('name', '')
         
-        if not email:
-            flash('E-Mail-Adresse konnte nicht abgerufen werden.', 'danger')
-            return redirect(url_for('login'))
+        print(f"Extrahierte Daten - Email: {email}, Name: {name}")
         
-        # Aktuelle Sitzungs-ID beibehalten oder eine neue erstellen
-        user_id = session.get('user_id')
-        if not user_id:
-            user_id = str(uuid.uuid4())
-        
-        # User-Informationen in Session speichern
-        session['user_id'] = user_id
-        session['user_name'] = name
+        # Session aktualisieren
         session['email'] = email
-        session['google_user_email'] = email  # Für Kompatibilität
+        session['google_user_email'] = email
+        session['user_name'] = name
         session['is_logged_via_google'] = True
-        
-        # Jetzt die seller_id aus BigQuery mit der E-Mail abrufen
-        seller_id = get_user_id_from_email(email)
-        session['seller_id'] = seller_id
-        
-        # Session-Änderungen explizit speichern
         session.modified = True
         
-        if seller_id:
-            flash(f'Login erfolgreich! Ihre Verkäufer-ID ist: {seller_id}', 'success')
-        else:
-            flash('Login erfolgreich, aber keine Verkäufer-ID gefunden.', 'warning')
-            
+        print(f"Session aktualisiert: {dict(session)}")
+        
+        # Benutzer-ID aus BigQuery abrufen
+        if email:
+            seller_id = get_user_id_from_email(email)
+            session['seller_id'] = seller_id
+            print(f"Seller ID gesetzt: {seller_id}")
+        
+        flash('Login erfolgreich!', 'success')
         return redirect(url_for('chat'))
     except Exception as e:
-        print(f"Fehler im Callback: {str(e)}")  # Debugging
-        flash(f'Fehler bei der Anmeldung: {str(e)}', 'danger')
+        print(f"Fehler im Google Callback: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Ein Fehler ist aufgetreten: {str(e)}', 'danger')
+        return redirect(url_for('login'))
+@app.route('/direct_google_login')
+def direct_google_login():
+    """Eine einfachere Google-Login-Route für Tests"""
+    # Erstelle eine URL für die Google OAuth-Seite
+    google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    params = {
+        'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+        'redirect_uri': url_for('google_login_direct_callback', _external=True),
+        'response_type': 'code',
+        'scope': 'email profile',
+        'access_type': 'online',
+        'state': 'direct_test'
+    }
+    
+    auth_url = f"{google_auth_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
+    return redirect(auth_url)
+
+@app.route('/google_login_direct_callback')
+def google_login_direct_callback():
+    """Direkter Callback für den vereinfachten Google-Login"""
+    code = request.args.get('code')
+    
+    if not code:
+        flash('Login fehlgeschlagen (kein Code erhalten).', 'danger')
         return redirect(url_for('login'))
     
+    # Code gegen Token tauschen
+    try:
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            'code': code,
+            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+            'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+            'redirect_uri': url_for('google_login_direct_callback', _external=True),
+            'grant_type': 'authorization_code'
+        }
+        
+        import requests
+        token_response = requests.post(token_url, data=token_data)
+        
+        if not token_response.ok:
+            flash(f'Token-Abruf fehlgeschlagen: {token_response.text}', 'danger')
+            return redirect(url_for('login'))
+        
+        token_info = token_response.json()
+        access_token = token_info.get('access_token')
+        
+        # Benutzerinfo abrufen
+        userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        headers = {'Authorization': f'Bearer {access_token}'}
+        userinfo_response = requests.get(userinfo_url, headers=headers)
+        
+        if not userinfo_response.ok:
+            flash(f'Userinfo-Abruf fehlgeschlagen: {userinfo_response.text}', 'danger')
+            return redirect(url_for('login'))
+        
+        user_info = userinfo_response.json()
+        
+        # Session aktualisieren
+        session['email'] = user_info.get('email')
+        session['google_user_email'] = user_info.get('email')
+        session['user_name'] = user_info.get('name')
+        session['is_logged_via_google'] = True
+        
+        # Seller ID abrufen
+        if session['email']:
+            seller_id = get_user_id_from_email(session['email'])
+            session['seller_id'] = seller_id
+        
+        session.modified = True
+        
+        flash('Login erfolgreich (direkter Weg)!', 'success')
+        return redirect(url_for('chat'))
+    
+    except Exception as e:
+        flash(f'Fehler: {str(e)}', 'danger')
+        return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

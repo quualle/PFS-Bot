@@ -7,6 +7,7 @@ import datetime
 from functools import wraps
 import uuid
 import tempfile
+import requests  # Added import for requests
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_wtf import CSRFProtect
@@ -19,8 +20,6 @@ from werkzeug.utils import secure_filename
 import openai
 import tiktoken
 
-from flask_dance.contrib.google import make_google_blueprint, google
-
 # Zusätzliche Importe für Dateiverarbeitung
 from PyPDF2 import PdfReader
 import docx
@@ -31,22 +30,133 @@ from datetime import datetime
 # Laden der Umgebungsvariablen aus .env
 load_dotenv()
 
-
-def setup_google_oauth(app):
-    """Konfiguriert Google OAuth für die Flask-App."""
-    # OAuth-Blueprint erstellen
-    google_bp = make_google_blueprint(
-        client_id=os.getenv('GOOGLE_CLIENT_ID'),
-        client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-        scope=["profile", "email"],
-        redirect_to="google_login_callback"
-    )
+# Google OAuth Konfiguration
+def configure_google_auth(app):
+    """Konfiguriert die direkte Google OAuth-Authentifizierung."""
+    # Stellen Sie sicher, dass die Umgebungsvariablen gesetzt sind
+    if not os.getenv('GOOGLE_CLIENT_ID') or not os.getenv('GOOGLE_CLIENT_SECRET'):
+        print("WARNUNG: Google OAuth-Credentials nicht gesetzt!")
     
-    # Blueprint bei der App registrieren
-    app.register_blueprint(google_bp, url_prefix="/login")
-    
-    return app
+    # Direkten Login-Endpoint definieren
+    @app.route('/google_login')
+    def direct_google_login():
+        """Eine direkte Google-Login-Route"""
+        # Erstelle eine URL für die Google OAuth-Seite
+        google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+        params = {
+            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+            'redirect_uri': url_for('google_callback', _external=True),
+            'response_type': 'code',
+            'scope': 'email profile',
+            'access_type': 'online',
+            'state': 'direct_test'
+        }
+        
+        auth_url = f"{google_auth_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
+        return redirect(auth_url)
 
+    # Callback für den direkten Login
+    @app.route('/google_callback')
+    def google_callback():
+        """Callback für den direkten Google-Login"""
+        code = request.args.get('code')
+        
+        if not code:
+            flash('Login fehlgeschlagen (kein Code erhalten).', 'danger')
+            return redirect(url_for('login'))
+        
+        # Code gegen Token tauschen
+        try:
+            token_url = "https://oauth2.googleapis.com/token"
+            token_data = {
+                'code': code,
+                'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+                'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+                'redirect_uri': url_for('google_callback', _external=True),
+                'grant_type': 'authorization_code'
+            }
+            
+            token_response = requests.post(token_url, data=token_data)
+            
+            if not token_response.ok:
+                flash(f'Token-Abruf fehlgeschlagen: {token_response.text}', 'danger')
+                return redirect(url_for('login'))
+            
+            token_info = token_response.json()
+            access_token = token_info.get('access_token')
+            
+            # Benutzerinfo abrufen
+            userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+            headers = {'Authorization': f'Bearer {access_token}'}
+            userinfo_response = requests.get(userinfo_url, headers=headers)
+            
+            if not userinfo_response.ok:
+                flash(f'Userinfo-Abruf fehlgeschlagen: {userinfo_response.text}', 'danger')
+                return redirect(url_for('login'))
+            
+            user_info = userinfo_response.json()
+            
+            # Session aktualisieren
+            email = user_info.get('email')
+            name = user_info.get('name')
+            
+            # Setze die Session-Variablen
+            user_id = session.get('user_id')
+            if not user_id:
+                user_id = str(uuid.uuid4())
+                session['user_id'] = user_id
+                
+            session['email'] = email
+            session['google_user_email'] = email
+            session['user_name'] = name
+            session['is_logged_via_google'] = True
+            
+            # Seller ID abrufen, wenn eine E-Mail vorhanden ist
+            if email:
+                seller_id = get_user_id_from_email(email)
+                session['seller_id'] = seller_id
+                if seller_id:
+                    print(f"Seller ID gefunden und gesetzt: {seller_id}")
+                else:
+                    print(f"Keine Seller ID für E-Mail {email} gefunden")
+            
+            session.modified = True
+            
+            flash('Login erfolgreich!', 'success')
+            return redirect(url_for('chat'))
+        
+        except Exception as e:
+            print(f"Fehler beim Google-Login: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            flash(f'Fehler bei der Anmeldung: {str(e)}', 'danger')
+            return redirect(url_for('login'))
+    
+    # Hilfsfunktion zur OAuth-Diagnose
+    @app.route('/debug_oauth')
+    def debug_oauth():
+        """Diagnosewerkzeug für die OAuth-Konfiguration"""
+        output = "<h1>OAuth Debug Info</h1>"
+        
+        # Umgebungsvariablen überprüfen (ohne Secrets zu zeigen)
+        client_id = os.getenv('GOOGLE_CLIENT_ID', 'Nicht gesetzt')
+        client_secret_status = "Gesetzt" if os.getenv('GOOGLE_CLIENT_SECRET') else "Nicht gesetzt"
+        
+        output += f"<p>GOOGLE_CLIENT_ID: {client_id[:5]}...{client_id[-5:] if len(client_id) > 10 else ''}</p>"
+        output += f"<p>GOOGLE_CLIENT_SECRET: {client_secret_status}</p>"
+        
+        # Session-Status
+        output += "<h2>Session Status</h2>"
+        session_values = {k: v for k, v in session.items()}
+        output += f"<pre>{json.dumps(session_values, indent=2)}</pre>"
+        
+        # Test Links
+        output += "<h2>Test Links</h2>"
+        output += f"<p><a href='{url_for('direct_google_login')}'>Google Login</a></p>"
+        
+        return output
+    
+    return app 
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_default_secret_key')
@@ -58,6 +168,8 @@ app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
+# Google OAuth konfigurieren
+app = configure_google_auth(app)
 Session(app)
 
 logging.basicConfig(level=logging.DEBUG)
@@ -68,9 +180,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # CSRF-Schutz
 csrf = CSRFProtect(app)
-
-
-app = setup_google_oauth(app)
 
 openai.api_key = os.getenv('OPENAI_API_KEY')
 if not openai.api_key:
@@ -800,18 +909,6 @@ def check_login():
     
     return output
 
-
-@app.route('/login/google')
-def google_login():
-    """Leitet zur Google-Anmeldeseite weiter."""
-    print("Google Login Route aufgerufen!")
-    if not google.authorized:
-        print("User nicht autorisiert, leite zu google.login weiter")
-        return redirect(url_for('google.login'))
-    print("User bereits autorisiert, leite zu callback weiter")
-    return redirect(url_for('google_login_callback'))
-
-
 @app.route('/reset_session')
 def reset_session():
     # Alle Session-Daten löschen, außer user_id
@@ -857,6 +954,7 @@ def check_seller_id():
             output += f"<p style='color: red;'>Fehler beim Abrufen von BigQuery-Daten: {str(e)}</p>"
     
     return output
+
 ###########################################
 # Neue Route: Toggle Notfall Mode
 ###########################################
@@ -1124,174 +1222,6 @@ def clear_chat_history():
 ###########################################
 # Login / Logout
 ###########################################
-
-
-
-
-@app.route('/login/google/callback')
-def google_login_callback():
-    """Callback nach erfolgreicher Google-Anmeldung."""
-    print("Google Login Callback aufgerufen!")
-    
-    if not google.authorized:
-        print("google.authorized ist False!")
-        flash('Login fehlgeschlagen.', 'danger')
-        return redirect(url_for('login'))
-    
-    print("google.authorized ist True!")
-    
-    # Benutzerinformationen von Google abrufen
-    try:
-        print("Versuche Google-Userinfo abzurufen...")
-        resp = google.get('/oauth2/v1/userinfo')
-        print(f"Google API Response Status: {resp.status_code}")
-        
-        if not resp.ok:
-            print(f"Google API Fehler: {resp.text}")
-            flash('Fehler beim Abrufen der Benutzerinformationen.', 'danger')
-            return redirect(url_for('login'))
-        
-        # Google-Benutzerinformationen extrahieren
-        google_info = resp.json()
-        print(f"Google Info erhalten: {google_info}")
-        
-        email = google_info.get('email')
-        name = google_info.get('name', '')
-        
-        print(f"Extrahierte Daten - Email: {email}, Name: {name}")
-        
-        # Session aktualisieren
-        session['email'] = email
-        session['google_user_email'] = email
-        session['user_name'] = name
-        session['is_logged_via_google'] = True
-        session.modified = True
-        
-        print(f"Session aktualisiert: {dict(session)}")
-        
-        # Benutzer-ID aus BigQuery abrufen
-        if email:
-            seller_id = get_user_id_from_email(email)
-            session['seller_id'] = seller_id
-            print(f"Seller ID gesetzt: {seller_id}")
-        
-        flash('Login erfolgreich!', 'success')
-        return redirect(url_for('chat'))
-    except Exception as e:
-        print(f"Fehler im Google Callback: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        flash(f'Ein Fehler ist aufgetreten: {str(e)}', 'danger')
-        return redirect(url_for('login'))
-@app.route('/direct_google_login')
-def direct_google_login():
-    """Eine einfachere Google-Login-Route für Tests"""
-    # Erstelle eine URL für die Google OAuth-Seite
-    google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
-    params = {
-        'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-        'redirect_uri': url_for('google_login_direct_callback', _external=True),
-        'response_type': 'code',
-        'scope': 'email profile',
-        'access_type': 'online',
-        'state': 'direct_test'
-    }
-    
-    auth_url = f"{google_auth_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
-    return redirect(auth_url)
-
-@app.route('/google_login_direct_callback')
-def google_login_direct_callback():
-    """Direkter Callback für den vereinfachten Google-Login"""
-    code = request.args.get('code')
-    
-    if not code:
-        flash('Login fehlgeschlagen (kein Code erhalten).', 'danger')
-        return redirect(url_for('login'))
-    
-    # Code gegen Token tauschen
-    try:
-        token_url = "https://oauth2.googleapis.com/token"
-        token_data = {
-            'code': code,
-            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-            'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
-            'redirect_uri': url_for('google_login_direct_callback', _external=True),
-            'grant_type': 'authorization_code'
-        }
-        
-        import requests
-        token_response = requests.post(token_url, data=token_data)
-        
-        if not token_response.ok:
-            flash(f'Token-Abruf fehlgeschlagen: {token_response.text}', 'danger')
-            return redirect(url_for('login'))
-        
-        token_info = token_response.json()
-        access_token = token_info.get('access_token')
-        
-        # Benutzerinfo abrufen
-        userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
-        headers = {'Authorization': f'Bearer {access_token}'}
-        userinfo_response = requests.get(userinfo_url, headers=headers)
-        
-        if not userinfo_response.ok:
-            flash(f'Userinfo-Abruf fehlgeschlagen: {userinfo_response.text}', 'danger')
-            return redirect(url_for('login'))
-        
-        user_info = userinfo_response.json()
-        
-        # Session aktualisieren
-        session['email'] = user_info.get('email')
-        session['google_user_email'] = user_info.get('email')
-        session['user_name'] = user_info.get('name')
-        session['is_logged_via_google'] = True
-        
-        # Seller ID abrufen
-        if session['email']:
-            seller_id = get_user_id_from_email(session['email'])
-            session['seller_id'] = seller_id
-        
-        session.modified = True
-        
-        flash('Login erfolgreich (direkter Weg)!', 'success')
-        return redirect(url_for('chat'))
-    
-    except Exception as e:
-        flash(f'Fehler: {str(e)}', 'danger')
-        return redirect(url_for('login'))
-
-@app.route('/debug_oauth')
-def debug_oauth():
-    output = "<h1>OAuth Debug Info</h1>"
-    
-    # Umgebungsvariablen überprüfen (ohne Secrets zu zeigen)
-    client_id = os.getenv('GOOGLE_CLIENT_ID', 'Nicht gesetzt')
-    client_secret_status = "Gesetzt" if os.getenv('GOOGLE_CLIENT_SECRET') else "Nicht gesetzt"
-    
-    output += f"<p>GOOGLE_CLIENT_ID: {client_id[:5]}...{client_id[-5:] if len(client_id) > 10 else ''}</p>"
-    output += f"<p>GOOGLE_CLIENT_SECRET: {client_secret_status}</p>"
-    
-    # Session-Status
-    output += "<h2>Session Status</h2>"
-    session_values = {k: v for k, v in session.items()}
-    output += f"<pre>{json.dumps(session_values, indent=2)}</pre>"
-    
-    # Flask-Dance Blueprint Status
-    from flask import current_app
-    oauth_status = "Nicht gefunden"
-    if 'google' in current_app.blueprints:
-        oauth_status = "Blueprint registriert"
-    output += f"<p>Google OAuth Blueprint: {oauth_status}</p>"
-    
-    # Test Links
-    output += "<h2>Test Links</h2>"
-    output += f"<p><a href='{url_for('google_login')}'>Standard Google Login</a></p>"
-    output += f"<p><a href='{url_for('direct_google_login')}'>Direkter Google Login</a></p>"
-    
-    return output
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -1317,11 +1247,17 @@ def logout():
         flash('Erfolgreich ausgeloggt.', 'success')
         return redirect(url_for('login'))
     
-    # Otherwise, log out the user
-    session.pop('user_id', None)
-    session.pop('user_name', None)
-    session.pop('email', None)
-    session.pop('seller_id', None)
+    # Clear specific user session data
+    keys_to_remove = [
+        'user_name', 'email', 'google_user_email', 
+        'seller_id', 'is_logged_via_google'
+    ]
+    
+    for key in keys_to_remove:
+        if key in session:
+            session.pop(key)
+    
+    # Keep user_id for tracking purposes
     
     flash('Erfolgreich ausgeloggt.', 'success')
     return redirect(url_for('login'))

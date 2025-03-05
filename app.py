@@ -67,6 +67,9 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # CSRF-Schutz
 csrf = CSRFProtect(app)
 
+
+app = setup_google_oauth(app)
+
 openai.api_key = os.getenv('OPENAI_API_KEY')
 if not openai.api_key:
     raise ValueError("Der OpenAI API-Schlüssel ist nicht gesetzt.")
@@ -776,6 +779,9 @@ def chat():
             stats = calculate_chat_stats()
             return render_template('chat.html', chat_history=[], stats=stats)
 
+        # Verkäufer-ID aus der Session abrufen (NEU)
+        seller_id = session.get('seller_id')
+        
         chat_key = f'chat_history_{user_id}'
         if chat_key not in session:
             session[chat_key] = []
@@ -800,6 +806,32 @@ def chat():
                 return redirect(url_for('chat'))
 
             wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
+            
+            # BigQuery-Daten abrufen, wenn Verkäufer-ID vorhanden ist (NEU)
+            bigquery_data = {}
+            if seller_id:
+                # Prüfen, nach welchen Daten der Benutzer gefragt hat
+                message_lower = user_message.lower()
+                
+                # KPIs abfragen
+                if any(kw in message_lower for kw in ["kpi", "kennzahl", "leistung", "statistik", "performance"]):
+                    bigquery_data = get_seller_data(seller_id, 'kpis')
+                
+                # Leads abfragen
+                elif any(kw in message_lower for kw in ["lead", "kunde", "interessent"]):
+                    bigquery_data = get_seller_data(seller_id, 'leads')
+                
+                # Verträge abfragen
+                elif any(kw in message_lower for kw in ["vertrag", "verträge", "contract"]):
+                    bigquery_data = get_seller_data(seller_id, 'contracts')
+                
+                # Haushalte abfragen
+                elif any(kw in message_lower for kw in ["haushalt", "wohnung", "adresse"]):
+                    bigquery_data = get_seller_data(seller_id, 'households')
+                
+                # Alle Daten abfragen (für allgemeine Anfragen)
+                elif any(kw in message_lower for kw in ["daten", "übersicht", "alles", "zusammenfassung"]):
+                    bigquery_data = get_seller_data(seller_id)
 
             if notfall_aktiv:
                 session['notfall_mode'] = True
@@ -812,20 +844,35 @@ def chat():
             else:
                 session.pop('notfall_mode', None)
 
-            # Prompt inkl. Name
+            # Prompt inkl. Name und BigQuery-Daten (NEU)
+            prompt_text = (
+                f"Der Name deines Gesprächspartners lautet {user_name}.\n"
+                "Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. "
+                "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
+                "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
+            )
+            
+            # Verkäufer-ID zur Prompt hinzufügen, wenn vorhanden (NEU)
+            if seller_id:
+                prompt_text += f"Du sprichst mit einem Vertriebspartner mit der ID {seller_id}. "
+                
+                # BigQuery-Daten zur Prompt hinzufügen, wenn vorhanden (NEU)
+                if bigquery_data:
+                    bigquery_text = json.dumps(bigquery_data, ensure_ascii=False, indent=2)
+                    prompt_text += f"\n\nHier sind die relevanten Daten aus dem System:\n{bigquery_text}\n\n"
+            
+            # Prompt vervollständigen
+            prompt_text += (
+                "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
+                "sondern sagst, dass du es nicht weißt. "
+                f"Hier die Frage:\n'''{user_message}'''\n\n"
+                f"Dies ist die Wissensbasis:\n{wissens_text}"
+            )
+            
             messages = [
                 {
                     "role": "user",
-                    "content": (
-                        f"Der Name deines Gesprächspartners lautet {user_name}.\n"
-                        "Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. "
-                        "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
-                        "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
-                        "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
-                        "sondern sagst, dass du es nicht weißt. "
-                        f"Hier die Frage:\n'''{user_message}'''\n\n"
-                        f"Dies ist die Wissensbasis:\n{wissens_text}"
-                    )
+                    "content": prompt_text
                 }
             ]
 
@@ -857,7 +904,8 @@ def chat():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
-
+    
+    
 ###########################################
 # CSRF & Session Hooks
 ###########################################
@@ -909,9 +957,63 @@ def clear_chat_history():
 ###########################################
 # Login / Logout
 ###########################################
+
+
+@app.route('/login/google')
+def google_login():
+    """Leitet zur Google-Anmeldeseite weiter."""
+    if not google.authorized:
+        return redirect(url_for('google.login'))
+    return redirect(url_for('google_login_callback'))
+
+@app.route('/login/google/callback')
+def google_login_callback():
+    """Callback nach erfolgreicher Google-Anmeldung."""
+    if not google.authorized:
+        flash('Login fehlgeschlagen.', 'danger')
+        return redirect(url_for('login'))
+    
+    # Benutzerinformationen von Google abrufen
+    resp = google.get('/oauth2/v1/userinfo')
+    if not resp.ok:
+        flash('Fehler beim Abrufen der Benutzerinformationen.', 'danger')
+        return redirect(url_for('login'))
+    
+    # Google-Benutzerinformationen extrahieren
+    google_info = resp.json()
+    email = google_info.get('email')
+    name = google_info.get('name', '')
+    
+    if not email:
+        flash('E-Mail-Adresse konnte nicht abgerufen werden.', 'danger')
+        return redirect(url_for('login'))
+    
+    # Benutzer-ID aus BigQuery abrufen
+    seller_id = get_user_id_from_email(email)
+    
+    if not seller_id:
+        flash('Ihr Konto ist nicht für diese Anwendung autorisiert. Bitte kontaktieren Sie den Administrator.', 'warning')
+        # Trotzdem anmelden, aber mit eingeschränktem Zugriff
+    
+    # In Session speichern
+    # Existierende user_id beibehalten oder neu erzeugen
+    user_id = session.get('user_id')
+    if not user_id:
+        user_id = str(uuid.uuid4())
+        session['user_id'] = user_id
+    
+    session['user_name'] = name
+    session['email'] = email
+    session['seller_id'] = seller_id  # Die _id aus BigQuery
+    
+    flash('Login erfolgreich!', 'success')
+    return redirect(url_for('chat'))
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        # Behalten Sie die bestehende Admin-Login-Logik bei
         password = request.form.get('password', '')
         admin_password = os.getenv('ADMIN_PASSWORD', '')
         if password == admin_password:
@@ -921,12 +1023,24 @@ def login():
         else:
             flash('Falsches Passwort.', 'danger')
             return redirect(url_for('login'))
+            
+    # Render login template mit Google-Login-Option
     return render_template('login.html')
 
 @app.route('/logout')
-@login_required
 def logout():
-    session.pop('admin_logged_in', None)
+    # Check if user is admin and handle accordingly
+    if session.get('admin_logged_in'):
+        session.pop('admin_logged_in', None)
+        flash('Erfolgreich ausgeloggt.', 'success')
+        return redirect(url_for('login'))
+    
+    # Otherwise, log out the user
+    session.pop('user_id', None)
+    session.pop('user_name', None)
+    session.pop('email', None)
+    session.pop('seller_id', None)
+    
     flash('Erfolgreich ausgeloggt.', 'success')
     return redirect(url_for('login'))
 

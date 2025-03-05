@@ -364,7 +364,7 @@ def get_user_id_from_email(email):
     logging.debug(f"get_user_id_from_email aufgerufen mit E-Mail: {email}")
     try:
         # Service-Account-Datei aus dem gleichen Verzeichnis laden
-        service_account_path = '/home/PfS/service_account_key.json'
+        service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
         if not os.path.exists(service_account_path):
             logging.debug(f"Service-Account-Datei nicht gefunden: {service_account_path}")
             return None
@@ -406,7 +406,7 @@ def get_user_id_from_email(email):
 
 def get_bigquery_client():
     """Erstellt und gibt einen BigQuery-Client zurück."""
-    service_account_path = '/home/PfS/service_account_key.json'
+    service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
     return bigquery.Client.from_service_account_json(service_account_path)
 
 def get_leads_for_seller(seller_id):
@@ -727,7 +727,7 @@ def test_session():
 @app.route('/test_bigquery')
 def test_bigquery():
     try:
-        service_account_path = '/home/PfS/service_account_key.json'
+        service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
         client = bigquery.Client.from_service_account_json(service_account_path)
         
         # Einfache Abfrage, um alle E-Mails zu holen

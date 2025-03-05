@@ -734,7 +734,7 @@ def test_bigquery():
         query = """
         SELECT email, _id 
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.proto_users` 
-        LIMIT 10
+        WHERE email = @email
         """
         
         query_job = client.query(query)

@@ -42,10 +42,13 @@ def configure_google_auth(app):
     def google_login():
         """Eine direkte Google-Login-Route"""
         # Erstelle eine URL für die Google OAuth-Seite
+        redirect_uri = url_for('google_callback', _external=True)
+        print(f"Redirect URI being used: {redirect_uri}")  # Add this debug line
+        
         google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
         params = {
             'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-            'redirect_uri': url_for('google_callback', _external=True),
+            'redirect_uri': redirect_uri,
             'response_type': 'code',
             'scope': 'email profile',
             'access_type': 'online',
@@ -157,6 +160,7 @@ def configure_google_auth(app):
         return output
     
     return app
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_default_secret_key')

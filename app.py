@@ -1126,12 +1126,6 @@ def clear_chat_history():
 ###########################################
 
 
-@app.route('/login/google')
-def google_login():
-    """Leitet zur Google-Anmeldeseite weiter."""
-    if not google.authorized:
-        return redirect(url_for('google.login'))
-    return redirect(url_for('google_login_callback'))
 
 
 @app.route('/login/google/callback')

@@ -1267,6 +1267,37 @@ def google_login_direct_callback():
         flash(f'Fehler: {str(e)}', 'danger')
         return redirect(url_for('login'))
 
+@app.route('/debug_oauth')
+def debug_oauth():
+    output = "<h1>OAuth Debug Info</h1>"
+    
+    # Umgebungsvariablen überprüfen (ohne Secrets zu zeigen)
+    client_id = os.getenv('GOOGLE_CLIENT_ID', 'Nicht gesetzt')
+    client_secret_status = "Gesetzt" if os.getenv('GOOGLE_CLIENT_SECRET') else "Nicht gesetzt"
+    
+    output += f"<p>GOOGLE_CLIENT_ID: {client_id[:5]}...{client_id[-5:] if len(client_id) > 10 else ''}</p>"
+    output += f"<p>GOOGLE_CLIENT_SECRET: {client_secret_status}</p>"
+    
+    # Session-Status
+    output += "<h2>Session Status</h2>"
+    session_values = {k: v for k, v in session.items()}
+    output += f"<pre>{json.dumps(session_values, indent=2)}</pre>"
+    
+    # Flask-Dance Blueprint Status
+    from flask import current_app
+    oauth_status = "Nicht gefunden"
+    if 'google' in current_app.blueprints:
+        oauth_status = "Blueprint registriert"
+    output += f"<p>Google OAuth Blueprint: {oauth_status}</p>"
+    
+    # Test Links
+    output += "<h2>Test Links</h2>"
+    output += f"<p><a href='{url_for('google_login')}'>Standard Google Login</a></p>"
+    output += f"<p><a href='{url_for('direct_google_login')}'>Direkter Google Login</a></p>"
+    
+    return output
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':

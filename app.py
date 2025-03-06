@@ -1034,24 +1034,18 @@ def set_username():
 ###########################################
 # Chat Route
 ###########################################
+
 @app.route('/', methods=['GET', 'POST'])
 def chat():
     try:
         user_id = session.get('user_id')
         user_name = session.get('user_name')
         
-        # Wenn kein user_name ODER keine E-Mail in der Session ist, zur Login-Seite umleiten
-        if not user_name or not session.get('email'):
-            flash("Bitte loggen Sie sich ein.", 'danger')
-            return redirect(url_for('google_callback'))
-
-        user_name = session.get('user_name')
+        # Wenn kein Nutzername, direkt zu Google weiterleiten statt auf die Chat-Seite
         if not user_name:
-            # Nur das Template rendern, damit das Overlay im Frontend erscheint
-            stats = calculate_chat_stats()
-            return render_template('chat.html', chat_history=[], stats=stats)
+            return redirect(url_for('google_login'))
 
-        # Verkäufer-ID aus der Session abrufen (NEU)
+        # Verkäufer-ID aus der Session abrufen
         seller_id = session.get('seller_id')
         
         chat_key = f'chat_history_{user_id}'
@@ -1176,8 +1170,24 @@ def chat():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
-    
-    
+
+
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        admin_password = os.getenv('ADMIN_PASSWORD', '')
+        if password == admin_password:
+            session['admin_logged_in'] = True
+            flash('Erfolgreich als Administrator eingeloggt.', 'success')
+            return redirect(url_for('admin'))
+        else:
+            flash('Falsches Passwort.', 'danger')
+            return redirect(url_for('admin_login'))
+            
+    # Render admin login template
+    return render_template('admin_login.html')
+
 ###########################################
 # CSRF & Session Hooks
 ###########################################
@@ -1195,11 +1205,12 @@ def ensure_user_id():
 ###########################################
 # Login-Decorator
 ###########################################
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('admin_logged_in'):
-            return redirect(url_for('login'))
+            return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
 

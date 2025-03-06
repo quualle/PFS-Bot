@@ -1038,7 +1038,10 @@ def set_username():
 def chat():
     try:
         user_id = session.get('user_id')
-        if not user_id:
+        user_name = session.get('user_name')
+        
+        # Wenn kein user_name ODER keine E-Mail in der Session ist, zur Login-Seite umleiten
+        if not user_name or not session.get('email'):
             flash("Bitte loggen Sie sich ein.", 'danger')
             return redirect(url_for('login'))
 

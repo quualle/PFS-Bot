@@ -1043,7 +1043,7 @@ def chat():
         # Wenn kein user_name ODER keine E-Mail in der Session ist, zur Login-Seite umleiten
         if not user_name or not session.get('email'):
             flash("Bitte loggen Sie sich ein.", 'danger')
-            return redirect(url_for('login'))
+            return redirect(url_for('google_login'))
 
         user_name = session.get('user_name')
         if not user_name:

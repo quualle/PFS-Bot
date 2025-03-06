@@ -189,7 +189,7 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 if not openai.api_key:
     raise ValueError("Der OpenAI API-Schlüssel ist nicht gesetzt.")
 
-service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
+service_account_path = '/home/PfS/service_account_key.json'
 if not os.path.exists(service_account_path):
     raise FileNotFoundError(f"Service Account Datei nicht gefunden: {service_account_path}")
 

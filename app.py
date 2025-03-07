@@ -893,8 +893,7 @@ def test_bigquery():
             
         output += f"<p>Verwende Seller ID: {seller_id} für Care Stays-Abfrage</p>"
         
-        # Erweiterte Abfrage für Care Stays mit JOIN auf die Leads-Tabelle für Namen
-        # Korrigierter JOIN: l._id = lead_names._id (statt lead_names.lead_id)
+        # Erweiterte Abfrage für Care Stays mit JOIN für Lead Namen und Agency Namen
         care_stays_query = """
         SELECT
             cs.bill_start,
@@ -922,13 +921,16 @@ def test_bigquery():
             l.tracks AS lead_tracks,
             l.created_at AS lead_created_at,
             lead_names.first_name,
-            lead_names.last_name
+            lead_names.last_name,
+            agencies.name AS agency_name
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
         LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
             ON l._id = lead_names._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies
+            ON c.agency_id = agencies._id
         WHERE l.seller_id = @seller_id
           AND cs.stage = 'Bestätigt'
           AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE()
@@ -948,10 +950,10 @@ def test_bigquery():
         care_stays_job = client.query(care_stays_query, job_config=care_stays_config)
         care_stays_results = care_stays_job.result()
         
-        # Tabelle für Care Stays ausgeben
+        # Tabelle für Care Stays ausgeben - jetzt mit Agentur-Spalte
         output += "<h2>Aktive Care Stays</h2>"
         output += "<table border='1'>"
-        output += "<tr><th>CS ID</th><th>Lead Name</th><th>Bill Start</th><th>Bill End</th><th>Arrival</th><th>Departure</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
+        output += "<tr><th>CS ID</th><th>Lead Name</th><th>Agency</th><th>Bill Start</th><th>Bill End</th><th>Arrival</th><th>Departure</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
         
         care_stays_found = False
         for row in care_stays_results:
@@ -963,6 +965,9 @@ def test_bigquery():
             last_name = row.get('last_name', '')
             lead_name = f"{first_name} {last_name}".strip() if (first_name or last_name) else f"Lead ID: {lead_id}"
             
+            # Agency Name
+            agency_name = row.get('agency_name', 'N/A')
+            
             # Sichere Anzeige der Datumswerte
             bill_start = str(row['bill_start']) if row['bill_start'] else 'N/A'
             bill_end = str(row['bill_end']) if row['bill_end'] else 'N/A'
@@ -972,6 +977,7 @@ def test_bigquery():
             output += f"<tr>"
             output += f"<td>{row['cs_id']}</td>"
             output += f"<td>{lead_name}</td>"
+            output += f"<td>{agency_name}</td>"  # Neue Spalte für die Agentur
             output += f"<td>{bill_start}</td>"
             output += f"<td>{bill_end}</td>"
             output += f"<td>{arrival}</td>"

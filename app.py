@@ -893,11 +893,13 @@ def test_bigquery():
             
         output += f"<p>Verwende Seller ID: {seller_id} für Care Stays-Abfrage</p>"
         
-        # Korrigierte Abfrage für Care Stays
+        # Erweiterte Abfrage für Care Stays mit JOIN auf die Leads-Tabelle für Namen
         care_stays_query = """
         SELECT
             cs.bill_start,
             cs.bill_end,
+            cs.arrival,
+            cs.departure,
             cs.presented_at,
             cs.contract_id,
             cs.created_at,
@@ -918,11 +920,14 @@ def test_bigquery():
             l._id AS lead_id,
             l.tracks AS lead_tracks,
             l.created_at AS lead_created_at,
-            l.source_data
+            lead_names.first_name,
+            lead_names.last_name
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
+            ON l._id = lead_names.lead_id
         WHERE l.seller_id = @seller_id
           AND cs.stage = 'Bestätigt'
           AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE()
@@ -945,25 +950,31 @@ def test_bigquery():
         # Tabelle für Care Stays ausgeben
         output += "<h2>Aktive Care Stays</h2>"
         output += "<table border='1'>"
-        output += "<tr><th>CS ID</th><th>Lead ID</th><th>Start</th><th>Ende</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
+        output += "<tr><th>CS ID</th><th>Lead Name</th><th>Bill Start</th><th>Bill End</th><th>Arrival</th><th>Departure</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
         
         care_stays_found = False
         for row in care_stays_results:
             care_stays_found = True
             lead_id = row['lead_id']
             
-            # Sicheres Anzeigen der Datumswerte ohne strftime
-            start_date = str(row['bill_start']) if row['bill_start'] else 'N/A'
-            end_date = str(row['bill_end']) if row['bill_end'] else 'N/A'
+            # Zusammensetzen des Kundennamens
+            first_name = row.get('first_name', '')
+            last_name = row.get('last_name', '')
+            lead_name = f"{first_name} {last_name}".strip() if (first_name or last_name) else f"Lead ID: {lead_id}"
             
-            # Für den Debug-Zweck, zeige auch den Datentyp an
-            start_type = type(row['bill_start']).__name__
+            # Sichere Anzeige der Datumswerte
+            bill_start = str(row['bill_start']) if row['bill_start'] else 'N/A'
+            bill_end = str(row['bill_end']) if row['bill_end'] else 'N/A'
+            arrival = str(row['arrival']) if row.get('arrival') else 'N/A'
+            departure = str(row['departure']) if row.get('departure') else 'N/A'
             
             output += f"<tr>"
             output += f"<td>{row['cs_id']}</td>"
-            output += f"<td>{lead_id}</td>"
-            output += f"<td>{start_date} (Type: {start_type})</td>"
-            output += f"<td>{end_date}</td>"
+            output += f"<td>{lead_name}</td>"
+            output += f"<td>{bill_start}</td>"
+            output += f"<td>{bill_end}</td>"
+            output += f"<td>{arrival}</td>"
+            output += f"<td>{departure}</td>"
             output += f"<td>{row['stage']}</td>"
             output += f"<td>{row['seller_prov']}</td>"
             output += f"<td>{row['care_stay_duration_days']}</td>"

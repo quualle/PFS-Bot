@@ -837,7 +837,7 @@ def test_session():
     
     return output
 
-@app.route('/test_bigquery')
+
 @app.route('/test_bigquery')
 def test_bigquery():
     try:
@@ -893,7 +893,7 @@ def test_bigquery():
             
         output += f"<p>Verwende Seller ID: {seller_id} für Care Stays-Abfrage</p>"
         
-        # Neue Abfrage für Care Stays
+        # Korrigierte Abfrage für Care Stays (basierend auf dem ursprünglichen CARESTAYS_QUERY)
         care_stays_query = """
         SELECT
             cs.bill_start,
@@ -904,6 +904,7 @@ def test_bigquery():
             cs.stage,
             cs.prov_seller AS seller_prov,
             cs._id AS cs_id,
+            cs.care_giver_instance_id,
             TIMESTAMP(cs.bill_end) AS parsed_bill_end,
             TIMESTAMP(cs.bill_start) AS parsed_bill_start,
             DATE_DIFF(
@@ -911,8 +912,13 @@ def test_bigquery():
                 DATE(TIMESTAMP(cs.bill_start)),
                 DAY
             ) AS care_stay_duration_days,
-            l.first_name,
-            l.last_name
+            c.agency_id,
+            c.active,
+            c.termination_reason,
+            l._id AS lead_id,
+            l.tracks AS lead_tracks,
+            l.created_at AS lead_created_at,
+            l.source_data
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
@@ -939,18 +945,18 @@ def test_bigquery():
         # Tabelle für Care Stays ausgeben
         output += "<h2>Aktive Care Stays</h2>"
         output += "<table border='1'>"
-        output += "<tr><th>ID</th><th>Kunde</th><th>Start</th><th>Ende</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
+        output += "<tr><th>CS ID</th><th>Lead ID</th><th>Start</th><th>Ende</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
         
         care_stays_found = False
         for row in care_stays_results:
             care_stays_found = True
-            full_name = f"{row['first_name']} {row['last_name']}"
+            lead_id = row['lead_id']
             start_date = row['bill_start'].strftime('%d.%m.%Y') if row['bill_start'] else 'N/A'
             end_date = row['bill_end'].strftime('%d.%m.%Y') if row['bill_end'] else 'N/A'
             
             output += f"<tr>"
             output += f"<td>{row['cs_id']}</td>"
-            output += f"<td>{full_name}</td>"
+            output += f"<td>{lead_id}</td>"
             output += f"<td>{start_date}</td>"
             output += f"<td>{end_date}</td>"
             output += f"<td>{row['stage']}</td>"
@@ -967,7 +973,7 @@ def test_bigquery():
     except Exception as e:
         return f"Fehler: {str(e)}"
     
-    
+
 @app.route('/check_login')
 def check_login():
     # Alle relevanten Session-Daten anzeigen

@@ -1464,7 +1464,7 @@ def test_bigquery():
                 FORMAT_DATE('%Y-%m', DATE(TIMESTAMP(cs.bill_start))) AS month,
                 COUNT(DISTINCT cs._id) AS new_care_stays,
                 SUM(CAST(cs.prov_seller AS FLOAT64)) AS monthly_prov
-            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS scs
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
             JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
             JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
             JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id

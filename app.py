@@ -1237,7 +1237,7 @@ def test_bigquery():
             cg.first_name AS giver_first_name,
             cg.last_name AS giver_last_name,
             cs._id AS carestay_id,
-            c.contract_id,
+            c._id AS contract_id,
             h.lead_id,
             lead_names.first_name AS lead_first_name,
             lead_names.last_name AS lead_last_name

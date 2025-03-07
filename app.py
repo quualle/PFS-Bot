@@ -1439,7 +1439,7 @@ def test_bigquery():
                 DATE(TIMESTAMP(cs.bill_start)),
                 DAY
             )) AS avg_care_stay_duration,
-            SUM(cs.prov_seller) AS total_prov_seller
+            SUM(CAST(cs.prov_seller AS FLOAT64)) AS total_prov_seller
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
@@ -1463,8 +1463,8 @@ def test_bigquery():
             SELECT
                 FORMAT_DATE('%Y-%m', DATE(TIMESTAMP(cs.bill_start))) AS month,
                 COUNT(DISTINCT cs._id) AS new_care_stays,
-                SUM(cs.prov_seller) AS monthly_prov
-            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
+                SUM(CAST(cs.prov_seller AS FLOAT64)) AS monthly_prov
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS scs
             JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
             JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
             JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id

@@ -893,7 +893,7 @@ def test_bigquery():
             
         output += f"<p>Verwende Seller ID: {seller_id} für Care Stays-Abfrage</p>"
         
-        # Korrigierte Abfrage für Care Stays (basierend auf dem ursprünglichen CARESTAYS_QUERY)
+        # Korrigierte Abfrage für Care Stays
         care_stays_query = """
         SELECT
             cs.bill_start,
@@ -951,13 +951,18 @@ def test_bigquery():
         for row in care_stays_results:
             care_stays_found = True
             lead_id = row['lead_id']
-            start_date = row['bill_start'].strftime('%d.%m.%Y') if row['bill_start'] else 'N/A'
-            end_date = row['bill_end'].strftime('%d.%m.%Y') if row['bill_end'] else 'N/A'
+            
+            # Sicheres Anzeigen der Datumswerte ohne strftime
+            start_date = str(row['bill_start']) if row['bill_start'] else 'N/A'
+            end_date = str(row['bill_end']) if row['bill_end'] else 'N/A'
+            
+            # Für den Debug-Zweck, zeige auch den Datentyp an
+            start_type = type(row['bill_start']).__name__
             
             output += f"<tr>"
             output += f"<td>{row['cs_id']}</td>"
             output += f"<td>{lead_id}</td>"
-            output += f"<td>{start_date}</td>"
+            output += f"<td>{start_date} (Type: {start_type})</td>"
             output += f"<td>{end_date}</td>"
             output += f"<td>{row['stage']}</td>"
             output += f"<td>{row['seller_prov']}</td>"

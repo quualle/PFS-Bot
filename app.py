@@ -838,6 +838,7 @@ def test_session():
     return output
 
 @app.route('/test_bigquery')
+@app.route('/test_bigquery')
 def test_bigquery():
     try:
         service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
@@ -846,43 +847,127 @@ def test_bigquery():
         # E-Mail aus Session holen
         email = session.get('email') or session.get('google_user_email', '')
         
-        # Abfrage mit WHERE-Klausel
-        query = """
+        # Abfrage mit WHERE-Klausel für User-Info
+        user_query = """
         SELECT email, _id 
         FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.proto_users` 
         WHERE email = @email
         LIMIT 10
         """
         
-        # Parameter definieren - DAS IST DER WICHTIGE TEIL
-        job_config = bigquery.QueryJobConfig(
+        # Parameter definieren für User-Query
+        user_job_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter("email", "STRING", email)
             ]
         )
         
-        # Abfrage mit Parametern ausführen
-        query_job = client.query(query, job_config=job_config)
-        results = query_job.result()
+        # User-Abfrage ausführen
+        user_query_job = client.query(user_query, job_config=user_job_config)
+        user_results = user_query_job.result()
         
         output = "<h1>BigQuery-Test</h1>"
         output += f"<p>Abfrage für E-Mail: {email}</p>"
+        
+        # Tabelle für Benutzer-Info
+        output += "<h2>Benutzerinformationen</h2>"
         output += "<table border='1'><tr><th>E-Mail</th><th>ID</th></tr>"
         
+        seller_id = session.get('seller_id')
         rows_found = False
-        for row in results:
+        for row in user_results:
             rows_found = True
             output += f"<tr><td>{row['email']}</td><td>{row['_id']}</td></tr>"
+            if not seller_id:  # Wenn keine seller_id in der Session ist, nutze die aus der Abfrage
+                seller_id = row['_id']
         
         output += "</table>"
         
         if not rows_found:
             output += f"<p>Keine Daten für E-Mail '{email}' gefunden!</p>"
             
+        # Wenn wir keine seller_id haben, können wir keine Care Stays abfragen
+        if not seller_id:
+            output += "<p style='color:red'>Keine Seller ID gefunden für Care Stays-Abfrage!</p>"
+            return output
+            
+        output += f"<p>Verwende Seller ID: {seller_id} für Care Stays-Abfrage</p>"
+        
+        # Neue Abfrage für Care Stays
+        care_stays_query = """
+        SELECT
+            cs.bill_start,
+            cs.bill_end,
+            cs.presented_at,
+            cs.contract_id,
+            cs.created_at,
+            cs.stage,
+            cs.prov_seller AS seller_prov,
+            cs._id AS cs_id,
+            TIMESTAMP(cs.bill_end) AS parsed_bill_end,
+            TIMESTAMP(cs.bill_start) AS parsed_bill_start,
+            DATE_DIFF(
+                DATE(TIMESTAMP(cs.bill_end)),
+                DATE(TIMESTAMP(cs.bill_start)),
+                DAY
+            ) AS care_stay_duration_days,
+            l.first_name,
+            l.last_name
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+        WHERE l.seller_id = @seller_id
+          AND cs.stage = 'Bestätigt'
+          AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE()
+          AND cs.rejection_reason IS NULL
+        ORDER BY cs.bill_start DESC
+        LIMIT 100
+        """
+        
+        # Parameter für Care Stays-Abfrage
+        care_stays_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        # Care Stays-Abfrage ausführen
+        care_stays_job = client.query(care_stays_query, job_config=care_stays_config)
+        care_stays_results = care_stays_job.result()
+        
+        # Tabelle für Care Stays ausgeben
+        output += "<h2>Aktive Care Stays</h2>"
+        output += "<table border='1'>"
+        output += "<tr><th>ID</th><th>Kunde</th><th>Start</th><th>Ende</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
+        
+        care_stays_found = False
+        for row in care_stays_results:
+            care_stays_found = True
+            full_name = f"{row['first_name']} {row['last_name']}"
+            start_date = row['bill_start'].strftime('%d.%m.%Y') if row['bill_start'] else 'N/A'
+            end_date = row['bill_end'].strftime('%d.%m.%Y') if row['bill_end'] else 'N/A'
+            
+            output += f"<tr>"
+            output += f"<td>{row['cs_id']}</td>"
+            output += f"<td>{full_name}</td>"
+            output += f"<td>{start_date}</td>"
+            output += f"<td>{end_date}</td>"
+            output += f"<td>{row['stage']}</td>"
+            output += f"<td>{row['seller_prov']}</td>"
+            output += f"<td>{row['care_stay_duration_days']}</td>"
+            output += f"</tr>"
+        
+        output += "</table>"
+        
+        if not care_stays_found:
+            output += f"<p>Keine aktiven Care Stays für Seller ID '{seller_id}' gefunden!</p>"
+            
         return output
     except Exception as e:
         return f"Fehler: {str(e)}"
-
+    
+    
 @app.route('/check_login')
 def check_login():
     # Alle relevanten Session-Daten anzeigen

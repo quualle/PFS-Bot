@@ -894,6 +894,7 @@ def test_bigquery():
         output += f"<p>Verwende Seller ID: {seller_id} für Care Stays-Abfrage</p>"
         
         # Erweiterte Abfrage für Care Stays mit JOIN auf die Leads-Tabelle für Namen
+        # Korrigierter JOIN: l._id = lead_names._id (statt lead_names.lead_id)
         care_stays_query = """
         SELECT
             cs.bill_start,
@@ -927,7 +928,7 @@ def test_bigquery():
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
         JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
         LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
-            ON l._id = lead_names.lead_id
+            ON l._id = lead_names._id
         WHERE l.seller_id = @seller_id
           AND cs.stage = 'Bestätigt'
           AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE()

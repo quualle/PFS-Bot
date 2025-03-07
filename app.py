@@ -5,6 +5,7 @@ import time
 import logging
 import datetime
 from functools import wraps
+import traceback
 import uuid
 import tempfile
 import requests  # Added import for requests
@@ -866,34 +867,95 @@ def test_bigquery():
         user_query_job = client.query(user_query, job_config=user_job_config)
         user_results = user_query_job.result()
         
-        output = "<h1>BigQuery-Test</h1>"
-        output += f"<p>Abfrage für E-Mail: {email}</p>"
+        # HTML-Ausgabe mit Bootstrap für besseres Layout
+        output = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>BigQuery Test Dashboard</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+            <style>
+                .table-responsive { margin-bottom: 20px; }
+                .tab-pane { padding: 15px; }
+            </style>
+        </head>
+        <body>
+        <div class="container mt-4">
+            <h1>BigQuery-Test Dashboard</h1>
+            <p>Abfrage für E-Mail: """ + email + """</p>
+        """
         
-        # Tabelle für Benutzer-Info
-        output += "<h2>Benutzerinformationen</h2>"
-        output += "<table border='1'><tr><th>E-Mail</th><th>ID</th></tr>"
-        
+        # Seller-ID ermitteln
         seller_id = session.get('seller_id')
         rows_found = False
+        
+        output += """
+        <h2>Benutzerinformationen</h2>
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead><tr><th>E-Mail</th><th>ID</th></tr></thead>
+            <tbody>
+        """
+        
         for row in user_results:
             rows_found = True
             output += f"<tr><td>{row['email']}</td><td>{row['_id']}</td></tr>"
             if not seller_id:  # Wenn keine seller_id in der Session ist, nutze die aus der Abfrage
                 seller_id = row['_id']
         
-        output += "</table>"
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
         
         if not rows_found:
-            output += f"<p>Keine Daten für E-Mail '{email}' gefunden!</p>"
+            output += f"<p class='alert alert-warning'>Keine Daten für E-Mail '{email}' gefunden!</p>"
             
-        # Wenn wir keine seller_id haben, können wir keine Care Stays abfragen
+        # Wenn wir keine seller_id haben, können wir keine weiteren Abfragen durchführen
         if not seller_id:
-            output += "<p style='color:red'>Keine Seller ID gefunden für Care Stays-Abfrage!</p>"
+            output += "<p class='alert alert-danger'>Keine Seller ID gefunden für weitere Abfragen!</p></div></body></html>"
             return output
             
-        output += f"<p>Verwende Seller ID: {seller_id} für Care Stays-Abfrage</p>"
+        output += f"<p>Verwende Seller ID: <strong>{seller_id}</strong> für weitere Abfragen</p>"
         
-        # Erweiterte Abfrage für Care Stays mit JOIN für Lead Namen und Agency Namen
+        # Tabs für verschiedene Datenquellen
+        output += """
+        <ul class="nav nav-tabs" id="dataTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="carestays-tab" data-bs-toggle="tab" data-bs-target="#carestays" type="button" role="tab">Care Stays</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="contracts-tab" data-bs-toggle="tab" data-bs-target="#contracts" type="button" role="tab">Verträge</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="leads-tab" data-bs-toggle="tab" data-bs-target="#leads" type="button" role="tab">Leads</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="caregivers-tab" data-bs-toggle="tab" data-bs-target="#caregivers" type="button" role="tab">Pflegekräfte</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tickets-tab" data-bs-toggle="tab" data-bs-target="#tickets" type="button" role="tab">Tickets</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="agencies-tab" data-bs-toggle="tab" data-bs-target="#agencies" type="button" role="tab">Agenturen</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats" type="button" role="tab">Statistiken</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="dataTabsContent">
+        """
+        
+        # ==================== CARE STAYS TAB ====================
+        output += """<div class="tab-pane fade show active" id="carestays" role="tabpanel">
+            <h3 class="mt-3">Aktive Care Stays</h3>"""
+        
+        # Care Stays Abfrage
         care_stays_query = """
         SELECT
             cs.bill_start,
@@ -939,7 +1001,6 @@ def test_bigquery():
         LIMIT 100
         """
         
-        # Parameter für Care Stays-Abfrage
         care_stays_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
@@ -950,10 +1011,26 @@ def test_bigquery():
         care_stays_job = client.query(care_stays_query, job_config=care_stays_config)
         care_stays_results = care_stays_job.result()
         
-        # Tabelle für Care Stays ausgeben - jetzt mit Agentur-Spalte
-        output += "<h2>Aktive Care Stays</h2>"
-        output += "<table border='1'>"
-        output += "<tr><th>CS ID</th><th>Lead Name</th><th>Agency</th><th>Bill Start</th><th>Bill End</th><th>Arrival</th><th>Departure</th><th>Status</th><th>Prov. Verkäufer</th><th>Dauer (Tage)</th></tr>"
+        # Tabelle für Care Stays ausgeben
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>CS ID</th>
+                    <th>Lead Name</th>
+                    <th>Agency</th>
+                    <th>Bill Start</th>
+                    <th>Bill End</th>
+                    <th>Arrival</th>
+                    <th>Departure</th>
+                    <th>Status</th>
+                    <th>Prov. Verkäufer</th>
+                    <th>Dauer (Tage)</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
         
         care_stays_found = False
         for row in care_stays_results:
@@ -974,27 +1051,543 @@ def test_bigquery():
             arrival = str(row['arrival']) if row.get('arrival') else 'N/A'
             departure = str(row['departure']) if row.get('departure') else 'N/A'
             
-            output += f"<tr>"
-            output += f"<td>{row['cs_id']}</td>"
-            output += f"<td>{lead_name}</td>"
-            output += f"<td>{agency_name}</td>"  # Neue Spalte für die Agentur
-            output += f"<td>{bill_start}</td>"
-            output += f"<td>{bill_end}</td>"
-            output += f"<td>{arrival}</td>"
-            output += f"<td>{departure}</td>"
-            output += f"<td>{row['stage']}</td>"
-            output += f"<td>{row['seller_prov']}</td>"
-            output += f"<td>{row['care_stay_duration_days']}</td>"
-            output += f"</tr>"
+            output += f"""
+            <tr>
+                <td>{row['cs_id']}</td>
+                <td>{lead_name}</td>
+                <td>{agency_name}</td>
+                <td>{bill_start}</td>
+                <td>{bill_end}</td>
+                <td>{arrival}</td>
+                <td>{departure}</td>
+                <td>{row['stage']}</td>
+                <td>{row['seller_prov']}</td>
+                <td>{row['care_stay_duration_days']}</td>
+            </tr>"""
         
-        output += "</table>"
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
         
         if not care_stays_found:
-            output += f"<p>Keine aktiven Care Stays für Seller ID '{seller_id}' gefunden!</p>"
+            output += f"<p class='alert alert-warning'>Keine aktiven Care Stays für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Care Stays Tab
+        
+        # ==================== VERTRÄGE TAB ====================
+        output += """<div class="tab-pane fade" id="contracts" role="tabpanel">
+            <h3 class="mt-3">Verträge</h3>"""
+        
+        contracts_query = """
+        SELECT
+            c._id AS contract_id,
+            c.active,
+            c.termination_reason,
+            c.agency_id,
+            c.household_id,
+            h.lead_id,
+            agencies.name AS agency_name,
+            lead_names.first_name,
+            lead_names.last_name,
+            c.created_at
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
+            ON l._id = lead_names._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies
+            ON c.agency_id = agencies._id
+        WHERE l.seller_id = @seller_id
+        ORDER BY c.created_at DESC
+        LIMIT 100
+        """
+        
+        contracts_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        contracts_job = client.query(contracts_query, job_config=contracts_config)
+        contracts_results = contracts_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Contract ID</th>
+                    <th>Lead</th>
+                    <th>Agentur</th>
+                    <th>Aktiv</th>
+                    <th>Kündigungsgrund</th>
+                    <th>Erstellt am</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        contracts_found = False
+        for row in contracts_results:
+            contracts_found = True
+            first_name = row.get('first_name', '')
+            last_name = row.get('last_name', '')
+            lead_name = f"{first_name} {last_name}".strip() if (first_name or last_name) else f"Lead ID: {row['lead_id']}"
             
+            agency_name = row.get('agency_name', 'N/A')
+            created_at = str(row['created_at']) if row['created_at'] else 'N/A'
+            active = "Ja" if row['active'] else "Nein"
+            
+            output += f"""
+            <tr>
+                <td>{row['contract_id']}</td>
+                <td>{lead_name}</td>
+                <td>{agency_name}</td>
+                <td>{active}</td>
+                <td>{row['termination_reason'] or 'N/A'}</td>
+                <td>{created_at}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not contracts_found:
+            output += f"<p class='alert alert-warning'>Keine Verträge für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Verträge Tab
+        
+        # ==================== LEADS TAB ====================
+        output += """<div class="tab-pane fade" id="leads" role="tabpanel">
+            <h3 class="mt-3">Leads</h3>"""
+        
+        leads_query = """
+        SELECT
+            l._id AS lead_id,
+            la.first_name,
+            la.last_name,
+            l.created_at AS lead_created_at,
+            l.source_data
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l
+        JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS la
+        ON la._id = l._id
+        WHERE l.seller_id = @seller_id
+        ORDER BY l.created_at DESC
+        LIMIT 100
+        """
+        
+        leads_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        leads_job = client.query(leads_query, job_config=leads_config)
+        leads_results = leads_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Lead ID</th>
+                    <th>Vorname</th>
+                    <th>Nachname</th>
+                    <th>Erstellt am</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        leads_found = False
+        for row in leads_results:
+            leads_found = True
+            created_at = str(row['lead_created_at']) if row['lead_created_at'] else 'N/A'
+            
+            output += f"""
+            <tr>
+                <td>{row['lead_id']}</td>
+                <td>{row.get('first_name', 'N/A')}</td>
+                <td>{row.get('last_name', 'N/A')}</td>
+                <td>{created_at}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not leads_found:
+            output += f"<p class='alert alert-warning'>Keine Leads für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Leads Tab
+        
+        # ==================== PFLEGEKRÄFTE TAB ====================
+        output += """<div class="tab-pane fade" id="caregivers" role="tabpanel">
+            <h3 class="mt-3">Pflegekräfte</h3>"""
+        
+        caregivers_query = """
+        SELECT
+            cgi._id AS care_giver_instance_id,
+            cg.first_name AS giver_first_name,
+            cg.last_name AS giver_last_name,
+            cs._id AS carestay_id,
+            c.contract_id,
+            h.lead_id,
+            lead_names.first_name AS lead_first_name,
+            lead_names.last_name AS lead_last_name
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_giver_instances` cgi
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_givers` cg ON cgi.care_giver_id = cg._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON cs.care_giver_instance_id = cgi._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c ON cs.contract_id = c._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
+            ON l._id = lead_names._id
+        WHERE l.seller_id = @seller_id
+        LIMIT 100
+        """
+        
+        caregivers_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        caregivers_job = client.query(caregivers_query, job_config=caregivers_config)
+        caregivers_results = caregivers_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Pflegekraft</th>
+                    <th>Kunde</th>
+                    <th>Care Stay ID</th>
+                    <th>Instance ID</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        caregivers_found = False
+        for row in caregivers_results:
+            caregivers_found = True
+            caregiver_name = f"{row.get('giver_first_name', '')} {row.get('giver_last_name', '')}".strip() or 'N/A'
+            lead_name = f"{row.get('lead_first_name', '')} {row.get('lead_last_name', '')}".strip() or 'N/A'
+            
+            output += f"""
+            <tr>
+                <td>{caregiver_name}</td>
+                <td>{lead_name}</td>
+                <td>{row.get('carestay_id', 'N/A')}</td>
+                <td>{row['care_giver_instance_id']}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not caregivers_found:
+            output += f"<p class='alert alert-warning'>Keine Pflegekräfte für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Pflegekräfte Tab
+        
+        # ==================== TICKETS TAB ====================
+        output += """<div class="tab-pane fade" id="tickets" role="tabpanel">
+            <h3 class="mt-3">Tickets</h3>"""
+        
+        tickets_query = """
+        SELECT
+            t.subject,
+            t.messages,
+            t.created_at,
+            tc.Datum,
+            t.updated_at,
+            t._id,
+            t.ticketable_id,
+            t.ticketable_type,
+            tc.seller,
+            tc.agency
+        FROM
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.tickets` t
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.tickets_creation_end` tc
+        ON
+            t._id = tc.Ticket_ID
+        WHERE
+            tc.seller = 'Pflegeteam Heer'
+        ORDER BY 
+            t.created_at DESC
+        LIMIT 100
+        """
+        
+        tickets_job = client.query(tickets_query)
+        tickets_results = tickets_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Ticket ID</th>
+                    <th>Betreff</th>
+                    <th>Typ</th>
+                    <th>Erstellt am</th>
+                    <th>Aktualisiert am</th>
+                    <th>Agentur</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        tickets_found = False
+        for row in tickets_results:
+            tickets_found = True
+            created_at = str(row['created_at']) if row['created_at'] else 'N/A'
+            updated_at = str(row['updated_at']) if row['updated_at'] else 'N/A'
+            
+            output += f"""
+            <tr>
+                <td>{row['_id']}</td>
+                <td>{row['subject']}</td>
+                <td>{row['ticketable_type'] or 'N/A'}</td>
+                <td>{created_at}</td>
+                <td>{updated_at}</td>
+                <td>{row['agency'] or 'N/A'}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not tickets_found:
+            output += f"<p class='alert alert-warning'>Keine Tickets für '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Tickets Tab
+        
+        # ==================== AGENTUREN TAB ====================
+        output += """<div class="tab-pane fade" id="agencies" role="tabpanel">
+            <h3 class="mt-3">Agenturen</h3>"""
+        
+        agencies_query = """
+        SELECT
+            _id AS agency_id,
+            name AS agency_name
+        FROM gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies
+        ORDER BY name
+        LIMIT 100
+        """
+        
+        agencies_job = client.query(agencies_query)
+        agencies_results = agencies_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Agentur ID</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        agencies_found = False
+        for row in agencies_results:
+            agencies_found = True
+            output += f"""
+            <tr>
+                <td>{row['agency_id']}</td>
+                <td>{row['agency_name']}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not agencies_found:
+            output += f"<p class='alert alert-warning'>Keine Agenturen gefunden!</p>"
+        
+        output += "</div>"  # Ende des Agenturen Tab
+        
+        # ==================== STATISTIKEN TAB ====================
+        output += """<div class="tab-pane fade" id="stats" role="tabpanel">
+            <h3 class="mt-3">Statistiken</h3>"""
+        
+        # Care Stay Statistiken
+        stats_query = """
+        SELECT
+            COUNT(DISTINCT cs._id) AS total_care_stays,
+            COUNT(DISTINCT c._id) AS total_contracts,
+            COUNT(DISTINCT l._id) AS total_leads,
+            AVG(DATE_DIFF(
+                DATE(TIMESTAMP(cs.bill_end)),
+                DATE(TIMESTAMP(cs.bill_start)),
+                DAY
+            )) AS avg_care_stay_duration,
+            SUM(cs.prov_seller) AS total_prov_seller
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+        WHERE l.seller_id = @seller_id
+          AND cs.stage = 'Bestätigt'
+        """
+        
+        stats_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        stats_job = client.query(stats_query, job_config=stats_config)
+        stats_results = stats_job.result()
+        
+        # Monatliche Statistiken
+        monthly_stats_query = """
+        WITH monthly_data AS (
+            SELECT
+                FORMAT_DATE('%Y-%m', DATE(TIMESTAMP(cs.bill_start))) AS month,
+                COUNT(DISTINCT cs._id) AS new_care_stays,
+                SUM(cs.prov_seller) AS monthly_prov
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+            WHERE l.seller_id = @seller_id
+              AND cs.stage = 'Bestätigt'
+              AND DATE(TIMESTAMP(cs.bill_start)) >= DATE_SUB(CURRENT_DATE(), INTERVAL 12 MONTH)
+            GROUP BY month
+            ORDER BY month DESC
+        )
+        SELECT * FROM monthly_data
+        """
+        
+        monthly_stats_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        monthly_stats_job = client.query(monthly_stats_query, job_config=monthly_stats_config)
+        monthly_stats_results = monthly_stats_job.result()
+        
+        # Gesamtstatistiken
+        output += """<div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Gesamtstatistiken</div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Metrik</th>
+                                    <th>Wert</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        """
+        
+        for row in stats_results:
+            output += f"""
+                <tr><td>Gesamtzahl Care Stays</td><td>{row['total_care_stays']}</td></tr>
+                <tr><td>Gesamtzahl Verträge</td><td>{row['total_contracts']}</td></tr>
+                <tr><td>Gesamtzahl Leads</td><td>{row['total_leads']}</td></tr>
+                <tr><td>Durchschnittliche Care Stay Dauer (Tage)</td><td>{row['avg_care_stay_duration']:.2f}</td></tr>
+                <tr><td>Gesamtprovision</td><td>{row['total_prov_seller']:.2f} €</td></tr>
+            """
+        
+        output += """
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Monatliche Statistiken</div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Monat</th>
+                                    <th>Neue Care Stays</th>
+                                    <th>Provision</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        """
+        
+        monthly_stats_found = False
+        for row in monthly_stats_results:
+            monthly_stats_found = True
+            output += f"""
+                <tr>
+                    <td>{row['month']}</td>
+                    <td>{row['new_care_stays']}</td>
+                    <td>{row['monthly_prov']:.2f} €</td>
+                </tr>
+            """
+        
+        if not monthly_stats_found:
+            output += "<tr><td colspan='3'>Keine monatlichen Daten gefunden</td></tr>"
+        
+        output += """
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>"""
+        
+        output += "</div>"  # Ende des Statistiken Tab
+        
+        # Abschluss der HTML-Struktur
+        output += """
+        </div>  <!-- Ende der Tab-Inhalte -->
+        </div>  <!-- Ende des Containers -->
+        </body>
+        </html>
+        """
+        
         return output
     except Exception as e:
-        return f"Fehler: {str(e)}"
+        error_output = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>BigQuery Test - Fehler</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body>
+        <div class="container mt-4">
+            <div class="alert alert-danger">
+                <h4>Fehler beim Ausführen der BigQuery-Abfragen:</h4>
+                <p>{str(e)}</p>
+                <pre>{traceback.format_exc()}</pre>
+            </div>
+        </div>
+        </body>
+        </html>
+        """
+        return error_output
     
 
 @app.route('/check_login')

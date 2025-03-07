@@ -1304,7 +1304,7 @@ def test_bigquery():
         # ==================== TICKETS TAB ====================
         output += """<div class="tab-pane fade" id="tickets" role="tabpanel">
             <h3 class="mt-3">Tickets</h3>"""
-        
+
         tickets_query = """
         SELECT
             t.subject,
@@ -1316,23 +1316,97 @@ def test_bigquery():
             t.ticketable_id,
             t.ticketable_type,
             tc.seller,
-            tc.agency
+            tc.agency,
+            -- Lead-Informationen
+            CASE 
+                WHEN t.ticketable_type = 'Lead' THEN lead_direct.first_name
+                WHEN t.ticketable_type = 'Contract' THEN lead_contract.first_name
+                WHEN t.ticketable_type = 'CareStay' THEN lead_carestay.first_name
+                WHEN t.ticketable_type = 'Visor' THEN lead_visor.first_name
+                ELSE NULL
+            END AS lead_first_name,
+            CASE 
+                WHEN t.ticketable_type = 'Lead' THEN lead_direct.last_name
+                WHEN t.ticketable_type = 'Contract' THEN lead_contract.last_name
+                WHEN t.ticketable_type = 'CareStay' THEN lead_carestay.last_name
+                WHEN t.ticketable_type = 'Visor' THEN lead_visor.last_name
+                ELSE NULL
+            END AS lead_last_name,
+            CASE
+                WHEN t.ticketable_type = 'Lead' THEN t.ticketable_id
+                WHEN t.ticketable_type = 'Contract' THEN contract_lead.lead_id
+                WHEN t.ticketable_type = 'CareStay' THEN carestay_lead.lead_id
+                WHEN t.ticketable_type = 'Visor' THEN visor_lead.lead_id
+                ELSE NULL
+            END AS lead_id
         FROM
             `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.tickets` t
         LEFT JOIN
             `gcpxbixpflegehilfesenioren.dataform_staging.tickets_creation_end` tc
-        ON
-            t._id = tc.Ticket_ID
+            ON t._id = tc.Ticket_ID
+
+        -- Direkter Lead-Join für Lead-Tickets
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_direct
+            ON t.ticketable_type = 'Lead' AND t.ticketable_id = lead_direct._id
+
+        -- Contract-Lead-Join für Contract-Tickets
+        LEFT JOIN (
+            SELECT
+                c._id AS contract_id,
+                h.lead_id,
+                l._id AS lead_orig_id
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        ) AS contract_lead
+            ON t.ticketable_type = 'Contract' AND t.ticketable_id = contract_lead.contract_id
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_contract
+            ON contract_lead.lead_orig_id = lead_contract._id
+
+        -- CareStay-Lead-Join für CareStay-Tickets
+        LEFT JOIN (
+            SELECT
+                cs._id AS carestay_id,
+                h.lead_id,
+                l._id AS lead_orig_id
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c ON cs.contract_id = c._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        ) AS carestay_lead
+            ON t.ticketable_type = 'CareStay' AND t.ticketable_id = carestay_lead.carestay_id
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_carestay
+            ON carestay_lead.lead_orig_id = lead_carestay._id
+
+        -- Visor-Lead-Join für Visor-Tickets
+        LEFT JOIN (
+            SELECT
+                v._id AS visor_id,
+                h.lead_id,
+                l._id AS lead_orig_id
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.visors` v
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.postings` p ON v.posting_id = p._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON p.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        ) AS visor_lead
+            ON t.ticketable_type = 'Visor' AND t.ticketable_id = visor_lead.visor_id
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_visor
+            ON visor_lead.lead_orig_id = lead_visor._id
+
         WHERE
             tc.seller = 'Pflegeteam Heer'
         ORDER BY 
             t.created_at DESC
         LIMIT 100
         """
-        
+
         tickets_job = client.query(tickets_query)
         tickets_results = tickets_job.result()
-        
+
         output += """
         <div class="table-responsive">
         <table class="table table-striped table-bordered">
@@ -1341,6 +1415,7 @@ def test_bigquery():
                     <th>Ticket ID</th>
                     <th>Betreff</th>
                     <th>Typ</th>
+                    <th>Lead</th>
                     <th>Erstellt am</th>
                     <th>Aktualisiert am</th>
                     <th>Agentur</th>
@@ -1348,32 +1423,38 @@ def test_bigquery():
             </thead>
             <tbody>
         """
-        
+
         tickets_found = False
         for row in tickets_results:
             tickets_found = True
             created_at = str(row['created_at']) if row['created_at'] else 'N/A'
             updated_at = str(row['updated_at']) if row['updated_at'] else 'N/A'
             
+            # Lead-Namen zusammensetzen
+            lead_name = "N/A"
+            if row.get('lead_first_name') or row.get('lead_last_name'):
+                lead_name = f"{row.get('lead_first_name', '')} {row.get('lead_last_name', '')}".strip()
+            
             output += f"""
             <tr>
                 <td>{row['_id']}</td>
                 <td>{row['subject']}</td>
                 <td>{row['ticketable_type'] or 'N/A'}</td>
+                <td>{lead_name}</td>
                 <td>{created_at}</td>
                 <td>{updated_at}</td>
                 <td>{row['agency'] or 'N/A'}</td>
             </tr>"""
-        
+
         output += """
             </tbody>
         </table>
         </div>
         """
-        
+
         if not tickets_found:
             output += f"<p class='alert alert-warning'>Keine Tickets für '{seller_id}' gefunden!</p>"
-        
+
         output += "</div>"  # Ende des Tickets Tab
         
         # ==================== AGENTUREN TAB ====================

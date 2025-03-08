@@ -955,7 +955,7 @@ def test_bigquery():
         </head>
         <body>
         <div class="container mt-4">
-            <h1>BigQuery-Test Dashboard</h1>
+            <h1>BigQuery Dashboard zum Testen der geladenen Daten</h1>
             <p>Abfrage für E-Mail: """ + email + """</p>
         """
         

@@ -3,6 +3,7 @@ import json
 import re
 import time
 import logging
+import logger
 import datetime
 from functools import wraps
 import traceback
@@ -33,6 +34,12 @@ import docx
 
 # Für Datum / Statistik
 from datetime import datetime
+
+from bigquery_functions import (
+    handle_function_call, 
+    summarize_query_result, 
+    get_user_id_from_email
+)
 
 # Laden der Umgebungsvariablen aus .env
 load_dotenv()
@@ -885,6 +892,115 @@ def count_tokens(messages, model=None):
         token_count += 4
     token_count += 2
     return token_count
+
+###########################################
+# BigQuery Datenbezug
+###########################################
+
+def create_function_definitions():
+    """
+    Erstellt die Function-Definitionen für OpenAI's Function-Calling basierend auf 
+    den definierten Abfragemustern.
+    
+    Returns:
+        list: Eine Liste von Function-Definitionen im Format, das von OpenAI erwartet wird
+    """
+    # Lade das JSON-Schema für Abfragemuster
+    with open('query_patterns.json', 'r', encoding='utf-8') as f:
+        query_patterns = json.load(f)
+    
+    tools = []
+    
+    # Erstelle für jedes Abfragemuster eine Funktion
+    for query_name, query_info in query_patterns['common_queries'].items():
+        function_def = {
+            "type": "function",
+            "function": {
+                "name": query_name,
+                "description": query_info['description'],
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": query_info['required_parameters']
+                }
+            }
+        }
+        
+        # Füge Parameter hinzu
+        for param in query_info['required_parameters'] + query_info.get('optional_parameters', []):
+            # Bestimme den Typ des Parameters basierend auf Namen (Heuristik)
+            param_type = "string"
+            if "id" in param:
+                param_type = "string"
+            elif "limit" in param or "count" in param or "_back" in param:
+                param_type = "integer"
+            elif "date" in param or "time" in param:
+                param_type = "string"  # Datum als String, wird später konvertiert
+            elif param == "contacted":
+                param_type = "boolean"
+            
+            # Bestimme die Beschreibung des Parameters
+            param_desc = f"Parameter {param} für die Abfrage"
+            if param == "seller_id":
+                param_desc = "Die ID des Verkäufers, dessen Daten abgefragt werden sollen"
+            elif param == "lead_id":
+                param_desc = "Die ID des Leads, dessen Daten abgefragt werden sollen"
+            elif param == "limit":
+                param_desc = "Maximale Anzahl der zurückzugebenden Datensätze"
+            
+            # Füge Parameter zur Funktionsdefinition hinzu
+            function_def["function"]["parameters"]["properties"][param] = {
+                "type": param_type,
+                "description": param_desc
+            }
+            
+            # Füge Enumerationen für bestimmte Parameter hinzu
+            if param == "ticketable_type":
+                function_def["function"]["parameters"]["properties"][param]["enum"] = [
+                    "Lead", "Contract", "CareStay", "Visor", "Posting"
+                ]
+        
+        tools.append(function_def)
+    
+    return tools
+
+
+def create_system_prompt(table_schema):
+    """
+    Erstellt einen System-Prompt, der die Datenstruktur und verfügbaren Funktionen beschreibt.
+    
+    Args:
+        table_schema (dict): Das JSON-Schema der Tabellen und Beziehungen
+        
+    Returns:
+        str: Der System-Prompt für OpenAI
+    """
+    current_date = datetime.now().strftime("%d.%m.%Y")
+    
+    prompt = f"""
+Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. Heute ist der {current_date}.
+
+Du kannst auf folgende Daten zugreifen:
+"""
+    
+    # Beschreibe die verfügbaren Tabellen
+    for table_name, table_info in table_schema['tables'].items():
+        prompt += f"\n- {table_name}: {table_info['description']}"
+    
+    prompt += """
+
+Wenn der Benutzer nach spezifischen Daten fragt, nutze die passende Funktion, um diese abzurufen.
+Bei Fragen zu Statistiken, Trends oder Zusammenfassungen nutze die entsprechenden Funktionen.
+
+Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird.
+Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt.
+
+Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, sondern sagst, dass du es nicht weißt.
+"""
+    
+    return prompt
+
+
 
 
 @app.route('/test_session')
@@ -1898,11 +2014,40 @@ def chat():
 
         # Verkäufer-ID aus der Session abrufen
         seller_id = session.get('seller_id')
+        if not seller_id and session.get('email'):
+            seller_id = get_user_id_from_email(session.get('email'))
+            if seller_id:
+                session['seller_id'] = seller_id
+                session.modified = True
         
+        # Chat-History mit dem benutzerdefinierten Format beibehalten
         chat_key = f'chat_history_{user_id}'
         if chat_key not in session:
             session[chat_key] = []
         chat_history = session[chat_key]
+        
+        # Für die Anzeige im Template konvertieren wir die Chat-History in das alte Format
+        display_chat_history = []
+        if chat_history:
+            for entry in chat_history:
+                if isinstance(entry, dict) and 'user' in entry and 'bot' in entry:
+                    # Altes Format - wir behalten es bei
+                    display_chat_history.append(entry)
+                else:
+                    # Ignorieren wir, da es vom neuen Format sein könnte
+                    pass
+        
+        # Tabellenschema und Abfragemuster laden
+        try:
+            with open('table_schema.json', 'r', encoding='utf-8') as f:
+                table_schema = json.load(f)
+            
+            with open('query_patterns.json', 'r', encoding='utf-8') as f:
+                query_patterns = json.load(f)
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Schema-Dateien: {e}")
+            table_schema = {"tables": {}}
+            query_patterns = {"common_queries": {}}
 
         if request.method == 'POST':
             user_message = request.form.get('message', '').strip()
@@ -1910,14 +2055,14 @@ def chat():
             notfall_aktiv = (request.form.get('notfallmodus') == '1')
             notfall_art = request.form.get('notfallart', '').strip()
 
+            # Input-Validierung
             if not user_message:
                 flash("Bitte geben Sie eine Nachricht ein.", 'warning')
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'error': 'Bitte geben Sie eine Nachricht ein.'}), 400
                 return redirect(url_for('chat'))
 
-
-
+            # Wissensbasis laden
             wissensbasis = download_wissensbasis()
             if not wissensbasis:
                 flash("Die Wissensbasis konnte nicht geladen werden.", 'danger')
@@ -1925,35 +2070,7 @@ def chat():
                     return jsonify({'error': 'Die Wissensbasis konnte nicht geladen werden.'}), 500
                 return redirect(url_for('chat'))
 
-            wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
-            
-            # BigQuery-Daten abrufen, wenn Verkäufer-ID vorhanden ist (NEU)
-            bigquery_data = {}
-            if seller_id:
-                # Prüfen, nach welchen Daten der Benutzer gefragt hat
-                message_lower = user_message.lower()
-                
-                # KPIs abfragen
-                if any(kw in message_lower for kw in ["kpi", "kennzahl", "leistung", "statistik", "performance"]):
-                    bigquery_data = get_seller_data(seller_id, 'kpis')
-                
-                # Leads abfragen
-                elif any(kw in message_lower for kw in ["lead", "kunde", "interessent"]):
-                    bigquery_data = get_seller_data(seller_id, 'leads')
-                
-                # Verträge abfragen
-                elif any(kw in message_lower for kw in ["vertrag", "verträge", "contract"]):
-                    bigquery_data = get_seller_data(seller_id, 'contracts')
-                
-                # Haushalte abfragen
-                elif any(kw in message_lower for kw in ["haushalt", "wohnung", "adresse"]):
-                    bigquery_data = get_seller_data(seller_id, 'households')
-                
-                # Alle Daten abfragen (für allgemeine Anfragen)
-                elif any(kw in message_lower for kw in ["daten", "übersicht", "alles", "zusammenfassung"]):
-                    bigquery_data = get_seller_data(seller_id)
-
-
+            # Notfallmodus-Handling
             if notfall_aktiv:
                 session['notfall_mode'] = True
                 user_message = (
@@ -1965,75 +2082,142 @@ def chat():
             else:
                 session.pop('notfall_mode', None)
 
-            # Prompt inkl. Name und BigQuery-Daten (NEU)
-            prompt_text = (
-                f"Der Name deines Gesprächspartners lautet {user_name}.\n"
-                "Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. "
-                "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
-                "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
-            )
+            # Erstelle das System-Prompt und Kontext für die Wissensbasis
+            system_prompt = create_system_prompt(table_schema)
             
-            # Verkäufer-ID zur Prompt hinzufügen, wenn vorhanden (NEU)
+            # Wissensbasis in lesbarer Form hinzufügen
+            prompt_wissensbasis_abschnitte = []
+            for thema, unterthemen in wissensbasis.items():
+                for unterthema_full, details in unterthemen.items():
+                    beschreibung = details.get("beschreibung", "")
+                    inhalt = details.get("inhalt", [])
+                    prompt_wissensbasis_abschnitte.append(
+                        f"Thema: {thema}, Unterthema: {unterthema_full}, " +
+                        f"Beschreibung: {beschreibung}, Inhalt: {'. '.join(inhalt)}"
+                    )
+            
+            wissensbasis_prompt_string = "\n\n".join(prompt_wissensbasis_abschnitte)
+            system_prompt += f"\n\nWissensbasis:\n{wissensbasis_prompt_string}"
+            
+            # Personalisieren des System-Prompts
+            system_prompt = f"Der Name deines Gesprächspartners lautet {user_name}.\n" + system_prompt
+            
+            # Verkäufer-Information hinzufügen
             if seller_id:
-                prompt_text += f"Du sprichst mit einem Vertriebspartner mit der ID {seller_id}. "
-                
-                # BigQuery-Daten zur Prompt hinzufügen, wenn vorhanden (NEU)
-                if bigquery_data:
-                    bigquery_text = json.dumps(bigquery_data, ensure_ascii=False, indent=2)
-                    prompt_text += f"\n\nHier sind die relevanten Daten aus dem System:\n{bigquery_text}\n\n"
+                system_prompt += f"\n\nDu sprichst mit einem Vertriebspartner mit der ID {seller_id}."
             
-            # Prompt vervollständigen
-            prompt_text += (
-                "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
-                "sondern sagst, dass du es nicht weißt. "
-                f"Hier die Frage:\n'''{user_message}'''\n\n"
-                f"Dies ist die Wissensbasis:\n{wissens_text}"
-            )
+            # Function-Definitionen erstellen
+            tools = create_function_definitions()
             
+            # OpenAI-Nachrichten vorbereiten
             messages = [
-                {
-                    "role": "user",
-                    "content": prompt_text
-                }
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
             ]
-
-
-            wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
-            messages = [
-                    {
-                        "role": "user",
-                        "content": (
-                            "Du bist ein hilfreicher Assistent, der Fragen anhand einer Wissensbasis beantwortet. "
-                            "Deine Antworten sollen gut lesbar durch Absätze sein, aber nicht zu viele. "
-                            "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts. "
-                            f"Hier die Frage:\n'''{user_message}'''\n\n"
-                            f"Dies ist die Wissensbasis:\n{wissens_text}"
-                        )
-                    }
-                ]
             
+            # Log für Debugging
+            debug_print("API Calls", f"Anfrage an OpenAI mit Function Calling: {user_message}")
 
-            # OpenAI
-            token_count = count_tokens(messages, model='o1-preview')
-            debug_print("API Calls", f"Anzahl Tokens: {token_count}")
-
-            antwort = contact_openai(messages, model='o1-preview')
-            if antwort:
+            try:
+                # OpenAI API aufrufen
+                model = 'gpt-4o'  # oder o1-preview, je nach Konfiguration
+                
+                response = openai.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto"
+                )
+                
+                # Antwort extrahieren
+                assistant_message = response.choices[0].message
+                
+                # Prüfen, ob Funktionsaufrufe vorhanden sind
+                if assistant_message.tool_calls:
+                    debug_print("API Calls", f"Function Calls erkannt: {assistant_message.tool_calls}")
+                    
+                    # Führe jeden Funktionsaufruf aus
+                    function_responses = []
+                    for tool_call in assistant_message.tool_calls:
+                        function_name = tool_call.function.name
+                        function_args = json.loads(tool_call.function.arguments)
+                        
+                        # Füge seller_id hinzu, falls benötigt und nicht vorhanden
+                        if seller_id and "seller_id" in query_patterns['common_queries'].get(function_name, {}).get('required_parameters', []) and "seller_id" not in function_args:
+                            function_args["seller_id"] = seller_id
+                        
+                        debug_print("API Calls", f"Führe Funktion aus: {function_name} mit Argumenten: {function_args}")
+                        
+                        # Führe die Funktion aus
+                        function_response = handle_function_call(function_name, function_args)
+                        
+                        # Füge die Funktionsantwort hinzu
+                        function_responses.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": function_response
+                        })
+                    
+                    # Erstelle Nachrichten für die zweite Anfrage
+                    second_messages = messages + [
+                        {
+                            "role": "assistant",
+                            "content": assistant_message.content,
+                            "tool_calls": [
+                                {
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments
+                                    }
+                                } for tc in assistant_message.tool_calls
+                            ]
+                        }
+                    ] + function_responses
+                    
+                    # Zweiter Aufruf für die finale Antwort
+                    second_response = openai.chat.completions.create(
+                        model=model,
+                        messages=second_messages
+                    )
+                    
+                    # Finale Antwort extrahieren
+                    final_message = second_response.choices[0].message
+                    antwort = final_message.content
+                    
+                    debug_print("API Calls", f"Finale Antwort mit Daten: {antwort[:100]}...")
+                else:
+                    # Keine Funktionsaufrufe, direkte Antwort verwenden
+                    antwort = assistant_message.content
+                    debug_print("API Calls", f"Direkte Antwort: {antwort[:100]}...")
+                
+                # Chat-History im alten Format aktualisieren für die Kompatibilität
                 chat_history.append({'user': user_message, 'bot': antwort})
                 session[chat_key] = chat_history
+                
+                # Chat-Log speichern
                 store_chatlog(user_name, chat_history)
 
+                # AJAX-Antwort
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'response': antwort}), 200
+                
                 return redirect(url_for('chat'))
-            else:
+            except Exception as e:
+                logger.exception("Fehler beim OpenAI-Aufruf")
+                error_message = f"Fehler bei der Kommunikation mit OpenAI: {str(e)}"
+                debug_print("API Calls", error_message)
+                
                 flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", 'danger')
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'error': 'Problem bei Kommunikation'}), 500
+                    return jsonify({'error': error_message}), 500
+                
                 return redirect(url_for('chat'))
 
+        # Statistiken berechnen und Template rendern
         stats = calculate_chat_stats()
-        return render_template('chat.html', chat_history=chat_history, stats=stats)
+        return render_template('chat.html', chat_history=display_chat_history, stats=stats)
 
     except Exception as e:
         logging.exception("Fehler in chat-Funktion.")
@@ -2041,6 +2225,7 @@ def chat():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
+    
 
 
 @app.route('/admin_login', methods=['GET', 'POST'])

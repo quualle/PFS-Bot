@@ -2045,7 +2045,7 @@ def chat():
             with open('query_patterns.json', 'r', encoding='utf-8') as f:
                 query_patterns = json.load(f)
         except Exception as e:
-            logger.error(f"Fehler beim Laden der Schema-Dateien: {e}")
+            logging.error(f"Fehler beim Laden der Schema-Dateien: {e}")
             table_schema = {"tables": {}}
             query_patterns = {"common_queries": {}}
 

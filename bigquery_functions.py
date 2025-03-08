@@ -87,8 +87,9 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
         parameters (dict): Parameter für die Abfrage
         
     Returns:
-        list: Liste von Dictionaries mit den Abfrageergebnissen
+        list: Liste von Dictionaries mit den Abfrageergebnisse
     """
+    import re
     try:
         # Initialisiere BigQuery-Client
         client = bigquery.Client.from_service_account_json(SERVICE_ACCOUNT_PATH)
@@ -97,22 +98,30 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
         job_config = bigquery.QueryJobConfig()
         query_parameters = []
         
-        # Konvertiere die Parameter in BigQuery-Parameter
-        for key, value in parameters.items():
-            param_type = None
-            if isinstance(value, int):
-                param_type = bigquery.ScalarQueryParameter(key, "INT64", value)
-            elif isinstance(value, float):
-                param_type = bigquery.ScalarQueryParameter(key, "FLOAT64", value)
-            elif isinstance(value, bool):
-                param_type = bigquery.ScalarQueryParameter(key, "BOOL", value)
-            elif isinstance(value, datetime.date):
-                param_type = bigquery.ScalarQueryParameter(key, "DATE", value)
-            else:  # Standardmäßig als String behandeln
-                param_type = bigquery.ScalarQueryParameter(key, "STRING", value)
-            
-            query_parameters.append(param_type)
+        # WICHTIG: Suche alle in der SQL-Abfrage verwendeten Parameter
+        used_params = set(re.findall(r'@(\w+)', sql_template))
         
+        # Stellen Sie sicher, dass alle verwendeten Parameter übergeben werden
+        for param_name in used_params:
+            param_value = parameters.get(param_name)
+            
+            # Parameter-Typ bestimmen
+            if isinstance(param_value, int):
+                param_type = "INT64"
+            elif isinstance(param_value, float):
+                param_type = "FLOAT64"
+            elif isinstance(param_value, bool):
+                param_type = "BOOL"
+            elif isinstance(param_value, datetime.date):
+                param_type = "DATE"
+            else:
+                param_type = "STRING"
+                
+            # Auch NULL-Werte müssen korrekt typisiert werden
+            query_parameters.append(
+                bigquery.ScalarQueryParameter(param_name, param_type, param_value)
+            )
+            
         job_config.query_parameters = query_parameters
         
         # Führe die Abfrage aus
@@ -137,7 +146,6 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
         error_trace = traceback.format_exc()
         logger.error(f"Error executing BigQuery query: {e}\n{error_trace}")
         raise
-
 
 def format_query_result(result: List[Dict[str, Any]], result_structure: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
     """

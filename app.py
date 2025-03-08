@@ -5,8 +5,10 @@ import time
 import logging
 import datetime
 from functools import wraps
+import traceback
 import uuid
 import tempfile
+import requests  # Added import for requests
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_wtf import CSRFProtect
@@ -14,11 +16,10 @@ from flask_session import Session
 from dotenv import load_dotenv
 from google.cloud import storage
 from google.oauth2 import service_account
+from google.cloud import bigquery
 from werkzeug.utils import secure_filename
 import openai
 import tiktoken
-from oauthlib.oauth2 import WebApplicationClient
-import requests
 
 ###########################################
 # PINECONE: gRPC-Variante laut Quickstart
@@ -36,6 +37,138 @@ from datetime import datetime
 # Laden der Umgebungsvariablen aus .env
 load_dotenv()
 
+# Google OAuth Konfiguration
+def configure_google_auth(app):
+    """Konfiguriert die direkte Google OAuth-Authentifizierung."""
+    # Stellen Sie sicher, dass die Umgebungsvariablen gesetzt sind
+    if not os.getenv('GOOGLE_CLIENT_ID') or not os.getenv('GOOGLE_CLIENT_SECRET'):
+        print("WARNUNG: Google OAuth-Credentials nicht gesetzt!")
+    
+    # Direkten Login-Endpoint definieren - make route path and function name match
+    @app.route('/google_login')
+    def google_login():
+        """Eine direkte Google-Login-Route"""
+        # Erstelle eine URL für die Google OAuth-Seite
+        redirect_uri = url_for('google_callback', _external=True)
+        print(f"Redirect URI being used: {redirect_uri}")  # Add this debug line
+        
+        google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+        params = {
+            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+            'redirect_uri': redirect_uri,
+            'response_type': 'code',
+            'scope': 'email profile',
+            'access_type': 'online',
+            'state': 'direct_test'
+        }
+        
+        auth_url = f"{google_auth_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
+        return redirect(auth_url)
+
+    # Callback für den direkten Login
+    @app.route('/google_callback')
+    def google_callback():
+        """Callback für den direkten Google-Login"""
+        code = request.args.get('code')
+        
+        if not code:
+            flash('Login fehlgeschlagen (kein Code erhalten).', 'danger')
+            return redirect(url_for('login'))
+        
+        # Code gegen Token tauschen
+        try:
+            token_url = "https://oauth2.googleapis.com/token"
+            token_data = {
+                'code': code,
+                'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+                'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+                'redirect_uri': url_for('google_callback', _external=True),
+                'grant_type': 'authorization_code'
+            }
+            
+            token_response = requests.post(token_url, data=token_data)
+            
+            if not token_response.ok:
+                flash(f'Token-Abruf fehlgeschlagen: {token_response.text}', 'danger')
+                return redirect(url_for('login'))
+            
+            token_info = token_response.json()
+            access_token = token_info.get('access_token')
+            
+            # Benutzerinfo abrufen
+            userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+            headers = {'Authorization': f'Bearer {access_token}'}
+            userinfo_response = requests.get(userinfo_url, headers=headers)
+            
+            if not userinfo_response.ok:
+                flash(f'Userinfo-Abruf fehlgeschlagen: {userinfo_response.text}', 'danger')
+                return redirect(url_for('login'))
+            
+            user_info = userinfo_response.json()
+            
+            # Session aktualisieren
+            email = user_info.get('email')
+            name = user_info.get('name')
+            
+            # Setze die Session-Variablen
+            user_id = session.get('user_id')
+            if not user_id:
+                user_id = str(uuid.uuid4())
+                session['user_id'] = user_id
+                
+            session['email'] = email
+            session['google_user_email'] = email
+            session['user_name'] = name
+            session['is_logged_via_google'] = True
+            
+            # Seller ID abrufen, wenn eine E-Mail vorhanden ist
+            if email:
+                seller_id = get_user_id_from_email(email)
+                session['seller_id'] = seller_id
+                if seller_id:
+                    print(f"Seller ID gefunden und gesetzt: {seller_id}")
+                else:
+                    print(f"Keine Seller ID für E-Mail {email} gefunden")
+            
+            session.modified = True
+            
+            flash('Login erfolgreich!', 'success')
+            return redirect(url_for('chat'))
+        
+        except Exception as e:
+            print(f"Fehler beim Google-Login: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            flash(f'Fehler bei der Anmeldung: {str(e)}', 'danger')
+            return redirect(url_for('login'))
+    
+    # Hilfsfunktion zur OAuth-Diagnose
+    @app.route('/debug_oauth')
+    def debug_oauth():
+        """Diagnosewerkzeug für die OAuth-Konfiguration"""
+        output = "<h1>OAuth Debug Info</h1>"
+        
+        # Umgebungsvariablen überprüfen (ohne Secrets zu zeigen)
+        client_id = os.getenv('GOOGLE_CLIENT_ID', 'Nicht gesetzt')
+        client_secret_status = "Gesetzt" if os.getenv('GOOGLE_CLIENT_SECRET') else "Nicht gesetzt"
+        
+        output += f"<p>GOOGLE_CLIENT_ID: {client_id[:5]}...{client_id[-5:] if len(client_id) > 10 else ''}</p>"
+        output += f"<p>GOOGLE_CLIENT_SECRET: {client_secret_status}</p>"
+        
+        # Session-Status
+        output += "<h2>Session Status</h2>"
+        session_values = {k: v for k, v in session.items()}
+        output += f"<pre>{json.dumps(session_values, indent=2)}</pre>"
+        
+        # Test Links - FIXED THIS LINE TO USE THE CORRECT FUNCTION NAME
+        output += "<h2>Test Links</h2>"
+        output += f"<p><a href='{url_for('google_login')}'>Google Login</a></p>"
+        
+        return output
+    
+    return app
+
+
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_default_secret_key')
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -46,21 +179,15 @@ app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Die drei ENV Variablen, die du für Google brauchst:
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
-
-# OAuth-Client anlegen (wird später benutzt)
-oauth_client = WebApplicationClient(GOOGLE_CLIENT_ID)
-
+# Google OAuth konfigurieren
+app = configure_google_auth(app)
 Session(app)
+
+logging.basicConfig(level=logging.DEBUG)
 
 UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'uploaded_files')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-print("DEBUG: GOOGLE_CLIENT_ID =", repr(GOOGLE_CLIENT_ID))
 
 # CSRF-Schutz
 csrf = CSRFProtect(app)
@@ -111,9 +238,9 @@ if not os.path.exists(service_account_path):
     raise FileNotFoundError(f"Service Account Datei nicht gefunden: {service_account_path}")
 
 credentials = service_account.Credentials.from_service_account_file(service_account_path)
-storage_client = storage.Client(credentials=credentials)
+client = storage.Client(credentials=credentials)
 bucket_name = 'wissensbasis'
-bucket = storage_client.bucket(bucket_name)
+bucket = client.bucket(bucket_name)
 wissensbasis_blob_name = 'wissensbasis.json'
 
 DEBUG_CATEGORIES = {
@@ -144,13 +271,6 @@ if not os.path.exists(CHATLOG_FOLDER):
 FEEDBACK_FOLDER = 'feedback'
 if not os.path.exists(FEEDBACK_FOLDER):
     os.makedirs(FEEDBACK_FOLDER)
-
-
-
-
-def get_google_provider_cfg():
-    return requests.get(GOOGLE_DISCOVERY_URL).json()
-
 
 def store_chatlog(user_name, chat_history):
     """
@@ -418,6 +538,297 @@ def speichere_wissensbasis(eintrag):
         flash("Thema und Unterthema müssen angegeben werden.", 'warning')
 
 
+def get_user_id_from_email(email):
+    """
+    Ruft die _id eines Benutzers aus BigQuery basierend auf seiner E-Mail-Adresse ab.
+    """
+    if not email:
+        print("Keine E-Mail-Adresse angegeben")
+        return None
+        
+    try:
+        # Service-Account-Datei für BigQuery
+        service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
+        if not os.path.exists(service_account_path):
+            print(f"Service Account Datei nicht gefunden: {service_account_path}")
+            return None
+        
+        client = bigquery.Client.from_service_account_json(service_account_path)
+        
+        # SQL-Abfrage mit Parameter
+        query = """
+        SELECT _id
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.proto_users`
+        WHERE email = @email
+        LIMIT 1
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("email", "STRING", email)
+            ]
+        )
+        
+        print(f"Abfrage seller_id für E-Mail: {email}")
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        # Ergebnis verarbeiten
+        for row in results:
+            print(f"Seller-ID gefunden: {row['_id']}")
+            return row['_id']
+            
+        print(f"Keine Seller-ID für E-Mail {email} gefunden")
+        return None
+    
+    except Exception as e:
+        print(f"Fehler beim Abrufen der seller_id: {str(e)}")
+        return None
+
+def get_bigquery_client():
+    """Erstellt und gibt einen BigQuery-Client zurück."""
+    service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
+    return bigquery.Client.from_service_account_json(service_account_path)
+
+def get_leads_for_seller(seller_id):
+    """Ruft die Leads für einen bestimmten Verkäufer aus BigQuery ab."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        SELECT 
+            l._id, 
+            l.first_name,
+            l.last_name,
+            l.email,
+            l.phone,
+            l.created_at,
+            l.updated_at,
+            l.status
+        FROM 
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l
+        WHERE 
+            l.seller_id = @seller_id
+        ORDER BY 
+            l.created_at DESC
+        LIMIT 50
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        leads = []
+        for row in results:
+            lead = dict(row.items())
+            # Konvertieren von datetime-Objekten zu Strings für JSON-Serialisierung
+            for key, value in lead.items():
+                if hasattr(value, 'isoformat'):
+                    lead[key] = value.isoformat()
+            leads.append(lead)
+            
+        return leads
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Abrufen der Leads aus BigQuery: {e}")
+        return []
+
+def get_contracts_for_seller(seller_id):
+    """Ruft die Verträge für einen bestimmten Verkäufer aus BigQuery ab."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        SELECT 
+            c._id,
+            c.contract_number,
+            c.created_at,
+            c.start_date,
+            c.status,
+            c.customer_id,
+            c.household_id
+        FROM 
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c
+        WHERE 
+            c.seller_id = @seller_id
+        ORDER BY 
+            c.created_at DESC
+        LIMIT 50
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        contracts = []
+        for row in results:
+            contract = dict(row.items())
+            # Konvertieren von datetime-Objekten zu Strings für JSON-Serialisierung
+            for key, value in contract.items():
+                if hasattr(value, 'isoformat'):
+                    contract[key] = value.isoformat()
+            contracts.append(contract)
+            
+        return contracts
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Abrufen der Verträge aus BigQuery: {e}")
+        return []
+
+def get_households_for_seller(seller_id):
+    """Ruft die Haushalte für einen bestimmten Verkäufer aus BigQuery ab."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        SELECT 
+            h._id,
+            h.address,
+            h.zip,
+            h.city,
+            h.created_at,
+            h.status
+        FROM 
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h
+        WHERE 
+            h.seller_id = @seller_id
+        ORDER BY 
+            h.created_at DESC
+        LIMIT 50
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        households = []
+        for row in results:
+            household = dict(row.items())
+            # Konvertieren von datetime-Objekten zu Strings für JSON-Serialisierung
+            for key, value in household.items():
+                if hasattr(value, 'isoformat'):
+                    household[key] = value.isoformat()
+            households.append(household)
+            
+        return households
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Abrufen der Haushalte aus BigQuery: {e}")
+        return []
+
+def calculate_kpis_for_seller(seller_id):
+    """Berechnet KPIs für einen bestimmten Verkäufer aus BigQuery-Daten."""
+    try:
+        client = get_bigquery_client()
+        
+        query = """
+        WITH 
+        lead_metrics AS (
+            SELECT 
+                COUNT(*) AS total_leads,
+                COUNTIF(status = 'converted') AS converted_leads,
+                COUNTIF(DATE(created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)) AS new_leads_30d
+            FROM 
+                `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads`
+            WHERE 
+                seller_id = @seller_id
+        ),
+        contract_metrics AS (
+            SELECT 
+                COUNT(*) AS total_contracts,
+                COUNTIF(DATE(created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)) AS new_contracts_30d,
+                COUNTIF(status = 'active') AS active_contracts
+            FROM 
+                `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts`
+            WHERE 
+                seller_id = @seller_id
+        ),
+        household_metrics AS (
+            SELECT 
+                COUNT(*) AS total_households
+            FROM 
+                `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households`
+            WHERE 
+                seller_id = @seller_id
+        )
+        
+        SELECT 
+            l.total_leads,
+            l.converted_leads,
+            l.new_leads_30d,
+            c.total_contracts,
+            c.new_contracts_30d,
+            c.active_contracts,
+            h.total_households,
+            SAFE_DIVIDE(c.total_contracts, l.total_leads) AS conversion_rate
+        FROM 
+            lead_metrics l,
+            contract_metrics c,
+            household_metrics h
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        query_job = client.query(query, job_config=job_config)
+        results = query_job.result()
+        
+        # Es sollte nur eine Zeile geben
+        for row in results:
+            kpis = dict(row.items())
+            return kpis
+            
+        return {}
+    
+    except Exception as e:
+        logging.exception(f"Fehler beim Berechnen der KPIs aus BigQuery: {e}")
+        return {}
+
+def get_seller_data(seller_id, data_type=None):
+    """
+    Holt Verkäuferdaten basierend auf dem angegebenen Datentyp.
+    
+    Args:
+        seller_id (str): Die Verkäufer-ID (_id aus proto_users)
+        data_type (str, optional): Der Typ der abzurufenden Daten ('leads', 'contracts', 'households', 'kpis', oder None für alles)
+    """
+    result = {}
+    
+    if not seller_id:
+        return {"error": "Keine Verkäufer-ID angegeben"}
+    
+    if data_type == 'leads' or data_type is None:
+        result['leads'] = get_leads_for_seller(seller_id)
+        
+    if data_type == 'contracts' or data_type is None:
+        result['contracts'] = get_contracts_for_seller(seller_id)
+        
+    if data_type == 'households' or data_type is None:
+        result['households'] = get_households_for_seller(seller_id)
+        
+    if data_type == 'kpis' or data_type is None:
+        result['kpis'] = calculate_kpis_for_seller(seller_id)
+    
+    return result
+
 ###########################################
 # Notfall-LOG-Funktion
 ###########################################
@@ -445,8 +856,8 @@ def log_notfall_event(user_id, notfall_art, user_message):
 # Kontakt mit OpenAI
 ###########################################
 def contact_openai(messages, model=None):
-    model = 'o3-mini'  # dein Model (z.B. GPT-3.5-turbo, etc.)
-    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o3-mini gesetzt.")
+    model = 'o1-preview'  # dein Model (z.B. GPT-3.5-turbo, etc.)
+    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o1-preview gesetzt.")
     try:
         response = openai.chat.completions.create(model=model, messages=messages)
         if response and response.choices:
@@ -463,7 +874,7 @@ def contact_openai(messages, model=None):
         return None
 
 def count_tokens(messages, model=None):
-    model = 'o3-mini'
+    model = 'o1-preview'
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -475,6 +886,937 @@ def count_tokens(messages, model=None):
     token_count += 2
     return token_count
 
+
+@app.route('/test_session')
+def test_session():
+    # Test-Wert in die Session setzen
+    test_value = "Testdaten " + datetime.now().strftime("%H:%M:%S")
+    session['test_value'] = test_value
+    session['test_email'] = "test@example.com"
+    session['test_seller_id'] = "test_id_123"
+    
+    # Stellen Sie sicher, dass die Änderungen gespeichert werden
+    session.modified = True
+    
+    output = "<h1>Session-Test</h1>"
+    output += f"<p>Test-Werte gesetzt: {test_value}</p>"
+    
+    # Alle Session-Werte anzeigen
+    output += "<h2>Alle Session-Werte:</h2><ul>"
+    for key, value in session.items():
+        output += f"<li><strong>{key}:</strong> {value}</li>"
+    output += "</ul>"
+    
+    return output
+
+
+@app.route('/test_bigquery')
+def test_bigquery():
+    try:
+        service_account_path = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
+        client = bigquery.Client.from_service_account_json(service_account_path)
+        
+        # E-Mail aus Session holen
+        email = session.get('email') or session.get('google_user_email', '')
+        
+        # Abfrage mit WHERE-Klausel für User-Info
+        user_query = """
+        SELECT email, _id 
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.proto_users` 
+        WHERE email = @email
+        LIMIT 10
+        """
+        
+        # Parameter definieren für User-Query
+        user_job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("email", "STRING", email)
+            ]
+        )
+        
+        # User-Abfrage ausführen
+        user_query_job = client.query(user_query, job_config=user_job_config)
+        user_results = user_query_job.result()
+        
+        # HTML-Ausgabe mit Bootstrap für besseres Layout
+        output = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>BigQuery Test Dashboard</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+            <style>
+                .table-responsive { margin-bottom: 20px; }
+                .tab-pane { padding: 15px; }
+            </style>
+        </head>
+        <body>
+        <div class="container mt-4">
+            <h1>BigQuery-Test Dashboard</h1>
+            <p>Abfrage für E-Mail: """ + email + """</p>
+        """
+        
+        # Seller-ID ermitteln
+        seller_id = session.get('seller_id')
+        rows_found = False
+        
+        output += """
+        <h2>Benutzerinformationen</h2>
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead><tr><th>E-Mail</th><th>ID</th></tr></thead>
+            <tbody>
+        """
+        
+        for row in user_results:
+            rows_found = True
+            output += f"<tr><td>{row['email']}</td><td>{row['_id']}</td></tr>"
+            if not seller_id:  # Wenn keine seller_id in der Session ist, nutze die aus der Abfrage
+                seller_id = row['_id']
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not rows_found:
+            output += f"<p class='alert alert-warning'>Keine Daten für E-Mail '{email}' gefunden!</p>"
+            
+        # Wenn wir keine seller_id haben, können wir keine weiteren Abfragen durchführen
+        if not seller_id:
+            output += "<p class='alert alert-danger'>Keine Seller ID gefunden für weitere Abfragen!</p></div></body></html>"
+            return output
+            
+        output += f"<p>Verwende Seller ID: <strong>{seller_id}</strong> für weitere Abfragen</p>"
+        
+        # Tabs für verschiedene Datenquellen
+        output += """
+        <ul class="nav nav-tabs" id="dataTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="carestays-tab" data-bs-toggle="tab" data-bs-target="#carestays" type="button" role="tab">Care Stays</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="contracts-tab" data-bs-toggle="tab" data-bs-target="#contracts" type="button" role="tab">Verträge</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="leads-tab" data-bs-toggle="tab" data-bs-target="#leads" type="button" role="tab">Leads</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="caregivers-tab" data-bs-toggle="tab" data-bs-target="#caregivers" type="button" role="tab">Pflegekräfte</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tickets-tab" data-bs-toggle="tab" data-bs-target="#tickets" type="button" role="tab">Tickets</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="agencies-tab" data-bs-toggle="tab" data-bs-target="#agencies" type="button" role="tab">Agenturen</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats" type="button" role="tab">Statistiken</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="dataTabsContent">
+        """
+        
+        # ==================== CARE STAYS TAB ====================
+        output += """<div class="tab-pane fade show active" id="carestays" role="tabpanel">
+            <h3 class="mt-3">Aktive Care Stays</h3>"""
+        
+        # Care Stays Abfrage
+        care_stays_query = """
+        SELECT
+            cs.bill_start,
+            cs.bill_end,
+            cs.arrival,
+            cs.departure,
+            cs.presented_at,
+            cs.contract_id,
+            cs.created_at,
+            cs.stage,
+            cs.prov_seller AS seller_prov,
+            cs._id AS cs_id,
+            cs.care_giver_instance_id,
+            TIMESTAMP(cs.bill_end) AS parsed_bill_end,
+            TIMESTAMP(cs.bill_start) AS parsed_bill_start,
+            DATE_DIFF(
+                DATE(TIMESTAMP(cs.bill_end)),
+                DATE(TIMESTAMP(cs.bill_start)),
+                DAY
+            ) AS care_stay_duration_days,
+            c.agency_id,
+            c.active,
+            c.termination_reason,
+            l._id AS lead_id,
+            l.tracks AS lead_tracks,
+            l.created_at AS lead_created_at,
+            lead_names.first_name,
+            lead_names.last_name,
+            agencies.name AS agency_name
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
+            ON l._id = lead_names._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies
+            ON c.agency_id = agencies._id
+        WHERE l.seller_id = @seller_id
+          AND cs.stage = 'Bestätigt'
+          AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE()
+          AND cs.rejection_reason IS NULL
+        ORDER BY cs.bill_start DESC
+        LIMIT 100
+        """
+        
+        care_stays_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        # Care Stays-Abfrage ausführen
+        care_stays_job = client.query(care_stays_query, job_config=care_stays_config)
+        care_stays_results = care_stays_job.result()
+        
+        # Tabelle für Care Stays ausgeben
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>CS ID</th>
+                    <th>Lead Name</th>
+                    <th>Agency</th>
+                    <th>Bill Start</th>
+                    <th>Bill End</th>
+                    <th>Arrival</th>
+                    <th>Departure</th>
+                    <th>Status</th>
+                    <th>Prov. Verkäufer</th>
+                    <th>Dauer (Tage)</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        care_stays_found = False
+        for row in care_stays_results:
+            care_stays_found = True
+            lead_id = row['lead_id']
+            
+            # Zusammensetzen des Kundennamens
+            first_name = row.get('first_name', '')
+            last_name = row.get('last_name', '')
+            lead_name = f"{first_name} {last_name}".strip() if (first_name or last_name) else f"Lead ID: {lead_id}"
+            
+            # Agency Name
+            agency_name = row.get('agency_name', 'N/A')
+            
+            # Sichere Anzeige der Datumswerte
+            bill_start = str(row['bill_start']) if row['bill_start'] else 'N/A'
+            bill_end = str(row['bill_end']) if row['bill_end'] else 'N/A'
+            arrival = str(row['arrival']) if row.get('arrival') else 'N/A'
+            departure = str(row['departure']) if row.get('departure') else 'N/A'
+            
+            output += f"""
+            <tr>
+                <td>{row['cs_id']}</td>
+                <td>{lead_name}</td>
+                <td>{agency_name}</td>
+                <td>{bill_start}</td>
+                <td>{bill_end}</td>
+                <td>{arrival}</td>
+                <td>{departure}</td>
+                <td>{row['stage']}</td>
+                <td>{row['seller_prov']}</td>
+                <td>{row['care_stay_duration_days']}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not care_stays_found:
+            output += f"<p class='alert alert-warning'>Keine aktiven Care Stays für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Care Stays Tab
+        
+        # ==================== VERTRÄGE TAB ====================
+        output += """<div class="tab-pane fade" id="contracts" role="tabpanel">
+            <h3 class="mt-3">Verträge</h3>"""
+        
+        contracts_query = """
+        SELECT
+            c._id AS contract_id,
+            c.active,
+            c.termination_reason,
+            c.agency_id,
+            c.household_id,
+            h.lead_id,
+            agencies.name AS agency_name,
+            lead_names.first_name,
+            lead_names.last_name,
+            c.created_at
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
+            ON l._id = lead_names._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies
+            ON c.agency_id = agencies._id
+        WHERE l.seller_id = @seller_id
+        ORDER BY c.created_at DESC
+        LIMIT 100
+        """
+        
+        contracts_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        contracts_job = client.query(contracts_query, job_config=contracts_config)
+        contracts_results = contracts_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Contract ID</th>
+                    <th>Lead</th>
+                    <th>Agentur</th>
+                    <th>Aktiv</th>
+                    <th>Kündigungsgrund</th>
+                    <th>Erstellt am</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        contracts_found = False
+        for row in contracts_results:
+            contracts_found = True
+            first_name = row.get('first_name', '')
+            last_name = row.get('last_name', '')
+            lead_name = f"{first_name} {last_name}".strip() if (first_name or last_name) else f"Lead ID: {row['lead_id']}"
+            
+            agency_name = row.get('agency_name', 'N/A')
+            created_at = str(row['created_at']) if row['created_at'] else 'N/A'
+            active = "Ja" if row['active'] else "Nein"
+            
+            output += f"""
+            <tr>
+                <td>{row['contract_id']}</td>
+                <td>{lead_name}</td>
+                <td>{agency_name}</td>
+                <td>{active}</td>
+                <td>{row['termination_reason'] or 'N/A'}</td>
+                <td>{created_at}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not contracts_found:
+            output += f"<p class='alert alert-warning'>Keine Verträge für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Verträge Tab
+        
+        # ==================== LEADS TAB ====================
+        output += """<div class="tab-pane fade" id="leads" role="tabpanel">
+            <h3 class="mt-3">Leads</h3>"""
+        
+        leads_query = """
+        SELECT
+            l._id AS lead_id,
+            la.first_name,
+            la.last_name,
+            l.created_at AS lead_created_at,
+            l.source_data
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l
+        JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS la
+        ON la._id = l._id
+        WHERE l.seller_id = @seller_id
+        ORDER BY l.created_at DESC
+        LIMIT 100
+        """
+        
+        leads_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        leads_job = client.query(leads_query, job_config=leads_config)
+        leads_results = leads_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Lead ID</th>
+                    <th>Vorname</th>
+                    <th>Nachname</th>
+                    <th>Erstellt am</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        leads_found = False
+        for row in leads_results:
+            leads_found = True
+            created_at = str(row['lead_created_at']) if row['lead_created_at'] else 'N/A'
+            
+            output += f"""
+            <tr>
+                <td>{row['lead_id']}</td>
+                <td>{row.get('first_name', 'N/A')}</td>
+                <td>{row.get('last_name', 'N/A')}</td>
+                <td>{created_at}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not leads_found:
+            output += f"<p class='alert alert-warning'>Keine Leads für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Leads Tab
+        
+        # ==================== PFLEGEKRÄFTE TAB ====================
+        output += """<div class="tab-pane fade" id="caregivers" role="tabpanel">
+            <h3 class="mt-3">Pflegekräfte</h3>"""
+        
+        caregivers_query = """
+        SELECT
+            cgi._id AS care_giver_instance_id,
+            cg.first_name AS giver_first_name,
+            cg.last_name AS giver_last_name,
+            cs._id AS carestay_id,
+            c._id AS contract_id,
+            h.lead_id,
+            lead_names.first_name AS lead_first_name,
+            lead_names.last_name AS lead_last_name
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_giver_instances` cgi
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_givers` cg ON cgi.care_giver_id = cg._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON cs.care_giver_instance_id = cgi._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c ON cs.contract_id = c._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names 
+            ON l._id = lead_names._id
+        WHERE l.seller_id = @seller_id
+        LIMIT 100
+        """
+        
+        caregivers_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        caregivers_job = client.query(caregivers_query, job_config=caregivers_config)
+        caregivers_results = caregivers_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Pflegekraft</th>
+                    <th>Kunde</th>
+                    <th>Care Stay ID</th>
+                    <th>Instance ID</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        caregivers_found = False
+        for row in caregivers_results:
+            caregivers_found = True
+            caregiver_name = f"{row.get('giver_first_name', '')} {row.get('giver_last_name', '')}".strip() or 'N/A'
+            lead_name = f"{row.get('lead_first_name', '')} {row.get('lead_last_name', '')}".strip() or 'N/A'
+            
+            output += f"""
+            <tr>
+                <td>{caregiver_name}</td>
+                <td>{lead_name}</td>
+                <td>{row.get('carestay_id', 'N/A')}</td>
+                <td>{row['care_giver_instance_id']}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not caregivers_found:
+            output += f"<p class='alert alert-warning'>Keine Pflegekräfte für Seller ID '{seller_id}' gefunden!</p>"
+        
+        output += "</div>"  # Ende des Pflegekräfte Tab
+        
+        # ==================== TICKETS TAB ====================
+        output += """<div class="tab-pane fade" id="tickets" role="tabpanel">
+            <h3 class="mt-3">Tickets</h3>"""
+
+        tickets_query = """
+        SELECT
+            t.subject,
+            t.messages,
+            t.created_at,
+            tc.Datum,
+            t.updated_at,
+            t._id,
+            t.ticketable_id,
+            t.ticketable_type,
+            tc.seller,
+            tc.agency,
+            -- Lead-Informationen
+            CASE 
+                WHEN t.ticketable_type = 'Lead' THEN lead_direct.first_name
+                WHEN t.ticketable_type = 'Contract' THEN lead_contract.first_name
+                WHEN t.ticketable_type = 'CareStay' THEN lead_carestay.first_name
+                WHEN t.ticketable_type = 'Visor' THEN lead_visor.first_name
+                ELSE NULL
+            END AS lead_first_name,
+            CASE 
+                WHEN t.ticketable_type = 'Lead' THEN lead_direct.last_name
+                WHEN t.ticketable_type = 'Contract' THEN lead_contract.last_name
+                WHEN t.ticketable_type = 'CareStay' THEN lead_carestay.last_name
+                WHEN t.ticketable_type = 'Visor' THEN lead_visor.last_name
+                ELSE NULL
+            END AS lead_last_name,
+            CASE
+                WHEN t.ticketable_type = 'Lead' THEN t.ticketable_id
+                WHEN t.ticketable_type = 'Contract' THEN contract_lead.lead_id
+                WHEN t.ticketable_type = 'CareStay' THEN carestay_lead.lead_id
+                WHEN t.ticketable_type = 'Visor' THEN visor_lead.lead_id
+                ELSE NULL
+            END AS lead_id
+        FROM
+            `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.tickets` t
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.tickets_creation_end` tc
+            ON t._id = tc.Ticket_ID
+
+        -- Direkter Lead-Join für Lead-Tickets
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_direct
+            ON t.ticketable_type = 'Lead' AND t.ticketable_id = lead_direct._id
+
+        -- Contract-Lead-Join für Contract-Tickets
+        LEFT JOIN (
+            SELECT
+                c._id AS contract_id,
+                h.lead_id,
+                l._id AS lead_orig_id
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        ) AS contract_lead
+            ON t.ticketable_type = 'Contract' AND t.ticketable_id = contract_lead.contract_id
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_contract
+            ON contract_lead.lead_orig_id = lead_contract._id
+
+        -- CareStay-Lead-Join für CareStay-Tickets
+        LEFT JOIN (
+            SELECT
+                cs._id AS carestay_id,
+                h.lead_id,
+                l._id AS lead_orig_id
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c ON cs.contract_id = c._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        ) AS carestay_lead
+            ON t.ticketable_type = 'CareStay' AND t.ticketable_id = carestay_lead.carestay_id
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_carestay
+            ON carestay_lead.lead_orig_id = lead_carestay._id
+
+        -- Visor-Lead-Join für Visor-Tickets
+        LEFT JOIN (
+            SELECT
+                v._id AS visor_id,
+                h.lead_id,
+                l._id AS lead_orig_id
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.visors` v
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.postings` p ON v.posting_id = p._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON p.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id
+        ) AS visor_lead
+            ON t.ticketable_type = 'Visor' AND t.ticketable_id = visor_lead.visor_id
+        LEFT JOIN
+            `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_visor
+            ON visor_lead.lead_orig_id = lead_visor._id
+
+        WHERE
+            tc.seller = 'Pflegeteam Heer'
+        ORDER BY 
+            t.created_at DESC
+        LIMIT 100
+        """
+
+        tickets_job = client.query(tickets_query)
+        tickets_results = tickets_job.result()
+
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Ticket ID</th>
+                    <th>Betreff</th>
+                    <th>Typ</th>
+                    <th>Lead</th>
+                    <th>Erstellt am</th>
+                    <th>Aktualisiert am</th>
+                    <th>Agentur</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+
+        tickets_found = False
+        for row in tickets_results:
+            tickets_found = True
+            created_at = str(row['created_at']) if row['created_at'] else 'N/A'
+            updated_at = str(row['updated_at']) if row['updated_at'] else 'N/A'
+            
+            # Lead-Namen zusammensetzen
+            lead_name = "N/A"
+            if row.get('lead_first_name') or row.get('lead_last_name'):
+                lead_name = f"{row.get('lead_first_name', '')} {row.get('lead_last_name', '')}".strip()
+            
+            output += f"""
+            <tr>
+                <td>{row['_id']}</td>
+                <td>{row['subject']}</td>
+                <td>{row['ticketable_type'] or 'N/A'}</td>
+                <td>{lead_name}</td>
+                <td>{created_at}</td>
+                <td>{updated_at}</td>
+                <td>{row['agency'] or 'N/A'}</td>
+            </tr>"""
+
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+
+        if not tickets_found:
+            output += f"<p class='alert alert-warning'>Keine Tickets für '{seller_id}' gefunden!</p>"
+
+        output += "</div>"  # Ende des Tickets Tab
+        
+        # ==================== AGENTUREN TAB ====================
+        output += """<div class="tab-pane fade" id="agencies" role="tabpanel">
+            <h3 class="mt-3">Agenturen</h3>"""
+        
+        agencies_query = """
+        SELECT
+            _id AS agency_id,
+            name AS agency_name
+        FROM gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies
+        ORDER BY name
+        LIMIT 100
+        """
+        
+        agencies_job = client.query(agencies_query)
+        agencies_results = agencies_job.result()
+        
+        output += """
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Agentur ID</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        agencies_found = False
+        for row in agencies_results:
+            agencies_found = True
+            output += f"""
+            <tr>
+                <td>{row['agency_id']}</td>
+                <td>{row['agency_name']}</td>
+            </tr>"""
+        
+        output += """
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        if not agencies_found:
+            output += f"<p class='alert alert-warning'>Keine Agenturen gefunden!</p>"
+        
+        output += "</div>"  # Ende des Agenturen Tab
+        
+        # ==================== STATISTIKEN TAB ====================
+        output += """<div class="tab-pane fade" id="stats" role="tabpanel">
+            <h3 class="mt-3">Statistiken</h3>"""
+        
+        # Care Stay Statistiken
+        stats_query = """
+        SELECT
+            COUNT(DISTINCT cs._id) AS total_care_stays,
+            COUNT(DISTINCT c._id) AS total_contracts,
+            COUNT(DISTINCT l._id) AS total_leads,
+            AVG(DATE_DIFF(
+                DATE(TIMESTAMP(cs.bill_end)),
+                DATE(TIMESTAMP(cs.bill_start)),
+                DAY
+            )) AS avg_care_stay_duration,
+            SUM(CAST(cs.prov_seller AS FLOAT64)) AS total_prov_seller
+        FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+        JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+        WHERE l.seller_id = @seller_id
+          AND cs.stage = 'Bestätigt'
+        """
+        
+        stats_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        stats_job = client.query(stats_query, job_config=stats_config)
+        stats_results = stats_job.result()
+        
+        # Monatliche Statistiken
+        monthly_stats_query = """
+        WITH monthly_data AS (
+            SELECT
+                FORMAT_DATE('%Y-%m', DATE(TIMESTAMP(cs.bill_start))) AS month,
+                COUNT(DISTINCT cs._id) AS new_care_stays,
+                SUM(CAST(cs.prov_seller AS FLOAT64)) AS monthly_prov
+            FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+            JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+            WHERE l.seller_id = @seller_id
+              AND cs.stage = 'Bestätigt'
+              AND DATE(TIMESTAMP(cs.bill_start)) >= DATE_SUB(CURRENT_DATE(), INTERVAL 12 MONTH)
+            GROUP BY month
+            ORDER BY month DESC
+        )
+        SELECT * FROM monthly_data
+        """
+        
+        monthly_stats_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("seller_id", "STRING", seller_id)
+            ]
+        )
+        
+        monthly_stats_job = client.query(monthly_stats_query, job_config=monthly_stats_config)
+        monthly_stats_results = monthly_stats_job.result()
+        
+        # Gesamtstatistiken
+        output += """<div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Gesamtstatistiken</div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Metrik</th>
+                                    <th>Wert</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        """
+        
+        for row in stats_results:
+            output += f"""
+                <tr><td>Gesamtzahl Care Stays</td><td>{row['total_care_stays']}</td></tr>
+                <tr><td>Gesamtzahl Verträge</td><td>{row['total_contracts']}</td></tr>
+                <tr><td>Gesamtzahl Leads</td><td>{row['total_leads']}</td></tr>
+                <tr><td>Durchschnittliche Care Stay Dauer (Tage)</td><td>{row['avg_care_stay_duration']:.2f}</td></tr>
+                <tr><td>Gesamtprovision</td><td>{row['total_prov_seller']:.2f} €</td></tr>
+            """
+        
+        output += """
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Monatliche Statistiken</div>
+                    <div class="card-body">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Monat</th>
+                                    <th>Neue Care Stays</th>
+                                    <th>Provision</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        """
+        
+        monthly_stats_found = False
+        for row in monthly_stats_results:
+            monthly_stats_found = True
+            output += f"""
+                <tr>
+                    <td>{row['month']}</td>
+                    <td>{row['new_care_stays']}</td>
+                    <td>{row['monthly_prov']:.2f} €</td>
+                </tr>
+            """
+        
+        if not monthly_stats_found:
+            output += "<tr><td colspan='3'>Keine monatlichen Daten gefunden</td></tr>"
+        
+        output += """
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>"""
+        
+        output += "</div>"  # Ende des Statistiken Tab
+        
+        # Abschluss der HTML-Struktur
+        output += """
+        </div>  <!-- Ende der Tab-Inhalte -->
+        </div>  <!-- Ende des Containers -->
+        </body>
+        </html>
+        """
+        
+        return output
+    except Exception as e:
+        error_output = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>BigQuery Test - Fehler</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body>
+        <div class="container mt-4">
+            <div class="alert alert-danger">
+                <h4>Fehler beim Ausführen der BigQuery-Abfragen:</h4>
+                <p>{str(e)}</p>
+                <pre>{traceback.format_exc()}</pre>
+            </div>
+        </div>
+        </body>
+        </html>
+        """
+        return error_output
+    
+
+@app.route('/check_login')
+def check_login():
+    # Alle relevanten Session-Daten anzeigen
+    session_data = {
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'email': session.get('email'),
+        'google_user_email': session.get('google_user_email'),
+        'seller_id': session.get('seller_id'),
+        'is_logged_via_google': session.get('is_logged_via_google')
+    }
+    
+    output = "<h1>Login-Status</h1>"
+    output += "<pre>" + json.dumps(session_data, indent=2) + "</pre>"
+    
+    # Wenn E-Mail vorhanden ist, teste BigQuery-Abfrage
+    email = session.get('email') or session.get('google_user_email')
+    if email:
+        output += f"<h2>Test der seller_id-Abfrage für {email}</h2>"
+        try:
+            seller_id = get_user_id_from_email(email)
+            output += f"<p>Gefundene seller_id: {seller_id}</p>"
+        except Exception as e:
+            output += f"<p style='color:red'>Fehler: {str(e)}</p>"
+    
+    # Link zum Zurücksetzen der Session
+    output += "<p><a href='/reset_session'>Session zurücksetzen</a></p>"
+    
+    return output
+
+@app.route('/reset_session')
+def reset_session():
+    # Alle Session-Daten löschen, außer user_id
+    user_id = session.get('user_id')
+    session.clear()
+    session['user_id'] = user_id
+    session.modified = True
+    return redirect('/check_login')
+
+@app.route('/check_seller_id')
+def check_seller_id():
+    """Zeigt Informationen über die aktuelle Benutzer-Session an."""
+    session_info = {
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'email': session.get('email'),
+        'seller_id': session.get('seller_id'),
+        'is_admin': session.get('admin_logged_in', False)
+    }
+    
+    # Formatieren als HTML für einfaches Lesen
+    output = "<h1>Benutzer-Informationen</h1>"
+    output += "<pre>" + json.dumps(session_info, indent=2, ensure_ascii=False) + "</pre>"
+    
+    # Wenn seller_id vorhanden ist, zeige einige Beispieldaten aus BigQuery
+    seller_id = session.get('seller_id')
+    if seller_id:
+        output += "<h2>BigQuery-Test</h2>"
+        try:
+            # Versuche, KPIs zu berechnen
+            kpis = calculate_kpis_for_seller(seller_id)
+            output += "<h3>KPIs:</h3>"
+            output += "<pre>" + json.dumps(kpis, indent=2, ensure_ascii=False) + "</pre>"
+            
+            # Prüfe, ob Leads abgerufen werden können
+            leads = get_leads_for_seller(seller_id)
+            output += f"<p>Anzahl gefundener Leads: {len(leads)}</p>"
+            
+            # Prüfe, ob Verträge abgerufen werden können
+            contracts = get_contracts_for_seller(seller_id)
+            output += f"<p>Anzahl gefundener Verträge: {len(contracts)}</p>"
+        except Exception as e:
+            output += f"<p style='color: red;'>Fehler beim Abrufen von BigQuery-Daten: {str(e)}</p>"
+    
+    return output
 
 ###########################################
 # Flask-Routen
@@ -543,26 +1885,20 @@ def set_username():
 ###########################################
 # Chat Route
 ###########################################
+
 @app.route('/', methods=['GET', 'POST'])
 def chat():
-
-    # AN DIESEM STELLE: NUR REINLASSEN, WENN session["is_logged_via_google"] == True
-    if not session.get("is_logged_via_google"):
-        flash("Bitte zuerst via Google-Login anmelden!", "warning")
-        return redirect(url_for('login_google'))
-
     try:
         user_id = session.get('user_id')
-        if not user_id:
-            flash("Bitte loggen Sie sich ein.", 'danger')
-            return redirect(url_for('login'))
-
         user_name = session.get('user_name')
+        
+        # Wenn kein Nutzername, direkt zu Google weiterleiten statt auf die Chat-Seite
         if not user_name:
-            # Nur das Template rendern, damit das Overlay im Frontend erscheint
-            stats = calculate_chat_stats()
-            return render_template('chat.html', chat_history=[], stats=stats)
+            return redirect(url_for('google_login'))
 
+        # Verkäufer-ID aus der Session abrufen
+        seller_id = session.get('seller_id')
+        
         chat_key = f'chat_history_{user_id}'
         if chat_key not in session:
             session[chat_key] = []
@@ -590,6 +1926,32 @@ def chat():
                 return redirect(url_for('chat'))
 
             wissens_text = json.dumps(wissensbasis, ensure_ascii=False, indent=2)
+            
+            # BigQuery-Daten abrufen, wenn Verkäufer-ID vorhanden ist (NEU)
+            bigquery_data = {}
+            if seller_id:
+                # Prüfen, nach welchen Daten der Benutzer gefragt hat
+                message_lower = user_message.lower()
+                
+                # KPIs abfragen
+                if any(kw in message_lower for kw in ["kpi", "kennzahl", "leistung", "statistik", "performance"]):
+                    bigquery_data = get_seller_data(seller_id, 'kpis')
+                
+                # Leads abfragen
+                elif any(kw in message_lower for kw in ["lead", "kunde", "interessent"]):
+                    bigquery_data = get_seller_data(seller_id, 'leads')
+                
+                # Verträge abfragen
+                elif any(kw in message_lower for kw in ["vertrag", "verträge", "contract"]):
+                    bigquery_data = get_seller_data(seller_id, 'contracts')
+                
+                # Haushalte abfragen
+                elif any(kw in message_lower for kw in ["haushalt", "wohnung", "adresse"]):
+                    bigquery_data = get_seller_data(seller_id, 'households')
+                
+                # Alle Daten abfragen (für allgemeine Anfragen)
+                elif any(kw in message_lower for kw in ["daten", "übersicht", "alles", "zusammenfassung"]):
+                    bigquery_data = get_seller_data(seller_id)
 
 
             if notfall_aktiv:
@@ -603,23 +1965,35 @@ def chat():
             else:
                 session.pop('notfall_mode', None)
 
-
-
-
-            # Prompt inkl. Name
+            # Prompt inkl. Name und BigQuery-Daten (NEU)
+            prompt_text = (
+                f"Der Name deines Gesprächspartners lautet {user_name}.\n"
+                "Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. "
+                "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
+                "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
+            )
+            
+            # Verkäufer-ID zur Prompt hinzufügen, wenn vorhanden (NEU)
+            if seller_id:
+                prompt_text += f"Du sprichst mit einem Vertriebspartner mit der ID {seller_id}. "
+                
+                # BigQuery-Daten zur Prompt hinzufügen, wenn vorhanden (NEU)
+                if bigquery_data:
+                    bigquery_text = json.dumps(bigquery_data, ensure_ascii=False, indent=2)
+                    prompt_text += f"\n\nHier sind die relevanten Daten aus dem System:\n{bigquery_text}\n\n"
+            
+            # Prompt vervollständigen
+            prompt_text += (
+                "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
+                "sondern sagst, dass du es nicht weißt. "
+                f"Hier die Frage:\n'''{user_message}'''\n\n"
+                f"Dies ist die Wissensbasis:\n{wissens_text}"
+            )
+            
             messages = [
                 {
                     "role": "user",
-                    "content": (
-                        f"Der Name deines Gesprächspartners lautet {user_name}.\n"
-                        "Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. "
-                        "Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird. "
-                        "Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt. "
-                        "Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, "
-                        "sondern sagst, dass du es nicht weißt. "
-                        f"Hier die Frage:\n'''{user_message}'''\n\n"
-                        f"Dies ist die Wissensbasis:\n{wissens_text}"
-                    )
+                    "content": prompt_text
                 }
             ]
 
@@ -640,10 +2014,10 @@ def chat():
             
 
             # OpenAI
-            token_count = count_tokens(messages, model='o3-mini')
+            token_count = count_tokens(messages, model='o1-preview')
             debug_print("API Calls", f"Anzahl Tokens: {token_count}")
 
-            antwort = contact_openai(messages, model='o3-mini')
+            antwort = contact_openai(messages, model='o1-preview')
             if antwort:
                 chat_history.append({'user': user_message, 'bot': antwort})
                 session[chat_key] = chat_history
@@ -669,6 +2043,22 @@ def chat():
         return "Interner Serverfehler", 500
 
 
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        admin_password = os.getenv('ADMIN_PASSWORD', '')
+        if password == admin_password:
+            session['admin_logged_in'] = True
+            flash('Erfolgreich als Administrator eingeloggt.', 'success')
+            return redirect(url_for('admin'))
+        else:
+            flash('Falsches Passwort.', 'danger')
+            return redirect(url_for('admin_login'))
+            
+    # Render admin login template
+    return render_template('admin_login.html')
+
 ###########################################
 # CSRF & Session Hooks
 ###########################################
@@ -686,11 +2076,12 @@ def ensure_user_id():
 ###########################################
 # Login-Decorator
 ###########################################
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('admin_logged_in'):
-            return redirect(url_for('login'))
+            return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -723,6 +2114,7 @@ def clear_chat_history():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        # Behalten Sie die bestehende Admin-Login-Logik bei
         password = request.form.get('password', '')
         admin_password = os.getenv('ADMIN_PASSWORD', '')
         if password == admin_password:
@@ -732,95 +2124,30 @@ def login():
         else:
             flash('Falsches Passwort.', 'danger')
             return redirect(url_for('login'))
+            
+    # Render login template mit Google-Login-Option
     return render_template('login.html')
 
-@app.route("/login/google")
-def login_google():
-    """Benutzer wird zu Google umgeleitet, um sich mit Google-Account anzumelden."""
-    # (1) Hole Googles config (Authorization Endpoint)
-    google_provider_cfg = get_google_provider_cfg()
-    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
-
-    # (2) Baue die Redirect-URL zu Google
-    #     scope enthält openid, email, profile
-    request_uri = oauth_client.prepare_request_uri(
-        authorization_endpoint,
-        redirect_uri=request.base_url.replace("/google", "") + "/callback",
-        scope=["openid", "email", "profile"]
-    )
-
-    return redirect(request_uri)
-
-@app.route("/login/callback")
-def login_callback():
-    """Google schickt den user mit code=? zurück an diese Callback-URL."""
-    # (1) Den code aus den URL-Parametern abholen
-    code = request.args.get("code")
-    if not code:
-        return "Fehler: Kein code Parameter zurückbekommen", 400
-
-    # (2) Hole Googles config (Token Endpoint)
-    google_provider_cfg = get_google_provider_cfg()
-    token_endpoint = google_provider_cfg["token_endpoint"]
-
-    # (3) Baue Request-Objekt
-    token_url, headers, body = oauth_client.prepare_token_request(
-        token_endpoint,
-        authorization_response=request.url,        # die komplette URL 
-        redirect_url=request.base_url,             # https://.../login/callback
-        code=code
-    )
-
-    # (4) Request an Google schicken, um Tokens zu erhalten
-    token_response = requests.post(
-        token_url,
-        headers=headers,
-        data=body,
-        auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
-    )
-    # (5) Token auswerten
-    oauth_client.parse_request_body_response(json.dumps(token_response.json()))
-
-    # (6) Hole User-Daten (userinfo)
-    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
-    uri, headers, body = oauth_client.add_token(userinfo_endpoint)
-    userinfo_response = requests.get(uri, headers=headers, data=body)
-
-    # Die JSON-Daten checken
-    if not userinfo_response.json().get("email_verified"):
-        return "Deine Google-Email ist nicht verifiziert!", 400
-
-    # Email & Name
-    google_email = userinfo_response.json()["email"]
-    google_name = userinfo_response.json().get("name", "")
-
-    # OPTIONAL: Prüfen, ob die Email zum Firmendomain passt
-    # Beispiel: Nur @example.com zulassen
-    # if not google_email.endswith("@example.com"):
-    #     return "Sie haben keine Firmen-E-Mail. Zugriff verweigert.", 403
-
-    # OK, wir nehmen die Person an, in Session speichern
-    session["google_user_email"] = google_email
-    session["google_user_name"] = google_name
-    session["is_logged_via_google"] = True
-
-    # Weiterleiten zu /chat
-    return redirect(url_for("chat"))
-
-
-@app.route("/logout_google")
-def logout_google():
-    # nur Session-Einträge löschen
-    session.pop("google_user_email", None)
-    session.pop("google_user_name", None)
-    session.pop("is_logged_via_google", None)
-    return redirect(url_for("chat"))
-
-
 @app.route('/logout')
-@login_required
 def logout():
-    session.pop('admin_logged_in', None)
+    # Check if user is admin and handle accordingly
+    if session.get('admin_logged_in'):
+        session.pop('admin_logged_in', None)
+        flash('Erfolgreich ausgeloggt.', 'success')
+        return redirect(url_for('login'))
+    
+    # Clear specific user session data
+    keys_to_remove = [
+        'user_name', 'email', 'google_user_email', 
+        'seller_id', 'is_logged_via_google'
+    ]
+    
+    for key in keys_to_remove:
+        if key in session:
+            session.pop(key)
+    
+    # Keep user_id for tracking purposes
+    
     flash('Erfolgreich ausgeloggt.', 'success')
     return redirect(url_for('login'))
 
@@ -1357,5 +2684,4 @@ def process_file_manual():
 # App Start
 ###########################################
 if __name__ == "__main__":
-    # Wichtig: Stelle sicher, dass du pip install "pinecone[grpc]" genutzt hast.
     app.run(debug=True)

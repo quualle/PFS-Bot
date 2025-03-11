@@ -316,7 +316,6 @@ def store_feedback(feedback_type, comment, chat_history):
             f.write(f"  User: {user_msg}\n")
             f.write(f"  Bot : {bot_msg}\n\n")
 
-
 ###########################################
 # Chat-Statistik
 ###########################################
@@ -364,7 +363,6 @@ def calculate_chat_stats():
         'month': month_count,
         'today': day_count
     }
-
 
 ###########################################
 # Download/Upload Wissensbasis (JSON)
@@ -433,7 +431,6 @@ def upload_wissensbasis(wissensbasis, max_retries=5, backoff_factor=1):
             else:
                 flash(f"Fehler beim Hochladen der Wissensbasis: {e}", 'danger')
 
-
 ###########################################
 # Themen (themen.txt) laden/aktualisieren
 ###########################################
@@ -501,7 +498,6 @@ def aktualisiere_themen(themen_dict):
                     file.write(f"{punkt_nummer}) {punkt_titel}\n")
             file.write("\n")
 
-
 ###########################################
 # Wissenseintrag in JSON + Pinecone speichern
 ###########################################
@@ -543,7 +539,6 @@ def speichere_wissensbasis(eintrag):
        
     else:
         flash("Thema und Unterthema müssen angegeben werden.", 'warning')
-
 
 def get_user_id_from_email(email):
     """
@@ -964,7 +959,6 @@ def create_function_definitions():
     
     return tools
 
-
 def create_system_prompt(table_schema):
     """
     Erstellt einen System-Prompt, der die Datenstruktur und verfügbaren Funktionen beschreibt.
@@ -1000,9 +994,6 @@ Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, s
     
     return prompt
 
-
-
-
 @app.route('/test_session')
 def test_session():
     # Test-Wert in die Session setzen
@@ -1024,7 +1015,6 @@ def test_session():
     output += "</ul>"
     
     return output
-
 
 @app.route('/test_bigquery')
 def test_bigquery():
@@ -1857,151 +1847,6 @@ def test_bigquery():
         """
         return error_output
     
-
-@app.route('/check_login')
-def check_login():
-    # Alle relevanten Session-Daten anzeigen
-    session_data = {
-        'user_id': session.get('user_id'),
-        'user_name': session.get('user_name'),
-        'email': session.get('email'),
-        'google_user_email': session.get('google_user_email'),
-        'seller_id': session.get('seller_id'),
-        'is_logged_via_google': session.get('is_logged_via_google')
-    }
-    
-    output = "<h1>Login-Status</h1>"
-    output += "<pre>" + json.dumps(session_data, indent=2) + "</pre>"
-    
-    # Wenn E-Mail vorhanden ist, teste BigQuery-Abfrage
-    email = session.get('email') or session.get('google_user_email')
-    if email:
-        output += f"<h2>Test der seller_id-Abfrage für {email}</h2>"
-        try:
-            seller_id = get_user_id_from_email(email)
-            output += f"<p>Gefundene seller_id: {seller_id}</p>"
-        except Exception as e:
-            output += f"<p style='color:red'>Fehler: {str(e)}</p>"
-    
-    # Link zum Zurücksetzen der Session
-    output += "<p><a href='/reset_session'>Session zurücksetzen</a></p>"
-    
-    return output
-
-@app.route('/reset_session')
-def reset_session():
-    # Alle Session-Daten löschen, außer user_id
-    user_id = session.get('user_id')
-    session.clear()
-    session['user_id'] = user_id
-    session.modified = True
-    return redirect('/check_login')
-
-@app.route('/check_seller_id')
-def check_seller_id():
-    """Zeigt Informationen über die aktuelle Benutzer-Session an."""
-    session_info = {
-        'user_id': session.get('user_id'),
-        'user_name': session.get('user_name'),
-        'email': session.get('email'),
-        'seller_id': session.get('seller_id'),
-        'is_admin': session.get('admin_logged_in', False)
-    }
-    
-    # Formatieren als HTML für einfaches Lesen
-    output = "<h1>Benutzer-Informationen</h1>"
-    output += "<pre>" + json.dumps(session_info, indent=2, ensure_ascii=False) + "</pre>"
-    
-    # Wenn seller_id vorhanden ist, zeige einige Beispieldaten aus BigQuery
-    seller_id = session.get('seller_id')
-    if seller_id:
-        output += "<h2>BigQuery-Test</h2>"
-        try:
-            # Versuche, KPIs zu berechnen
-            kpis = calculate_kpis_for_seller(seller_id)
-            output += "<h3>KPIs:</h3>"
-            output += "<pre>" + json.dumps(kpis, indent=2, ensure_ascii=False) + "</pre>"
-            
-            # Prüfe, ob Leads abgerufen werden können
-            leads = get_leads_for_seller(seller_id)
-            output += f"<p>Anzahl gefundener Leads: {len(leads)}</p>"
-            
-            # Prüfe, ob Verträge abgerufen werden können
-            contracts = get_contracts_for_seller(seller_id)
-            output += f"<p>Anzahl gefundener Verträge: {len(contracts)}</p>"
-        except Exception as e:
-            output += f"<p style='color: red;'>Fehler beim Abrufen von BigQuery-Daten: {str(e)}</p>"
-    
-    return output
-
-###########################################
-# Flask-Routen
-###########################################
-@app.route('/toggle_notfall_mode', methods=['POST'])
-def toggle_notfall_mode():
-    try:
-        activate = request.form.get('activate', '0')
-        if activate == '1':
-            session['notfall_mode'] = True
-        else:
-            session.pop('notfall_mode', None)
-        return jsonify({
-            'success': True,
-            'notfall_mode_active': session.get('notfall_mode', False)
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/store_feedback', methods=['POST'])
-def store_feedback_route():
-    try:
-        data = request.get_json()
-        feedback_type = data.get("feedback_type", "")
-        comment = data.get("comment", "").strip()
-
-        user_id = session.get('user_id')
-        if not user_id:
-            return jsonify({"success": False, "message": "User nicht erkannt"}), 400
-
-        chat_key = f'chat_history_{user_id}'
-        chat_history = session.get(chat_key, [])
-
-        store_feedback(feedback_type, comment, chat_history)
-        return jsonify({"success": True}), 200
-    except Exception as e:
-        logging.exception("Fehler beim Speichern des Feedbacks.")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-###########################################
-# Neue Routen: Username setzen/auslesen
-###########################################
-@app.route('/get_username', methods=['GET'])
-def get_username():
-    try:
-        user_name = session.get('user_name')
-        return jsonify({'user_name': user_name}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/set_username', methods=['POST'])
-def set_username():
-    try:
-        username = request.form.get('username', '').strip()
-        if len(username) < 3:
-            return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
-        
-        session['user_name'] = username
-        
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-###########################################
-# Chat Route
-###########################################
-
 @app.route('/', methods=['GET', 'POST'])
 def chat():
     try:
@@ -2225,7 +2070,152 @@ def chat():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'error': 'Interner Serverfehler.'}), 500
         return "Interner Serverfehler", 500
+   
+@app.route('/check_login')
+def check_login():
+    # Alle relevanten Session-Daten anzeigen
+    session_data = {
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'email': session.get('email'),
+        'google_user_email': session.get('google_user_email'),
+        'seller_id': session.get('seller_id'),
+        'is_logged_via_google': session.get('is_logged_via_google')
+    }
     
+    output = "<h1>Login-Status</h1>"
+    output += "<pre>" + json.dumps(session_data, indent=2) + "</pre>"
+    
+    # Wenn E-Mail vorhanden ist, teste BigQuery-Abfrage
+    email = session.get('email') or session.get('google_user_email')
+    if email:
+        output += f"<h2>Test der seller_id-Abfrage für {email}</h2>"
+        try:
+            seller_id = get_user_id_from_email(email)
+            output += f"<p>Gefundene seller_id: {seller_id}</p>"
+        except Exception as e:
+            output += f"<p style='color:red'>Fehler: {str(e)}</p>"
+    
+    # Link zum Zurücksetzen der Session
+    output += "<p><a href='/reset_session'>Session zurücksetzen</a></p>"
+    
+    return output
+
+@app.route('/reset_session')
+def reset_session():
+    # Alle Session-Daten löschen, außer user_id
+    user_id = session.get('user_id')
+    session.clear()
+    session['user_id'] = user_id
+    session.modified = True
+    return redirect('/check_login')
+
+@app.route('/check_seller_id')
+def check_seller_id():
+    """Zeigt Informationen über die aktuelle Benutzer-Session an."""
+    session_info = {
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'email': session.get('email'),
+        'seller_id': session.get('seller_id'),
+        'is_admin': session.get('admin_logged_in', False)
+    }
+    
+    # Formatieren als HTML für einfaches Lesen
+    output = "<h1>Benutzer-Informationen</h1>"
+    output += "<pre>" + json.dumps(session_info, indent=2, ensure_ascii=False) + "</pre>"
+    
+    # Wenn seller_id vorhanden ist, zeige einige Beispieldaten aus BigQuery
+    seller_id = session.get('seller_id')
+    if seller_id:
+        output += "<h2>BigQuery-Test</h2>"
+        try:
+            # Versuche, KPIs zu berechnen
+            kpis = calculate_kpis_for_seller(seller_id)
+            output += "<h3>KPIs:</h3>"
+            output += "<pre>" + json.dumps(kpis, indent=2, ensure_ascii=False) + "</pre>"
+            
+            # Prüfe, ob Leads abgerufen werden können
+            leads = get_leads_for_seller(seller_id)
+            output += f"<p>Anzahl gefundener Leads: {len(leads)}</p>"
+            
+            # Prüfe, ob Verträge abgerufen werden können
+            contracts = get_contracts_for_seller(seller_id)
+            output += f"<p>Anzahl gefundener Verträge: {len(contracts)}</p>"
+        except Exception as e:
+            output += f"<p style='color: red;'>Fehler beim Abrufen von BigQuery-Daten: {str(e)}</p>"
+    
+    return output
+
+###########################################
+# Flask-Routen
+###########################################
+@app.route('/toggle_notfall_mode', methods=['POST'])
+def toggle_notfall_mode():
+    try:
+        activate = request.form.get('activate', '0')
+        if activate == '1':
+            session['notfall_mode'] = True
+        else:
+            session.pop('notfall_mode', None)
+        return jsonify({
+            'success': True,
+            'notfall_mode_active': session.get('notfall_mode', False)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/store_feedback', methods=['POST'])
+def store_feedback_route():
+    try:
+        data = request.get_json()
+        feedback_type = data.get("feedback_type", "")
+        comment = data.get("comment", "").strip()
+
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({"success": False, "message": "User nicht erkannt"}), 400
+
+        chat_key = f'chat_history_{user_id}'
+        chat_history = session.get(chat_key, [])
+
+        store_feedback(feedback_type, comment, chat_history)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        logging.exception("Fehler beim Speichern des Feedbacks.")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+###########################################
+# Neue Routen: Username setzen/auslesen
+###########################################
+@app.route('/get_username', methods=['GET'])
+def get_username():
+    try:
+        user_name = session.get('user_name')
+        return jsonify({'user_name': user_name}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/set_username', methods=['POST'])
+def set_username():
+    try:
+        username = request.form.get('username', '').strip()
+        if len(username) < 3:
+            return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
+        
+        session['user_name'] = username
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+###########################################
+# Chat Route
+###########################################
+
+ 
 
 
 @app.route('/admin_login', methods=['GET', 'POST'])

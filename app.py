@@ -906,6 +906,62 @@ def count_tokens(messages, model=None):
 # BigQuery Datenbezug
 ###########################################
 
+def extract_date_params(user_message):
+    """Extract date parameters from user message for months like 'Mai'."""
+    extracted_args = {}
+    
+    # Map German month names to numbers
+    month_map = {
+        "januar": 1, "februar": 2, "märz": 3, "april": 4, "mai": 5, "juni": 6,
+        "juli": 7, "august": 8, "september": 9, "oktober": 10, "november": 11, "dezember": 12
+    }
+    
+    user_message_lower = user_message.lower()
+    current_date = datetime.datetime.now()
+    current_year = current_date.year
+    
+    # Check for month mentions
+    for month_name, month_num in month_map.items():
+        if month_name in user_message_lower:
+            # Assume next occurrence of this month (this year or next)
+            year = current_year
+            if current_date.month > month_num:
+                year = current_year + 1
+                
+            # Create start and end dates for the month
+            start_date = datetime.date(year, month_num, 1)
+            if month_num == 12:
+                end_date = datetime.date(year, 12, 31)
+            else:
+                end_date = datetime.date(year, month_num + 1, 1) - datetime.timedelta(days=1)
+                
+            extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
+            extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
+            debug_print("Datumsextraktion", f"Erkannter Monat: {month_name}, Start: {extracted_args['start_date']}, Ende: {extracted_args['end_date']}")
+            return extracted_args
+    
+    # Fall back to dateparser
+    parsed_date = dateparser.parse(
+        user_message,
+        languages=["de"],
+        settings={"PREFER_DATES_FROM": "future"},
+    )
+    if parsed_date:
+        extracted_args["year_month"] = parsed_date.strftime("%Y-%m")
+        # Create start/end dates for the month
+        start_date = parsed_date.replace(day=1)
+        if start_date.month == 12:
+            end_date = start_date.replace(day=31)
+        else:
+            next_month = start_date.replace(month=start_date.month + 1)
+            end_date = next_month - datetime.timedelta(days=1)
+        
+        extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
+        extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
+        debug_print("Datumsextraktion", f"Erkanntes Datum: {extracted_args}")
+    
+    return extracted_args
+
 def create_function_definitions():
     """
     Erstellt die Function-Definitionen für OpenAI's Function-Calling basierend auf 
@@ -1005,6 +1061,24 @@ Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt.
 
 Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, sondern sagst, dass du es nicht weißt.
 """
+
+
+    
+    prompt += """
+    KRITISCH WICHTIG: Du bist ein Assistent, der NIEMALS Fragen zu Datenbank-Daten direkt beantwortet!
+    
+    1. Bei JEDER Frage zu Care Stays, Verträgen, Leads oder anderen Daten MUSST du eine der bereitgestellten Funktionen verwenden.
+    2. Ohne Funktionsaufruf hast du KEINEN Zugriff auf aktuelle Daten.
+    3. Generiere NIEMALS Antworten aus eigenem Wissen, wenn die Information in der Datenbank zu finden ist.
+    4. Bei zeitbezogenen Anfragen (z.B. "im Mai") nutze IMMER die Funktion get_care_stays_by_date_range.
+    
+    Dein Standardverhalten bei Datenabfragen:
+    1. Analysiere die Nutzerfrage
+    2. Wähle die passende Funktion
+    3. Rufe die Funktion mit korrekten Parametern auf
+    4. Warte auf das Ergebnis
+    5. Nutze dieses Ergebnis für deine Antwort
+    """
     
     return prompt
 
@@ -1900,6 +1974,8 @@ def chat():
             notfall_aktiv = request.form.get("notfallmodus") == "1"
             notfall_art = request.form.get("notfallart", "").strip()
 
+            extracted_args = extract_date_params(user_message)
+
             if not user_message:
                 flash("Bitte geben Sie eine Nachricht ein.", "warning")
                 return (
@@ -2070,6 +2146,32 @@ def check_login():
     output += "<p><a href='/reset_session'>Session zurücksetzen</a></p>"
     
     return output
+
+@app.route('/debug_function_call')
+def debug_function_call():
+    """Test function calling directly"""
+    function_name = request.args.get('function', 'get_care_stays_by_date_range')
+    
+    # Set up basic parameters
+    args = {
+        'seller_id': session.get('seller_id', 'your_default_seller_id'),
+        'start_date': '2025-05-01',
+        'end_date': '2025-05-31',
+        'limit': '100'
+    }
+    
+    # Call the function directly
+    result = handle_function_call(function_name, args)
+    
+    # Return as formatted HTML
+    return f"""
+    <h1>Debug Function Call</h1>
+    <p>Function: {function_name}</p>
+    <p>Args: {args}</p>
+    <h2>Result:</h2>
+    <pre>{result}</pre>
+    """
+
 
 @app.route('/reset_session')
 def reset_session():

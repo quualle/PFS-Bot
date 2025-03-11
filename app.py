@@ -3,7 +3,7 @@ import json
 import re
 import time
 import logging
-import logger
+import logging
 import datetime
 from functools import wraps
 import traceback
@@ -2087,7 +2087,7 @@ def chat():
                     tools=tools,
                     tool_choice=tool_choice,
                     # Erhöhe ggf. die Temperatur für experimentelle Zwecke
-                    temperature=0.3,
+                    
                 )
                 
                 assistant_message = response.choices[0].message
@@ -2145,7 +2145,7 @@ def chat():
                     debug_print("API Calls", f"Direkte Antwort (kein Function Call): {antwort[:100]}...")
                     # Warnung ins Log schreiben, wenn keine Funktion aufgerufen wurde
                     if any(term in user_message.lower() for term in ["care", "pflege", "kunden", "verträge", "mai", "monat"]):
-                        logger.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
+                        logging.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
 
                 # Chat-History aktualisieren
                 chat_history.append({"user": user_message, "bot": antwort})
@@ -2160,7 +2160,7 @@ def chat():
                 )
 
             except Exception as e:
-                logger.exception("Fehler beim OpenAI-Aufruf")
+                logging.exception("Fehler beim OpenAI-Aufruf")
                 error_message = f"Fehler bei der Kommunikation mit OpenAI: {str(e)}"
                 debug_print("API Calls", error_message)
                 flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", "danger")

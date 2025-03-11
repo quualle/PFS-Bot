@@ -860,38 +860,49 @@ def log_notfall_event(user_id, notfall_art, user_message):
 # Kontakt mit OpenAI
 ###########################################
 def contact_openai(messages, model=None):
-    model = 'o3-mini-preview'  # dein Model (z.B. GPT-3.5-turbo, etc.)
-    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o3-mini-preview gesetzt.")
+    model = 'o3-mini'  # Changed from o3-mini-preview to o3-mini to match the model used in the chat route
+    debug_print("API Calls", "contact_openai wurde aufgerufen – jetzt auf o3-mini gesetzt.")
     try:
-        response = openai.chat.completions.create(model=model, messages=messages)
+        # Create the tool definitions first
+        tools = create_function_definitions()
+        
+        # Add explicit tool_choice parameter to guide the model to use functions
+        response = openai.chat.completions.create(
+            model=model, 
+            messages=messages,
+            tools=tools,  # Add the tools parameter
+            tool_choice="auto"  # Auto lets the model decide when to use functions
+        )
+        
         if response and response.choices:
-            antwort_content = response.choices[0].message.content.strip()
+            assistant_message = response.choices[0].message
+            antwort_content = assistant_message.content.strip() if assistant_message.content else ""
             debug_print("API Calls", f"Antwort von OpenAI: {antwort_content}")
 
-            tool_calls = response.choices[0].message.tool_calls
-            debug_print("API Calls", f"Function Calls erkannt: {tool_calls}") # Bestehende Logausgabe
-            for tool_call in tool_calls:
-                function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
-                debug_print("API Calls", f"Funktion vom LLM gewählt: {function_name}, Argumente: {function_args}") # Neue Logausgabe
+            # Check if the model chose to call a function
+            tool_calls = assistant_message.tool_calls
+            if tool_calls:
+                debug_print("API Calls", f"Function Calls erkannt: {tool_calls}")
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+                    debug_print("API Calls", f"Funktion vom LLM gewählt: {function_name}, Argumente: {function_args}")
 
-
-            return antwort_content
+            return antwort_content, tool_calls  # Return both the content and tool calls
         else:
             antwort_content = "Keine Antwort erhalten."
             debug_print("API Calls", antwort_content)
-            return antwort_content
+            return antwort_content, None
         
     except Exception as e:
         debug_print("API Calls", f"Fehler: {e}")
         flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
-        return None
-    
+        return None, None
 
     
 
 def count_tokens(messages, model=None):
-    model = 'o3-mini-preview'
+    model = 'o3-mini'
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -1088,7 +1099,7 @@ WICHTIG ZUR ANTWORTFORMATIERUNG:
 2. Antworte direkt und präzise mit den Ergebnissen der Datenbankabfrage
 3. Beginne deine Antwort mit einer klaren Zusammenfassung (z.B. "Du hast derzeit X aktive Care Stays.")
 4. Vermeide Fülltext wie "Basierend auf den Daten" oder "Wie ich sehen kann"
-5. Stelle sicher, dass deine Antwort komplett und zusammenhängend ist, ohne Text wie "An yes... now more answer following"
+
 """
     
     return prompt

@@ -2232,18 +2232,17 @@ def chat():
         ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
 
 
-# Debug-Route zum direkten Testen der Funktionsaufrufe
 @app.route('/test_function_call')
 def test_function_call():
     """Test function calling directly"""
     function_name = request.args.get('function', 'get_care_stays_by_date_range')
     
-    # Set up basic parameters
+    # Set up basic parameters - note limit is now an integer
     args = {
         'seller_id': session.get('seller_id', 'Pflegeteam Heer'),
         'start_date': '2025-05-01',
         'end_date': '2025-05-31',
-        'limit': '100'
+        'limit': 100  # Changed from string to integer
     }
     
     # Call the function directly
@@ -2251,7 +2250,7 @@ def test_function_call():
     
     # Return as formatted HTML
     return f"""
-    <h1>test_function_call</h1>
+    <h1>Test Function Call</h1>
     <p>Function: {function_name}</p>
     <p>Args: {args}</p>
     <h2>Result:</h2>

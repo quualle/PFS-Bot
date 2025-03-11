@@ -16,15 +16,10 @@ SERVICE_ACCOUNT_PATH = '/home/PfS/gcpxbixpflegehilfesenioren-a47c654480a8.json'
 def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> str:
     """
     Hauptfunktion zum Handling von Function-Calls vom LLM.
-    
-    Args:
-        function_name (str): Name der aufgerufenen Funktion
-        function_args (dict): Argumente der Funktion
-        
-    Returns:
-        str: JSON-formatierte Ergebnisse der Abfrage oder Fehlermeldung
     """
     try:
+        logger.info(f"Function call received: {function_name} with args: {function_args}")
+        
         # Lade die Abfragemuster
         with open('query_patterns.json', 'r', encoding='utf-8') as f:
             query_patterns = json.load(f)
@@ -53,6 +48,31 @@ def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> s
             if param not in function_args and param in query_pattern.get('default_values', {}):
                 function_args[param] = query_pattern['default_values'][param]
         
+        # Konvertiere Parameter zu den richtigen Typen
+        # NEW CODE ADDED HERE
+        param_types = query_pattern.get('parameter_types', {})
+        for param, value in list(function_args.items()):
+            if param == 'limit' and isinstance(value, str):
+                try:
+                    function_args[param] = int(value)
+                except (ValueError, TypeError):
+                    function_args[param] = 100  # Default fallback
+                    
+            # Konvertiere weitere Parameter nach Bedarf
+            if param in param_types:
+                if param_types[param] == 'int' and not isinstance(value, int):
+                    try:
+                        function_args[param] = int(value)
+                    except (ValueError, TypeError):
+                        pass
+                elif param_types[param] == 'float' and not isinstance(value, float):
+                    try:
+                        function_args[param] = float(value)
+                    except (ValueError, TypeError):
+                        pass
+        
+        logger.info(f"Executing query with parameters (after type conversion): {function_args}")
+        
         # Führe die Abfrage aus
         result = execute_bigquery_query(
             query_pattern['sql_template'],
@@ -76,7 +96,6 @@ def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> s
             "trace": error_trace,
             "status": "error"
         })
-
 
 def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
     """

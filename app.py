@@ -2233,8 +2233,8 @@ def chat():
 
 
 # Debug-Route zum direkten Testen der Funktionsaufrufe
-@app.route('/debug_function_call')
-def debug_function_call():
+@app.route('/test_function_call')
+def test_function_call():
     """Test function calling directly"""
     function_name = request.args.get('function', 'get_care_stays_by_date_range')
     
@@ -2251,7 +2251,7 @@ def debug_function_call():
     
     # Return as formatted HTML
     return f"""
-    <h1>Debug Function Call</h1>
+    <h1>test_function_call</h1>
     <p>Function: {function_name}</p>
     <p>Args: {args}</p>
     <h2>Result:</h2>

@@ -10,6 +10,7 @@ import traceback
 import uuid
 import tempfile
 import requests  # Added import for requests
+import dateparser 
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_wtf import CSRFProtect
@@ -858,25 +859,38 @@ def log_notfall_event(user_id, notfall_art, user_message):
 # Kontakt mit OpenAI
 ###########################################
 def contact_openai(messages, model=None):
-    model = 'o1-preview'  # dein Model (z.B. GPT-3.5-turbo, etc.)
-    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o1-preview gesetzt.")
+    model = 'o3-mini-preview'  # dein Model (z.B. GPT-3.5-turbo, etc.)
+    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o3-mini-preview gesetzt.")
     try:
         response = openai.chat.completions.create(model=model, messages=messages)
         if response and response.choices:
             antwort_content = response.choices[0].message.content.strip()
             debug_print("API Calls", f"Antwort von OpenAI: {antwort_content}")
+
+            tool_calls = response.choices[0].message.tool_calls
+            debug_print("API Calls", f"Function Calls erkannt: {tool_calls}") # Bestehende Logausgabe
+            for tool_call in tool_calls:
+                function_name = tool_call.function.name
+                function_args = json.loads(tool_call.function.arguments)
+                debug_print("API Calls", f"Funktion vom LLM gewählt: {function_name}, Argumente: {function_args}") # Neue Logausgabe
+
+
             return antwort_content
         else:
             antwort_content = "Keine Antwort erhalten."
             debug_print("API Calls", antwort_content)
             return antwort_content
+        
     except Exception as e:
         debug_print("API Calls", f"Fehler: {e}")
         flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
         return None
+    
+
+    
 
 def count_tokens(messages, model=None):
-    model = 'o1-preview'
+    model = 'o3-mini-preview'
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -1847,77 +1861,66 @@ def test_bigquery():
         """
         return error_output
     
-@app.route('/', methods=['GET', 'POST'])
+@app.route("/", methods=["GET", "POST"])
 def chat():
     try:
-        user_id = session.get('user_id')
-        user_name = session.get('user_name')
-        
-        # Wenn kein Nutzername, direkt zu Google weiterleiten statt auf die Chat-Seite
-        if not user_name:
-            return redirect(url_for('google_login'))
+        user_id = session.get("user_id")
+        user_name = session.get("user_name")
 
-        # Verkäufer-ID aus der Session abrufen
-        seller_id = session.get('seller_id')
-        if not seller_id and session.get('email'):
-            seller_id = get_user_id_from_email(session.get('email'))
+        if not user_name:
+            return redirect(url_for("google_login"))
+
+        seller_id = session.get("seller_id")
+        if not seller_id and session.get("email"):
+            seller_id = get_user_id_from_email(session.get("email"))
             if seller_id:
-                session['seller_id'] = seller_id
+                session["seller_id"] = seller_id
                 session.modified = True
-        
-        # Chat-History mit dem benutzerdefinierten Format beibehalten
-        chat_key = f'chat_history_{user_id}'
+
+        chat_key = f"chat_history_{user_id}"
         if chat_key not in session:
             session[chat_key] = []
         chat_history = session[chat_key]
-        
-        # Für die Anzeige im Template konvertieren wir die Chat-History in das alte Format
-        display_chat_history = []
-        if chat_history:
-            for entry in chat_history:
-                if isinstance(entry, dict) and 'user' in entry and 'bot' in entry:
-                    # Altes Format - wir behalten es bei
-                    display_chat_history.append(entry)
-                else:
-                    # Ignorieren wir, da es vom neuen Format sein könnte
-                    pass
-        
-        # Tabellenschema und Abfragemuster laden
+
+        # Einfache Anzeige der Chat-History (keine Formatkonvertierung nötig)
+        display_chat_history = chat_history
+
         try:
-            with open('table_schema.json', 'r', encoding='utf-8') as f:
+            with open("table_schema.json", "r", encoding="utf-8") as f:
                 table_schema = json.load(f)
-            
-            with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            with open("query_patterns.json", "r", encoding="utf-8") as f:
                 query_patterns = json.load(f)
         except Exception as e:
             logging.error(f"Fehler beim Laden der Schema-Dateien: {e}")
             table_schema = {"tables": {}}
             query_patterns = {"common_queries": {}}
 
-        if request.method == 'POST':
-            user_message = request.form.get('message', '').strip()
-            selected_source = request.form.get('source', 'json')
-            notfall_aktiv = (request.form.get('notfallmodus') == '1')
-            notfall_art = request.form.get('notfallart', '').strip()
+        if request.method == "POST":
+            user_message = request.form.get("message", "").strip()
+            notfall_aktiv = request.form.get("notfallmodus") == "1"
+            notfall_art = request.form.get("notfallart", "").strip()
 
-            # Input-Validierung
             if not user_message:
-                flash("Bitte geben Sie eine Nachricht ein.", 'warning')
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'error': 'Bitte geben Sie eine Nachricht ein.'}), 400
-                return redirect(url_for('chat'))
+                flash("Bitte geben Sie eine Nachricht ein.", "warning")
+                return (
+                    jsonify({"error": "Bitte geben Sie eine Nachricht ein."}),
+                    400,
+                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                    url_for("chat")
+                )
 
-            # Wissensbasis laden
             wissensbasis = download_wissensbasis()
             if not wissensbasis:
-                flash("Die Wissensbasis konnte nicht geladen werden.", 'danger')
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'error': 'Die Wissensbasis konnte nicht geladen werden.'}), 500
-                return redirect(url_for('chat'))
+                flash("Die Wissensbasis konnte nicht geladen werden.", "danger")
+                return (
+                    jsonify({"error": "Die Wissensbasis konnte nicht geladen werden."}),
+                    500,
+                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                    url_for("chat")
+                )
 
-            # Notfallmodus-Handling
             if notfall_aktiv:
-                session['notfall_mode'] = True
+                session["notfall_mode"] = True
                 user_message = (
                     f"ACHTUNG NOTFALL - Thema 9: Notfälle & Vertragsgefährdungen.\n"
                     f"Ausgewählte Notfalloption(en): {notfall_art}\n\n"
@@ -1925,152 +1928,119 @@ def chat():
                 )
                 log_notfall_event(user_id, notfall_art, user_message)
             else:
-                session.pop('notfall_mode', None)
+                session.pop("notfall_mode", None)
 
-            # Erstelle das System-Prompt und Kontext für die Wissensbasis
             system_prompt = create_system_prompt(table_schema)
-            
-            # Wissensbasis in lesbarer Form hinzufügen
-            prompt_wissensbasis_abschnitte = []
-            for thema, unterthemen in wissensbasis.items():
-                for unterthema_full, details in unterthemen.items():
-                    beschreibung = details.get("beschreibung", "")
-                    inhalt = details.get("inhalt", [])
-                    prompt_wissensbasis_abschnitte.append(
-                        f"Thema: {thema}, Unterthema: {unterthema_full}, " +
-                        f"Beschreibung: {beschreibung}, Inhalt: {'. '.join(inhalt)}"
-                    )
-            
-            wissensbasis_prompt_string = "\n\n".join(prompt_wissensbasis_abschnitte)
-            system_prompt += f"\n\nWissensbasis:\n{wissensbasis_prompt_string}"
-            
-            # Personalisieren des System-Prompts
-            system_prompt = f"Der Name deines Gesprächspartners lautet {user_name}.\n" + system_prompt
-            
-            # Verkäufer-Information hinzufügen
-            if seller_id:
-                system_prompt += f"\n\nDu sprichst mit einem Vertriebspartner mit der ID {seller_id}."
-            
-            # Function-Definitionen erstellen
+            prompt_wissensbasis_abschnitte = [
+                f"Thema: {thema}, Unterthema: {unterthema_full}, Beschreibung: {details.get('beschreibung', '')}, Inhalt: {'. '.join(details.get('inhalt', []))}"
+                for thema, unterthemen in wissensbasis.items()
+                for unterthema_full, details in unterthemen.items()
+            ]
+            system_prompt += f"\n\nWissensbasis:\n{chr(10).join(prompt_wissensbasis_abschnitte)}"
+            system_prompt = (
+                f"Der Name deines Gesprächspartners lautet {user_name}.\n"
+                + system_prompt
+                + (f"\n\nDu sprichst mit einem Vertriebspartner mit der ID {seller_id}." if seller_id else "")
+            )
+
             tools = create_function_definitions()
-            
-            # OpenAI-Nachrichten vorbereiten
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
+                {"role": "user", "content": user_message},
             ]
             
-            # Log für Debugging
-            debug_print("API Calls", f"Anfrage an OpenAI mit Function Calling: {user_message}")
+            # Datumsextraktion und Funktionsvorbereitung
+            extracted_args = {}  # Dictionary für extrahierte Argumente
+            parsed_date = dateparser.parse(
+                user_message,
+                languages=["de"],
+                settings={"PREFER_DATES_FROM": "future"},
+            )
+            if parsed_date:
+                extracted_args["year_month"] = parsed_date.strftime("%Y-%m")
+                # Weitere Datumsfelder nach Bedarf hinzufügen (start_date, end_date)
+                debug_print("Datumsextraktion", f"Erkanntes Datum: {extracted_args}")
 
             try:
-                # OpenAI API aufrufen
-                model = 'gpt-4o'  # oder o1-preview, je nach Konfiguration
-                
+                debug_print("API Calls", f"Anfrage an OpenAI mit Function Calling: {user_message}")
                 response = openai.chat.completions.create(
-                    model=model,
+                    model="o3-mini",
                     messages=messages,
                     tools=tools,
-                    tool_choice="auto"
+                    tool_choice="auto",
                 )
-                
-                # Antwort extrahieren
                 assistant_message = response.choices[0].message
-                
-                # Prüfen, ob Funktionsaufrufe vorhanden sind
+
                 if assistant_message.tool_calls:
                     debug_print("API Calls", f"Function Calls erkannt: {assistant_message.tool_calls}")
-                    
-                    # Führe jeden Funktionsaufruf aus
                     function_responses = []
+
                     for tool_call in assistant_message.tool_calls:
                         function_name = tool_call.function.name
                         function_args = json.loads(tool_call.function.arguments)
-                        
-                        # Füge seller_id hinzu, falls benötigt und nicht vorhanden
-                        if seller_id and "seller_id" in query_patterns['common_queries'].get(function_name, {}).get('required_parameters', []) and "seller_id" not in function_args:
+
+                        # Standardargumente hinzufügen und überschreiben
+                        if seller_id:
                             function_args["seller_id"] = seller_id
-                        
-                        debug_print("API Calls", f"Führe Funktion aus: {function_name} mit Argumenten: {function_args}")
-                        
-                        # Führe die Funktion aus
-                        function_response = handle_function_call(function_name, function_args)
-                        
-                        # Füge die Funktionsantwort hinzu
-                        function_responses.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": function_response
-                        })
-                    
-                    # Erstelle Nachrichten für die zweite Anfrage
-                    second_messages = messages + [
-                        {
-                            "role": "assistant",
-                            "content": assistant_message.content,
-                            "tool_calls": [
-                                {
-                                    "id": tc.id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": tc.function.name,
-                                        "arguments": tc.function.arguments
-                                    }
-                                } for tc in assistant_message.tool_calls
-                            ]
-                        }
-                    ] + function_responses
-                    
-                    # Zweiter Aufruf für die finale Antwort
-                    second_response = openai.chat.completions.create(
-                        model=model,
-                        messages=second_messages
-                    )
-                    
-                    # Finale Antwort extrahieren
+                        function_args.update(extracted_args)  # Extrahierte Daten hinzufügen
+
+                        debug_print("API Calls", f"Funktion: {function_name}, Argumente: {function_args}")
+
+                        function_response = handle_function_call(function_name, function_args)  # Hier wird aufgerufen
+                        function_responses.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "content": function_response,
+                            }
+                        )
+
+                    second_messages = messages + [assistant_message.model_dump(exclude_unset=True)] + function_responses
+                    second_response = openai.chat.completions.create(model="o3-mini", messages=second_messages)
                     final_message = second_response.choices[0].message
                     antwort = final_message.content
-                    
-                    debug_print("API Calls", f"Finale Antwort mit Daten: {antwort[:100]}...")
+                    debug_print("API Calls", f"Finale Antwort: {antwort[:100]}...")
+
                 else:
-                    # Keine Funktionsaufrufe, direkte Antwort verwenden
                     antwort = assistant_message.content
                     debug_print("API Calls", f"Direkte Antwort: {antwort[:100]}...")
-                
-                # Chat-History im alten Format aktualisieren für die Kompatibilität
-                chat_history.append({'user': user_message, 'bot': antwort})
-                session[chat_key] = chat_history
-                
-                # Chat-Log speichern
-                store_chatlog(user_name, chat_history)
 
-                # AJAX-Antwort
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'response': antwort}), 200
-                
-                return redirect(url_for('chat'))
+                # Chat-History aktualisieren (neues Format)
+                chat_history.append({"user": user_message, "bot": antwort})
+                session[chat_key] = chat_history
+                store_chatlog(user_name, chat_history) #speichern des Chatlogs.
+
+                return (
+                    jsonify({"response": antwort}),
+                    200,
+                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                    url_for("chat")
+                )
+
             except Exception as e:
                 logger.exception("Fehler beim OpenAI-Aufruf")
                 error_message = f"Fehler bei der Kommunikation mit OpenAI: {str(e)}"
                 debug_print("API Calls", error_message)
-                
-                flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", 'danger')
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'error': error_message}), 500
-                
-                return redirect(url_for('chat'))
+                flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", "danger")
+                return (
+                    jsonify({"error": error_message}),
+                    500,
+                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                    url_for("chat")
+                )
 
-        # Statistiken berechnen und Template rendern
-        stats = calculate_chat_stats()
-        return render_template('chat.html', chat_history=display_chat_history, stats=stats)
+        stats = calculate_chat_stats()  # Angenommen, diese Funktion existiert
+        return render_template("chat.html", chat_history=display_chat_history, stats=stats)
 
     except Exception as e:
         logging.exception("Fehler in chat-Funktion.")
-        flash("Ein unerwarteter Fehler ist aufgetreten.", 'danger')
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'error': 'Interner Serverfehler.'}), 500
-        return "Interner Serverfehler", 500
-   
+        flash("Ein unerwarteter Fehler ist aufgetreten.", "danger")
+        return (
+            jsonify({"error": "Interner Serverfehler."}),
+            500,
+        ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
+
+
 @app.route('/check_login')
 def check_login():
     # Alle relevanten Session-Daten anzeigen
@@ -2358,7 +2328,7 @@ def admin():
                     {"role": "user", "content": "Du bist ein Experte, der aus Transkripten Wissen extrahiert..."},
                     {"role": "user", "content": f"Extrahiere ohne Verluste:\n'''{eingabe_text}'''"}
                 ]
-                extraktion_response = contact_openai(extraktion_messages, model="o1")
+                extraktion_response = contact_openai(extraktion_messages, model="o3-mini")
                 if not extraktion_response:
                     flash("Fehler bei der Wissensextraktion durch die KI.", 'danger')
                     return redirect(url_for('admin'))
@@ -2383,7 +2353,7 @@ def admin():
                     {"role": "user",
                      "content": f"Hier die Themenhierarchie:\n\n{themen_hierarchie}\n\nText:\n{extraktion_text}"}
                 ]
-                kategorisierung_response = contact_openai(kategorisierung_messages, model="o1")
+                kategorisierung_response = contact_openai(kategorisierung_messages, model="o3-mini")
                 if not kategorisierung_response:
                     flash("Fehler bei der Themenkategorisierung.", 'danger')
                     return redirect(url_for('admin'))
@@ -2480,7 +2450,7 @@ def verarbeite_eintrag(eingabe_text, ausgewähltes_thema, ausgewähltes_unterthe
         {"role": "user", "content": "Du bist ein Experte, der aus Transkripten Wissen extrahiert..."},
         {"role": "user", "content": f"Extrahiere ohne Verluste:\n'''{eingabe_text}'''"}
     ]
-    response = contact_openai(messages, model="o1")
+    response = contact_openai(messages, model="o3-mini")
     if not response:
         flash("Fehler bei der Zusammenfassung.", 'danger')
         return
@@ -2752,7 +2722,7 @@ def process_file_ai():
             {"role": "user", "content": "Du bist ein Assistent, der Texte in vorgegebene Themen..."},
             {"role": "user", "content": f"Hier die Themenhierarchie:\n\n{themen_hierarchie}\n\nText:\n{extracted_text}"}
         ]
-        kategorisierung_response = contact_openai(kategorisierung_messages, model="o1")
+        kategorisierung_response = contact_openai(kategorisierung_messages, model="o3-mini")
         if not kategorisierung_response:
             file_entry['status'] = 'Fehler: Kategorisierung fehlgeschlagen'
             session.modified = True

@@ -1935,6 +1935,95 @@ def test_bigquery():
         """
         return error_output
     
+def extract_date_params(user_message):
+    """Extract date parameters from user message for months like 'Mai'."""
+    extracted_args = {}
+    
+    # Map German month names to numbers
+    month_map = {
+        "januar": 1, "februar": 2, "märz": 3, "april": 4, "mai": 5, "juni": 6,
+        "juli": 7, "august": 8, "september": 9, "oktober": 10, "november": 11, "dezember": 12
+    }
+    
+    user_message_lower = user_message.lower()
+    current_date = datetime.datetime.now()
+    current_year = current_date.year
+    
+    # Check for month mentions
+    for month_name, month_num in month_map.items():
+        if month_name in user_message_lower:
+            # Assume next occurrence of this month (this year or next)
+            year = current_year
+            if current_date.month > month_num:
+                year = current_year + 1
+                
+            # Create start and end dates for the month
+            start_date = datetime.date(year, month_num, 1)
+            if month_num == 12:
+                end_date = datetime.date(year, 12, 31)
+            else:
+                end_date = datetime.date(year, month_num + 1, 1) - datetime.timedelta(days=1)
+                
+            extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
+            extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
+            debug_print("Datumsextraktion", f"Erkannter Monat: {month_name}, Start: {extracted_args['start_date']}, Ende: {extracted_args['end_date']}")
+            return extracted_args
+    
+    # Fall back to dateparser
+    parsed_date = dateparser.parse(
+        user_message,
+        languages=["de"],
+        settings={"PREFER_DATES_FROM": "future"},
+    )
+    if parsed_date:
+        extracted_args["year_month"] = parsed_date.strftime("%Y-%m")
+        # Create start/end dates for the month
+        start_date = parsed_date.replace(day=1)
+        if start_date.month == 12:
+            end_date = start_date.replace(day=31)
+        else:
+            next_month = start_date.replace(month=start_date.month + 1)
+            end_date = next_month - datetime.timedelta(days=1)
+        
+        extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
+        extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
+        debug_print("Datumsextraktion", f"Erkanntes Datum: {extracted_args}")
+    
+    return extracted_args
+
+
+def create_system_prompt(table_schema):
+    # Bestehendes System-Prompt generieren
+    prompt = "Du bist ein hilfreicher KI-Assistent, der bei der Verwaltung von Pflegedaten hilft."
+    prompt += "\n\nDu hast Zugriff auf eine Datenbank mit folgenden Tabellen:\n"
+    
+    for table_name, table_info in table_schema.get("tables", {}).items():
+        prompt += f"\n- {table_name}: {table_info.get('description', 'Keine Beschreibung')}"
+        prompt += "\n  Felder:"
+        for field_name, field_info in table_info.get("fields", {}).items():
+            prompt += f"\n    - {field_name}: {field_info.get('description', 'Keine Beschreibung')}"
+    
+    # Ergänze das Prompt mit wichtigen Anweisungen zur Funktionsnutzung
+    prompt += """
+    
+    KRITISCH WICHTIG: Du bist ein Assistent, der NIEMALS Fragen zu Datenbank-Daten direkt beantwortet!
+    
+    1. Bei JEDER Frage zu Care Stays, Verträgen, Leads oder anderen Daten MUSST du eine der bereitgestellten Funktionen verwenden.
+    2. Ohne Funktionsaufruf hast du KEINEN Zugriff auf aktuelle Daten.
+    3. Generiere NIEMALS Antworten aus eigenem Wissen, wenn die Information in der Datenbank zu finden ist.
+    4. Bei zeitbezogenen Anfragen (z.B. "im Mai") nutze IMMER die Funktion get_care_stays_by_date_range.
+    
+    Dein Standardverhalten bei Datenabfragen:
+    1. Analysiere die Nutzerfrage
+    2. Wähle die passende Funktion
+    3. Rufe die Funktion mit korrekten Parametern auf
+    4. Warte auf das Ergebnis
+    5. Nutze dieses Ergebnis für deine Antwort
+    """
+    
+    return prompt
+
+
 @app.route("/", methods=["GET", "POST"])
 def chat():
     try:
@@ -1956,7 +2045,7 @@ def chat():
             session[chat_key] = []
         chat_history = session[chat_key]
 
-        # Einfache Anzeige der Chat-History (keine Formatkonvertierung nötig)
+        # Einfache Anzeige der Chat-History
         display_chat_history = chat_history
 
         try:
@@ -1973,8 +2062,6 @@ def chat():
             user_message = request.form.get("message", "").strip()
             notfall_aktiv = request.form.get("notfallmodus") == "1"
             notfall_art = request.form.get("notfallart", "").strip()
-
-            extracted_args = extract_date_params(user_message)
 
             if not user_message:
                 flash("Bitte geben Sie eine Nachricht ein.", "warning")
@@ -2006,6 +2093,7 @@ def chat():
             else:
                 session.pop("notfall_mode", None)
 
+            # Verbesserter System Prompt
             system_prompt = create_system_prompt(table_schema)
             prompt_wissensbasis_abschnitte = [
                 f"Thema: {thema}, Unterthema: {unterthema_full}, Beschreibung: {details.get('beschreibung', '')}, Inhalt: {'. '.join(details.get('inhalt', []))}"
@@ -2020,22 +2108,25 @@ def chat():
             )
 
             tools = create_function_definitions()
+            debug_print("API Setup", f"System prompt (gekürzt): {system_prompt[:200]}...")
+            debug_print("API Setup", f"Anzahl definierter Tools: {len(tools)}")
+            
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ]
             
-            # Datumsextraktion und Funktionsvorbereitung
-            extracted_args = {}  # Dictionary für extrahierte Argumente
-            parsed_date = dateparser.parse(
-                user_message,
-                languages=["de"],
-                settings={"PREFER_DATES_FROM": "future"},
-            )
-            if parsed_date:
-                extracted_args["year_month"] = parsed_date.strftime("%Y-%m")
-                # Weitere Datumsfelder nach Bedarf hinzufügen (start_date, end_date)
-                debug_print("Datumsextraktion", f"Erkanntes Datum: {extracted_args}")
+            # Verbesserte Datumsextraktion
+            extracted_args = extract_date_params(user_message)
+            debug_print("Parameter", f"Extrahierte Parameter: {extracted_args}")
+
+            # Prüfe auf Debug-Modus für erzwungene Funktionsaufrufe
+            debug_force = request.args.get("force_function")
+            if debug_force:
+                tool_choice = {"type": "function", "function": {"name": debug_force}}
+                debug_print("DEBUG", f"Erzwinge Funktionsaufruf: {debug_force}")
+            else:
+                tool_choice = "auto"
 
             try:
                 debug_print("API Calls", f"Anfrage an OpenAI mit Function Calling: {user_message}")
@@ -2043,9 +2134,14 @@ def chat():
                     model="o3-mini",
                     messages=messages,
                     tools=tools,
-                    tool_choice="auto",
+                    tool_choice=tool_choice,
+                    # Erhöhe ggf. die Temperatur für experimentelle Zwecke
+                    temperature=0.3,
                 )
+                
                 assistant_message = response.choices[0].message
+                debug_print("API Response", f"Message type: {type(assistant_message)}")
+                debug_print("API Response", f"Has tool calls: {hasattr(assistant_message, 'tool_calls') and bool(assistant_message.tool_calls)}")
 
                 if assistant_message.tool_calls:
                     debug_print("API Calls", f"Function Calls erkannt: {assistant_message.tool_calls}")
@@ -2054,15 +2150,29 @@ def chat():
                     for tool_call in assistant_message.tool_calls:
                         function_name = tool_call.function.name
                         function_args = json.loads(tool_call.function.arguments)
+                        debug_print("Function", f"Name: {function_name}, Argumente vor Modifikation: {function_args}")
 
                         # Standardargumente hinzufügen und überschreiben
                         if seller_id:
                             function_args["seller_id"] = seller_id
-                        function_args.update(extracted_args)  # Extrahierte Daten hinzufügen
+                        
+                        # Nur extrahierte Datumswerte hinzufügen, wenn sie nicht bereits gesetzt sind
+                        for key, value in extracted_args.items():
+                            if key not in function_args or not function_args[key]:
+                                function_args[key] = value
 
-                        debug_print("API Calls", f"Funktion: {function_name}, Argumente: {function_args}")
-
-                        function_response = handle_function_call(function_name, function_args)  # Hier wird aufgerufen
+                        debug_print("Function", f"Argumente nach Modifikation: {function_args}")
+                        function_response = handle_function_call(function_name, function_args)
+                        
+                        # Parsen der Function Response für bessere Logging
+                        try:
+                            parsed_response = json.loads(function_response)
+                            response_status = parsed_response.get("status", "unknown")
+                            response_count = len(parsed_response.get("data", [])) if "data" in parsed_response else 0
+                            debug_print("Function Response", f"Status: {response_status}, Anzahl Ergebnisse: {response_count}")
+                        except:
+                            debug_print("Function Response", "Konnte Response nicht parsen")
+                        
                         function_responses.append(
                             {
                                 "role": "tool",
@@ -2071,7 +2181,9 @@ def chat():
                             }
                         )
 
+                    # Second call to OpenAI with function results
                     second_messages = messages + [assistant_message.model_dump(exclude_unset=True)] + function_responses
+                    debug_print("API Calls", f"Zweiter Aufruf an OpenAI mit {len(function_responses)} Funktionsantworten")
                     second_response = openai.chat.completions.create(model="o3-mini", messages=second_messages)
                     final_message = second_response.choices[0].message
                     antwort = final_message.content
@@ -2079,12 +2191,15 @@ def chat():
 
                 else:
                     antwort = assistant_message.content
-                    debug_print("API Calls", f"Direkte Antwort: {antwort[:100]}...")
+                    debug_print("API Calls", f"Direkte Antwort (kein Function Call): {antwort[:100]}...")
+                    # Warnung ins Log schreiben, wenn keine Funktion aufgerufen wurde
+                    if any(term in user_message.lower() for term in ["care", "pflege", "kunden", "verträge", "mai", "monat"]):
+                        logger.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
 
-                # Chat-History aktualisieren (neues Format)
+                # Chat-History aktualisieren
                 chat_history.append({"user": user_message, "bot": antwort})
                 session[chat_key] = chat_history
-                store_chatlog(user_name, chat_history) #speichern des Chatlogs.
+                store_chatlog(user_name, chat_history)
 
                 return (
                     jsonify({"response": antwort}),
@@ -2105,7 +2220,7 @@ def chat():
                     url_for("chat")
                 )
 
-        stats = calculate_chat_stats()  # Angenommen, diese Funktion existiert
+        stats = calculate_chat_stats()
         return render_template("chat.html", chat_history=display_chat_history, stats=stats)
 
     except Exception as e:
@@ -2116,6 +2231,32 @@ def chat():
             500,
         ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
 
+
+# Debug-Route zum direkten Testen der Funktionsaufrufe
+@app.route('/debug_function_call')
+def debug_function_call():
+    """Test function calling directly"""
+    function_name = request.args.get('function', 'get_care_stays_by_date_range')
+    
+    # Set up basic parameters
+    args = {
+        'seller_id': session.get('seller_id', 'Pflegeteam Heer'),
+        'start_date': '2025-05-01',
+        'end_date': '2025-05-31',
+        'limit': '100'
+    }
+    
+    # Call the function directly
+    result = handle_function_call(function_name, args)
+    
+    # Return as formatted HTML
+    return f"""
+    <h1>Debug Function Call</h1>
+    <p>Function: {function_name}</p>
+    <p>Args: {args}</p>
+    <h2>Result:</h2>
+    <pre>{result}</pre>
+    """
 
 @app.route('/check_login')
 def check_login():

@@ -1941,61 +1941,6 @@ def test_bigquery():
         """
         return error_output
     
-def extract_date_params(user_message):
-    """Extract date parameters from user message for months like 'Mai'."""
-    extracted_args = {}
-    
-    # Map German month names to numbers
-    month_map = {
-        "januar": 1, "februar": 2, "märz": 3, "april": 4, "mai": 5, "juni": 6,
-        "juli": 7, "august": 8, "september": 9, "oktober": 10, "november": 11, "dezember": 12
-    }
-    
-    user_message_lower = user_message.lower()
-    current_date = datetime.datetime.now()
-    current_year = current_date.year
-    
-    # Check for month mentions
-    for month_name, month_num in month_map.items():
-        if month_name in user_message_lower:
-            # Assume next occurrence of this month (this year or next)
-            year = current_year
-            if current_date.month > month_num:
-                year = current_year + 1
-                
-            # Create start and end dates for the month
-            start_date = datetime.date(year, month_num, 1)
-            if month_num == 12:
-                end_date = datetime.date(year, 12, 31)
-            else:
-                end_date = datetime.date(year, month_num + 1, 1) - datetime.timedelta(days=1)
-                
-            extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
-            extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
-            debug_print("Datumsextraktion", f"Erkannter Monat: {month_name}, Start: {extracted_args['start_date']}, Ende: {extracted_args['end_date']}")
-            return extracted_args
-    
-    # Fall back to dateparser
-    parsed_date = dateparser.parse(
-        user_message,
-        languages=["de"],
-        settings={"PREFER_DATES_FROM": "future"},
-    )
-    if parsed_date:
-        extracted_args["year_month"] = parsed_date.strftime("%Y-%m")
-        # Create start/end dates for the month
-        start_date = parsed_date.replace(day=1)
-        if start_date.month == 12:
-            end_date = start_date.replace(day=31)
-        else:
-            next_month = start_date.replace(month=start_date.month + 1)
-            end_date = next_month - datetime.timedelta(days=1)
-        
-        extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
-        extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
-        debug_print("Datumsextraktion", f"Erkanntes Datum: {extracted_args}")
-    
-    return extracted_args
 
 
 def create_system_prompt(table_schema):

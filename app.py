@@ -10,7 +10,8 @@ import traceback
 import uuid
 import tempfile
 import requests  # Added import for requests
-import dateparser 
+from datetime import datetime, timedelta
+import dateparser
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_wtf import CSRFProtect
@@ -917,7 +918,8 @@ def extract_date_params(user_message):
     }
     
     user_message_lower = user_message.lower()
-    current_date = datetime.datetime.now()
+    # Fix the datetime usage
+    current_date = datetime.now()  # Changed from datetime.datetime.now()
     current_year = current_date.year
     
     # Check for month mentions
@@ -929,11 +931,12 @@ def extract_date_params(user_message):
                 year = current_year + 1
                 
             # Create start and end dates for the month
-            start_date = datetime.date(year, month_num, 1)
+            start_date = datetime(year, month_num, 1).date()  # Use datetime() directly
             if month_num == 12:
-                end_date = datetime.date(year, 12, 31)
+                end_date = datetime(year, 12, 31).date()
             else:
-                end_date = datetime.date(year, month_num + 1, 1) - datetime.timedelta(days=1)
+                next_month = datetime(year, month_num + 1, 1).date()
+                end_date = next_month - timedelta(days=1)
                 
             extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
             extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
@@ -954,13 +957,14 @@ def extract_date_params(user_message):
             end_date = start_date.replace(day=31)
         else:
             next_month = start_date.replace(month=start_date.month + 1)
-            end_date = next_month - datetime.timedelta(days=1)
+            end_date = next_month - timedelta(days=1)
         
         extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
         extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
         debug_print("Datumsextraktion", f"Erkanntes Datum: {extracted_args}")
     
     return extracted_args
+
 
 def create_function_definitions():
     """

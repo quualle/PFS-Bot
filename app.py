@@ -909,6 +909,7 @@ def count_tokens(messages, model=None):
 
 def extract_date_params(user_message):
     """Extract date parameters from user message for months like 'Mai'."""
+    import datetime  # Local import to ensure we have the right module
     extracted_args = {}
     
     # Map German month names to numbers
@@ -918,8 +919,7 @@ def extract_date_params(user_message):
     }
     
     user_message_lower = user_message.lower()
-    # Fix the datetime usage
-    current_date = datetime.now()  # Changed from datetime.datetime.now()
+    current_date = datetime.datetime.now()  # Using full namespace
     current_year = current_date.year
     
     # Check for month mentions
@@ -931,12 +931,12 @@ def extract_date_params(user_message):
                 year = current_year + 1
                 
             # Create start and end dates for the month
-            start_date = datetime(year, month_num, 1).date()  # Use datetime() directly
+            start_date = datetime.date(year, month_num, 1)  # Using datetime.date
             if month_num == 12:
-                end_date = datetime(year, 12, 31).date()
+                end_date = datetime.date(year, 12, 31)
             else:
-                next_month = datetime(year, month_num + 1, 1).date()
-                end_date = next_month - timedelta(days=1)
+                next_month_date = datetime.date(year, month_num + 1, 1)
+                end_date = next_month_date - datetime.timedelta(days=1)
                 
             extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
             extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
@@ -952,19 +952,21 @@ def extract_date_params(user_message):
     if parsed_date:
         extracted_args["year_month"] = parsed_date.strftime("%Y-%m")
         # Create start/end dates for the month
-        start_date = parsed_date.replace(day=1)
-        if start_date.month == 12:
-            end_date = start_date.replace(day=31)
+        year = parsed_date.year
+        month = parsed_date.month
+        
+        start_date = datetime.date(year, month, 1)
+        if month == 12:
+            end_date = datetime.date(year, 12, 31)
         else:
-            next_month = start_date.replace(month=start_date.month + 1)
-            end_date = next_month - timedelta(days=1)
+            next_month_date = datetime.date(year, month + 1, 1)
+            end_date = next_month_date - datetime.timedelta(days=1)
         
         extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
         extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
         debug_print("Datumsextraktion", f"Erkanntes Datum: {extracted_args}")
     
     return extracted_args
-
 
 def create_function_definitions():
     """

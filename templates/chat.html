@@ -799,6 +799,7 @@
                 botDiv.appendChild(strongLabel);
 
                 // Add content span with proper styling
+                // Add content span with proper styling
                 const contentSpan = document.createElement('span');
                 contentSpan.style.display = 'block';
                 contentSpan.style.position = 'relative';
@@ -812,6 +813,8 @@
                 contentSpan.style.visibility = 'visible';
                 contentSpan.style.opacity = '1';
                 contentSpan.style.color = '#ffffff';
+                // Füge einen sichtbaren Initialtext hinzu
+                contentSpan.innerHTML = '<em style="color: #88ccff; font-style: italic;">Erstelle Antwort...</em>';
                 botDiv.appendChild(contentSpan);
                 
                 // Add feedback icons
@@ -901,6 +904,11 @@
                                                     // Replace the case 'text' handler in your switch statement with this improved version:
                                                 case 'text':
                                                     if (data.content) {
+                                                        // Beim ersten Chunk den "Erstelle Antwort..." Text entfernen
+                                                        if (responseText === '') {
+                                                            botResponseSpan.innerHTML = '';
+                                                        }
+                                                        
                                                         // Append the text content
                                                         responseText += data.content;
                                                         
@@ -936,6 +944,9 @@
                                                         
                                                         // Force scroll
                                                         forceScrollToBottom();
+                                                        console.log(`Streaming chunk received: "${data.content}" (${data.content.length} chars)`);
+                                                        console.log(`Current response length: ${responseText.length} chars`);
+
                                                     }
                                                     break;
                                                 case 'function_call_start':

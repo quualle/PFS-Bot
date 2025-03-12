@@ -2336,15 +2336,18 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                 has_function_calls = True
                 # Collect function call data
                 for tool_call in chunk.choices[0].delta.tool_calls:
-                    if not function_calls_data:
-                        function_calls_data = [{"id": tool_call.index, "name": "", "args": ""}]
+                    tool_index = tool_call.index
+                    
+                    # Initialize the tool call if needed
+                    while len(function_calls_data) <= tool_index:
+                        function_calls_data.append({"id": str(tool_index), "name": "", "args": ""})
                     
                     if hasattr(tool_call, 'function'):
                         if hasattr(tool_call.function, 'name') and tool_call.function.name:
-                            function_calls_data[tool_call.index]["name"] = tool_call.function.name
+                            function_calls_data[tool_index]["name"] = tool_call.function.name
                         
                         if hasattr(tool_call.function, 'arguments') and tool_call.function.arguments:
-                            function_calls_data[tool_call.index]["args"] += tool_call.function.arguments
+                            function_calls_data[tool_index]["args"] += tool_call.function.arguments
         
         # If function calls detected, execute them
         if has_function_calls:
@@ -2383,7 +2386,24 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
             
             # Second call to get final response
             if function_responses:
-                second_messages = messages + [{"role": "assistant", "content": initial_response, "tool_calls": function_calls_data}] + function_responses
+                # Properly format the tool_calls with the required 'type' field
+                formatted_tool_calls = []
+                for func_data in function_calls_data:
+                    formatted_tool_calls.append({
+                        "type": "function",  # This is the required field
+                        "id": func_data["id"],
+                        "function": {
+                            "name": func_data["name"],
+                            "arguments": func_data["args"]
+                        }
+                    })
+                
+                # Create the second messages with properly formatted tool_calls
+                second_messages = messages + [{
+                    "role": "assistant", 
+                    "content": initial_response,
+                    "tool_calls": formatted_tool_calls
+                }] + function_responses
                 
                 final_response = openai.chat.completions.create(
                     model="o3-mini",

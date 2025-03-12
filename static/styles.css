@@ -167,3 +167,41 @@ textarea[name="eingabe_text"] {
         margin-right: 0;
     }
 }
+
+
+.message.bot {
+    min-height: 100px; /* Provide minimum height to prevent jumping */
+    position: relative;
+    padding-bottom: 40px; /* Ensure space for feedback icons */
+}
+
+/* Ensure the response text is always properly positioned */
+.message.bot span {
+    display: block;
+    margin-top: 30px !important; /* Force this margin to prevent layout shifts */
+    min-height: 20px; /* Minimum height even when empty */
+    padding-right: 10px; /* Add some padding on the right */
+}
+
+/* Keep feedback icons at the bottom right */
+.message.bot .feedback-icons {
+    position: absolute;
+    bottom: 5px;
+    right: 10px;
+}
+
+/* Make sure the XORA label is always visible and properly positioned */
+.message.bot strong {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    margin: 0;
+}
+
+/* Style for the "loading" indicators during streaming */
+.message.bot em {
+    font-style: italic;
+    color: #88ccff; /* Light blue color for the loading text */
+    display: block;
+    margin-top: 5px;
+}

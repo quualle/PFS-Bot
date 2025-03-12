@@ -2378,7 +2378,34 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                             "content": function_response
                         })
                         
+                        # Nach dem Code, der die Funktion ausführt und function_result sendet
                         yield f"data: {json.dumps({'type': 'function_result', 'name': function_name})}\n\n"
+
+                        # Debug-Event hinzufügen
+                        yield f"data: {json.dumps({'type': 'debug', 'message': 'Starting second API call'})}\n\n"
+
+                        # Zweiten API-Call vorbereiten...
+                        final_response = openai.chat.completions.create(
+                            model="o3-mini",
+                            messages=second_messages,
+                            stream=True
+                        )
+
+                        # WICHTIG: Final response start event - stelle sicher, dass es gesendet wird
+                        yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
+
+                        # Debug-Event hinzufügen
+                        yield f"data: {json.dumps({'type': 'debug', 'message': 'Second API call started, streaming results'})}\n\n"
+
+                        final_text = ""
+                        for chunk in final_response:
+                            if chunk.choices[0].delta.content:
+                                text_chunk = chunk.choices[0].delta.content
+                                final_text += text_chunk
+                                # Debug-Info hinzufügen für die ersten Chunks
+                                if len(final_text) < 100:
+                                    yield f"data: {json.dumps({'type': 'debug', 'message': f'Chunk received: {text_chunk}'})}\n\n"
+                                yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
                     except Exception as e:
                         debug_print("Function", f"Error executing function: {str(e)}")
                         yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Funktionsausführung: {str(e)}'})}\n\n"
@@ -2403,6 +2430,14 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                     "content": initial_response,
                     "tool_calls": formatted_tool_calls
                 }] + function_responses
+
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Starting second API call'})}\n\n"
+
+                # Bevor der zweite API-Call durchgeführt wird:
+                yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
+
+                # Debug-Event hinzufügen
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Second API call started, streaming results'})}\n\n"
                 
                 final_response = openai.chat.completions.create(
                     model="o3-mini",
@@ -2410,8 +2445,8 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                     stream=True
                 )
                 
+
                 
-                yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
                 
                 final_text = ""
                 for chunk in final_response:

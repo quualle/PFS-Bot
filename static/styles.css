@@ -177,10 +177,19 @@ textarea[name="eingabe_text"] {
 
 /* Ensure the response text is always properly positioned */
 .message.bot span {
-    display: block;
-    margin-top: 30px !important; /* Force this margin to prevent layout shifts */
-    min-height: 20px; /* Minimum height even when empty */
-    padding-right: 10px; /* Add some padding on the right */
+    display: block !important;
+    position: relative !important;
+    margin-top: 30px !important;
+    margin-left: 16px !important;
+    padding: 0 10px 0 0 !important;
+    min-height: 20px !important;
+    width: calc(100% - 40px) !important;
+    word-break: break-word !important;
+    white-space: pre-wrap !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    left: 0 !important;
+    color: #ffffff !important;
 }
 
 /* Keep feedback icons at the bottom right */

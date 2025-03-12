@@ -848,9 +848,10 @@
                 // Determine if we should use streaming
                 const useStreaming = true; // Set to true to always use streaming
                 
+                // Hier den alten Code ersetzen - ein sehr vereinfachter Stream-Handler zum Debugging
                 if (useStreaming) {
-                    // Streaming approach
-                    const eventSource = new EventSource(`${window.location.pathname}?stream=1`);
+                    console.log("Simplified streaming test starting...");
+                    
                     const payload = new URLSearchParams({
                         'csrf_token': csrfToken,
                         'message': userMessageText,
@@ -859,7 +860,6 @@
                         'stream': '1'
                     });
                     
-                    // Use fetch to initiate the streaming request
                     fetch("{{ url_for('chat') }}", {
                         method: 'POST',
                         headers: {
@@ -870,283 +870,65 @@
                         },
                         body: payload
                     }).then(response => {
-                        // Check if response is ok and of right type
-                        if (!response.ok || !response.headers.get('content-type').includes('text/event-stream')) {
-                            throw new Error('Network response was not ok or not an event stream');
-                        }
+                        console.log("Response received:", response.status, response.headers.get('content-type'));
                         
-                        // Set up the reader and decoder
+                        // Extrem einfacher Reader
                         const reader = response.body.getReader();
                         const decoder = new TextDecoder();
+                        let buffer = '';
+                        let simpleText = '';
                         
-                        // Store response parts
-                        let responseText = '';
-                        let functionCallActive = false;
-                        
-
-                        function createSecondMessage() {
-                            console.log('Erstelle zweite Nachricht...');
-                            
-                            // Find and remove the loading indicator
-                            const loadingElement = botResponseSpan.querySelector('.data-loading-indicator');
-                            if (loadingElement) {
-                                loadingElement.remove();
-                            }
-
-                            try {
-                                // Erstelle eine neue Nachricht für die zweite Phase der Antwort
-                                const secondBotDiv = document.createElement('div');
-                                secondBotDiv.className = 'message bot';
-                                secondBotDiv.dataset.isSecondMessage = 'true'; // Markierung für zweite Nachricht
-                                
-                                // Styling
-                                secondBotDiv.style.display = 'flex';
-                                secondBotDiv.style.flexDirection = 'column';
-                                secondBotDiv.style.position = 'relative';
-                                secondBotDiv.style.minHeight = '100px';
-
-                                // Label hinzufügen
-                                const secondStrongLabel = document.createElement('strong');
-                                secondStrongLabel.textContent = 'XORA:';
-                                secondStrongLabel.style.position = 'absolute';
-                                secondStrongLabel.style.top = '12px';
-                                secondStrongLabel.style.left = '16px';
-                                secondBotDiv.appendChild(secondStrongLabel);
-
-                                // Content-Span mit Styling
-                                const secondContentSpan = document.createElement('span');
-                                secondContentSpan.style.display = 'block';
-                                secondContentSpan.style.position = 'relative';
-                                secondContentSpan.style.marginTop = '30px';
-                                secondContentSpan.style.marginLeft = '16px';
-                                secondContentSpan.style.padding = '0 10px 0 0';
-                                secondContentSpan.style.minHeight = '20px';
-                                secondContentSpan.style.width = 'calc(100% - 40px)';
-                                secondContentSpan.style.wordBreak = 'break-word';
-                                secondContentSpan.style.whiteSpace = 'pre-wrap';
-                                secondContentSpan.style.visibility = 'visible';
-                                secondContentSpan.style.opacity = '1';
-                                secondContentSpan.style.color = '#ffffff';
-                                secondContentSpan.innerHTML = '<em style="color: #88ccff; font-style: italic;">Ergebnisse werden geladen...</em>';
-                                secondBotDiv.appendChild(secondContentSpan);
-
-                                // Feedback-Icons
-                                const secondIconsDiv = document.createElement('div');
-                                secondIconsDiv.className = 'feedback-icons';
-                                secondIconsDiv.innerHTML = `
-                                    <span class="thumb-up" data-type="positive">👍</span>
-                                    <span class="thumb-down" data-type="negative">👎</span>
-                                `;
-                                secondBotDiv.appendChild(secondIconsDiv);
-
-                                // An Chat-History anhängen
-                                chatHistory.appendChild(secondBotDiv);
-                                
-                                console.log('Zweite Nachricht erstellt, wechsle Ziel für Text-Updates');
-                                
-                                // Zukünftige Textnachrichten an die neue Blase senden
-                                activeResponseSpan = secondContentSpan;
-                                botResponseSpan = secondContentSpan;
-                                responseText = ''; // Text für die zweite Nachricht zurücksetzen
-                                
-                                // Scroll erzwingen
-                                forceScrollToBottom();
-                                
-                                // Markieren, dass die zweite Nachricht erstellt wurde
-                                pendingSecondMessage = false;
-                            } catch (error) {
-                                console.error('Fehler beim Erstellen der zweiten Nachricht:', error);
-                            }
-                        }
-
-
-                        // Function to process the stream
-                        function processStream() {
-                            return reader.read().then(({ done, value }) => {
+                        function readChunk() {
+                            reader.read().then(({done, value}) => {
                                 if (done) {
-                                    console.log('Stream complete');
+                                    console.log("Stream complete");
                                     return;
                                 }
                                 
-                                // Decode the chunk and split into SSE messages
-                                const chunk = decoder.decode(value, { stream: true });
-                                const messages = chunk.split('\n\n');
+                                // Dekodiere den Chunk
+                                const chunk = decoder.decode(value, {stream: true});
+                                buffer += chunk;
                                 
-                                messages.forEach(message => {
-                                    if (message.startsWith('data: ')) {
+                                // Log kompletten Chunk für Debugging
+                                console.log("RAW CHUNK:", chunk);
+                                
+                                // Extrem einfache Event-Verarbeitung
+                                const lines = chunk.split('\n\n');
+                                lines.forEach(line => {
+                                    if (line.startsWith('data: ')) {
                                         try {
-                                            const data = JSON.parse(message.substring(6));
+                                            // Teste nur, ob wir den Text extrahieren können
+                                            const json = JSON.parse(line.substring(6));
+                                            console.log("EVENT TYPE:", json.type);
                                             
-                                            // Handle different message types
-                                            switch (data.type) {
-                                                case 'start':
-                                                    console.log('Streaming started');
-                                                    break;
-                                                    
-                                                    // Replace the case 'text' handler in your switch statement with this improved version:
-                                                case 'text':
-                                                    if (data.content) {
-                                                        console.log(`Streaming chunk received: "${data.content.substring(0, 30)}..." für ${activeResponseSpan ? 'zweite' : 'erste'} Nachricht`);
-                                                        
-                                                        // Beim ersten Chunk den "Erstelle Antwort..." Text entfernen
-                                                        if (responseText === '') {
-                                                            // Verwende aktives Ziel wenn verfügbar
-                                                            const targetSpan = activeResponseSpan || botResponseSpan;
-                                                            targetSpan.innerHTML = '';
-                                                        }
-                                                        
-                                                        // Append the text content
-                                                        responseText += data.content;
-                                                        
-                                                        // Verwende aktives Ziel wenn verfügbar
-                                                        const targetSpan = activeResponseSpan || botResponseSpan;
-                                                        
-                                                        // Find any loading indicators
-                                                        const loadingIndicator = targetSpan.querySelector('.data-loading-indicator');
-                                                        
-                                                        if (loadingIndicator) {
-                                                            // If there's a loading indicator, keep it and update the main content
-                                                            const indicatorClone = loadingIndicator.cloneNode(true);
-                                                            targetSpan.innerHTML = responseText;
-                                                            targetSpan.appendChild(indicatorClone);
-                                                        } else {
-                                                            // Update with innerHTML instead of textContent to preserve formatting
-                                                            targetSpan.innerHTML = responseText;
-                                                        }
-                                                        
-                                                        // Ensure the span has correct styling
-                                                        targetSpan.style.display = 'block';
-                                                        targetSpan.style.marginTop = '30px';
-                                                        targetSpan.style.marginLeft = '16px';
-                                                        targetSpan.style.minHeight = '20px';
-                                                        targetSpan.style.paddingRight = '10px';
-                                                        targetSpan.style.width = 'calc(100% - 40px)';
-                                                        targetSpan.style.wordBreak = 'break-word';
-                                                        targetSpan.style.whiteSpace = 'pre-wrap';
-                                                        targetSpan.style.visibility = 'visible';
-                                                        targetSpan.style.opacity = '1';
-                                                        
-                                                        // Force scroll
-                                                        forceScrollToBottom();
-                                                    }
-                                                    break;
-
-                                                case 'function_call_start':
-                                                    functionCallActive = true;
-                                                    
-                                                    // Remove any existing loading indicators
-                                                    const existingIndicators = botResponseSpan.querySelectorAll('.data-loading-indicator');
-                                                    existingIndicators.forEach(el => el.remove());
-                                                    
-                                                    // Create a new loading indicator with proper styling
-                                                    const loadingDiv = document.createElement('div');
-                                                    loadingDiv.className = 'data-loading-indicator';
-                                                    loadingDiv.textContent = 'Rufe Daten ab...';
-                                                    loadingDiv.style.display = 'block';
-                                                    loadingDiv.style.fontStyle = 'italic';
-                                                    loadingDiv.style.color = '#88ccff';
-                                                    loadingDiv.style.marginTop = '10px';
-                                                    loadingDiv.style.padding = '5px';
-                                                    loadingDiv.style.borderRadius = '4px';
-                                                    loadingDiv.style.backgroundColor = 'rgba(0,0,0,0.1)';
-                                                    
-                                                    // Append it to the response span
-                                                    botResponseSpan.appendChild(loadingDiv);
-                                                    
-                                                    // Force scroll
-                                                    forceScrollToBottom();
-                                                    break;
-
-                                                case 'function_result':
-                                                    console.log('Funktion ausgeführt, warte auf final_response_start...');
-                                                    
-                                                    // Find the loading indicator
-                                                    const indicator = botResponseSpan.querySelector('.data-loading-indicator');
-                                                    if (indicator) {
-                                                        // Update its text and color
-                                                        indicator.textContent = 'Daten abgerufen!';
-                                                        indicator.style.color = '#66ffaa';
-                                                    }
-                                                    
-                                                    // Setze Fallback-Timer für zweite Nachricht
-                                                    pendingSecondMessage = true;
-                                                    clearTimeout(secondMessageTimeout);
-                                                    secondMessageTimeout = setTimeout(() => {
-                                                        if (pendingSecondMessage) {
-                                                            console.log('FALLBACK: Erzeuge zweite Nachricht nach Timeout');
-                                                            createSecondMessage();
-                                                        }
-                                                    }, 3000); // 3 Sekunden warten
-                                                    
-                                                    // Force scroll
-                                                    forceScrollToBottom();
-                                                    break;
-
-                                                case 'final_response_start':
-                                                    console.log('final_response_start empfangen - erstelle zweite Nachricht');
-                                                    
-                                                    // Timeout abbrechen, da wir das Event regulär erhalten haben
-                                                    pendingSecondMessage = false;
-                                                    clearTimeout(secondMessageTimeout);
-                                                    
-                                                    // Zweite Nachricht erzeugen
-                                                    createSecondMessage();
-                                                    break;
-
-                                                case 'debug':
-                                                    console.log('Debug vom Server:', data.message);
-                                                    break;
-
-                                                case 'error':
-                                                    console.error('Streaming error:', data.content);
-                                                    responseText += `<br><span style="color: red;">Error: ${data.content}</span>`;
-                                                    botResponseSpan.innerHTML = responseText;
-                                                    forceScrollToBottom();
-                                                    break;
-
-                                                case 'complete':
-                                                    console.log('Complete message received, updating session');
-                                                    // Wenn wir eine zweite Bot-Nachricht haben, verwende beide für die Session-Aktualisierung
-                                                    const completeResponse = document.querySelectorAll('.message.bot span');
-                                                    let fullResponse = '';
-                                                    if (completeResponse.length > 1) {
-                                                        // Wenn zwei Nachrichten existieren, beide zusammenführen
-                                                        fullResponse = completeResponse[0].innerHTML + "\n\n" + completeResponse[1].innerHTML.replace(/<em.*?<\/em>/g, '');
-                                                    } else {
-                                                        // Sonst normal weitermachen
-                                                        fullResponse = data.bot;
-                                                    }
-                                                    updateSessionWithChatMessage(data.user, fullResponse);
-                                                    break;
-
-                                                case 'end':
-                                                    console.log('Streaming ended');
-                                                    break;
+                                            // Fokus nur auf Text-Events
+                                            if (json.type === 'text' && json.content) {
+                                                simpleText += json.content;
+                                                botResponseSpan.innerHTML = simpleText;
+                                                console.log("TEXT UPDATE:", simpleText.length, "characters total");
                                             }
                                         } catch (e) {
-                                            console.error('Error parsing SSE message:', e, message);
+                                            console.error("PARSE ERROR:", e);
                                         }
                                     }
                                 });
                                 
-                                // Continue reading
-                                return processStream();
+                                // Weiter lesen
+                                readChunk();
                             }).catch(error => {
-                                console.error('Stream error:', error);
-                                responseText += `<br><span style="color: red;">Connection error: ${error.message}</span>`;
-                                botResponseSpan.innerHTML = responseText;
-                                forceScrollToBottom();
+                                console.error("READ ERROR:", error);
                             });
                         }
                         
-                        // Start processing the stream
-                        return processStream();
+                        // Starte Lesevorgang
+                        readChunk();
                     }).catch(error => {
-                        console.error('Fetch error:', error);
+                        console.error("FETCH ERROR:", error);
                         botResponseSpan.innerHTML = `Error: ${error.message}`;
-                        forceScrollToBottom();
                     });
                 } else {
+                    // Non-streaming code
+                
                     // Regular, non-streaming approach (fallback)
                     const xoraTyping = showTypingIndicator();
                     const payload = new URLSearchParams({

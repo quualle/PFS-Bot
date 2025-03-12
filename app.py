@@ -2307,6 +2307,11 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
     chat_history = session_data["chat_history"]
     
     # First pass - get initial response
+
+
+    yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream-Start'})}\n\n"
+    yield f"data: {json.dumps({'type': 'text', 'content': 'Test-Content vom Server'})}\n\n"
+    
     try:
         debug_print("API Calls", f"Streaming-Anfrage an OpenAI mit Function Calling")
         response = openai.chat.completions.create(

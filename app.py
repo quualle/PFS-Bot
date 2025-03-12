@@ -1961,7 +1961,43 @@ def test_bigquery():
         """
         return error_output
     
-
+@app.route('/update_chat_history', methods=['POST'])
+def update_chat_history():
+    """Update chat history in the session from streaming responses"""
+    try:
+        data = request.json
+        user_message = data.get('user_message')
+        bot_response = data.get('bot_response')
+        
+        if not user_message or not bot_response:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            
+        user_id = session.get("user_id")
+        user_name = session.get("user_name")
+        
+        if not user_id or not user_name:
+            return jsonify({'success': False, 'error': 'No active session'}), 400
+            
+        chat_key = f"chat_history_{user_id}"
+        
+        # Get current chat history or initialize it
+        chat_history = session.get(chat_key, [])
+        
+        # Add the new messages
+        chat_history.append({"user": user_message, "bot": bot_response})
+        
+        # Update the session
+        session[chat_key] = chat_history
+        session.modified = True
+        
+        # Store in the persistent storage
+        store_chatlog(user_name, chat_history)
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logging.exception("Error updating chat history")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 def create_system_prompt(table_schema):
     # Bestehendes System-Prompt generieren
@@ -1995,6 +2031,9 @@ def create_system_prompt(table_schema):
     return prompt
 
 from flask import Response
+
+from flask import Response
+
 @app.route("/", methods=["GET", "POST"])
 def chat():
     try:
@@ -2111,86 +2150,122 @@ def chat():
             try:
                 # If streaming is requested, handle it differently
                 if stream_mode and request.headers.get("Accept") == "text/event-stream":
-                    return Response(stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_name, user_id, user_message),
-                                   content_type="text/event-stream")
+                    # Get all necessary session data upfront
+                    session_data = {
+                        "user_id": user_id,
+                        "user_name": user_name,
+                        "chat_key": chat_key,
+                        "chat_history": list(chat_history)  # Make a copy
+                    }
+                    
+                    return Response(
+                        stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_message, session_data),
+                        content_type="text/event-stream"
+                    )
                 
                 # Standard non-streaming flow
                 debug_print("API Calls", f"Anfrage an OpenAI mit Function Calling: {user_message}")
-                response = openai.chat.completions.create(
-                    model="o3-mini",
-                    messages=messages,
-                    tools=tools,
-                    tool_choice=tool_choice
-                )
-                
-                assistant_message = response.choices[0].message
-                debug_print("API Response", f"Message type: {type(assistant_message)}")
-                debug_print("API Response", f"Has tool calls: {hasattr(assistant_message, 'tool_calls') and bool(assistant_message.tool_calls)}")
+                try:
+                    response = openai.chat.completions.create(
+                        model="o3-mini",
+                        messages=messages,
+                        tools=tools,
+                        tool_choice=tool_choice
+                    )
+                    
+                    assistant_message = response.choices[0].message
+                    debug_print("API Response", f"Message type: {type(assistant_message)}")
+                    debug_print("API Response", f"Has tool calls: {hasattr(assistant_message, 'tool_calls') and bool(assistant_message.tool_calls)}")
 
-                if assistant_message.tool_calls:
-                    debug_print("API Calls", f"Function Calls erkannt: {assistant_message.tool_calls}")
-                    function_responses = []
+                    # Initialize the antwort variable
+                    antwort = None
 
-                    for tool_call in assistant_message.tool_calls:
-                        function_name = tool_call.function.name
-                        function_args = json.loads(tool_call.function.arguments)
-                        debug_print("Function", f"Name: {function_name}, Argumente vor Modifikation: {function_args}")
+                    if assistant_message.tool_calls:
+                        debug_print("API Calls", f"Function Calls erkannt: {assistant_message.tool_calls}")
+                        function_responses = []
 
-                        # Standardargumente hinzufügen und überschreiben
-                        if seller_id:
-                            function_args["seller_id"] = seller_id
-                        
-                        # Nur extrahierte Datumswerte hinzufügen, wenn sie nicht bereits gesetzt sind
-                        for key, value in extracted_args.items():
-                            if key not in function_args or not function_args[key]:
-                                function_args[key] = value
+                        for tool_call in assistant_message.tool_calls:
+                            function_name = tool_call.function.name
+                            function_args = json.loads(tool_call.function.arguments)
+                            debug_print("Function", f"Name: {function_name}, Argumente vor Modifikation: {function_args}")
 
-                        debug_print("Function", f"Argumente nach Modifikation: {function_args}")
-                        function_response = handle_function_call(function_name, function_args)
-                        
-                        # Parsen der Function Response für bessere Logging
-                        try:
-                            parsed_response = json.loads(function_response)
-                            response_status = parsed_response.get("status", "unknown")
-                            response_count = len(parsed_response.get("data", [])) if "data" in parsed_response else 0
-                            debug_print("Function Response", f"Status: {response_status}, Anzahl Ergebnisse: {response_count}")
-                        except:
-                            debug_print("Function Response", "Konnte Response nicht parsen")
-                        
-                        function_responses.append(
-                            {
-                                "role": "tool",
-                                "tool_call_id": tool_call.id,
-                                "content": function_response,
-                            }
+                            # Standardargumente hinzufügen und überschreiben
+                            if seller_id:
+                                function_args["seller_id"] = seller_id
+                            
+                            # Nur extrahierte Datumswerte hinzufügen, wenn sie nicht bereits gesetzt sind
+                            for key, value in extracted_args.items():
+                                if key not in function_args or not function_args[key]:
+                                    function_args[key] = value
+
+                            debug_print("Function", f"Argumente nach Modifikation: {function_args}")
+                            function_response = handle_function_call(function_name, function_args)
+                            
+                            # Parsen der Function Response für bessere Logging
+                            try:
+                                parsed_response = json.loads(function_response)
+                                response_status = parsed_response.get("status", "unknown")
+                                response_count = len(parsed_response.get("data", [])) if "data" in parsed_response else 0
+                                debug_print("Function Response", f"Status: {response_status}, Anzahl Ergebnisse: {response_count}")
+                            except:
+                                debug_print("Function Response", "Konnte Response nicht parsen")
+                            
+                            function_responses.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tool_call.id,
+                                    "content": function_response,
+                                }
+                            )
+
+                        # Second call to OpenAI with function results
+                        second_messages = messages + [assistant_message.model_dump(exclude_unset=True)] + function_responses
+                        debug_print("API Calls", f"Zweiter Aufruf an OpenAI mit {len(function_responses)} Funktionsantworten")
+                        second_response = openai.chat.completions.create(model="o3-mini", messages=second_messages)
+                        final_message = second_response.choices[0].message
+                        antwort = final_message.content
+                        debug_print("API Calls", f"Finale Antwort: {antwort[:100]}...")
+
+                    else:
+                        antwort = assistant_message.content
+                        debug_print("API Calls", f"Direkte Antwort (kein Function Call): {antwort[:100]}...")
+                        # Warnung ins Log schreiben, wenn keine Funktion aufgerufen wurde
+                        if any(term in user_message.lower() for term in ["care", "pflege", "kunden", "verträge", "mai", "monat"]):
+                            logging.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
+
+                    # Chat-History aktualisieren
+                    if antwort:  # Check if antwort is defined
+                        chat_history.append({"user": user_message, "bot": antwort})
+                        session[chat_key] = chat_history
+                        store_chatlog(user_name, chat_history)
+
+                        return (
+                            jsonify({"response": antwort}),
+                            200,
+                        ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                            url_for("chat")
                         )
-
-                    # Second call to OpenAI with function results
-                    second_messages = messages + [assistant_message.model_dump(exclude_unset=True)] + function_responses
-                    debug_print("API Calls", f"Zweiter Aufruf an OpenAI mit {len(function_responses)} Funktionsantworten")
-                    second_response = openai.chat.completions.create(model="o3-mini", messages=second_messages)
-                    final_message = second_response.choices[0].message
-                    antwort = final_message.content
-                    debug_print("API Calls", f"Finale Antwort: {antwort[:100]}...")
-
-                else:
-                    antwort = assistant_message.content
-                    debug_print("API Calls", f"Direkte Antwort (kein Function Call): {antwort[:100]}...")
-                    # Warnung ins Log schreiben, wenn keine Funktion aufgerufen wurde
-                    if any(term in user_message.lower() for term in ["care", "pflege", "kunden", "verträge", "mai", "monat"]):
-                        logging.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
-
-                # Chat-History aktualisieren
-                chat_history.append({"user": user_message, "bot": antwort})
-                session[chat_key] = chat_history
-                store_chatlog(user_name, chat_history)
-
-                return (
-                    jsonify({"response": antwort}),
-                    200,
-                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
-                    url_for("chat")
-                )
+                    else:
+                        error_message = "Keine Antwort von OpenAI erhalten."
+                        debug_print("API Calls", error_message)
+                        return (
+                            jsonify({"error": error_message}),
+                            500,
+                        ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                            url_for("chat")
+                        )
+                        
+                except Exception as e:
+                    logging.exception("Fehler beim OpenAI-Aufruf")
+                    error_message = f"Fehler bei der Kommunikation mit OpenAI: {str(e)}"
+                    debug_print("API Calls", error_message)
+                    flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", "danger")
+                    return (
+                        jsonify({"error": error_message}),
+                        500,
+                    ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                        url_for("chat")
+                    )
 
             except Exception as e:
                 logging.exception("Fehler beim OpenAI-Aufruf")
@@ -2214,12 +2289,23 @@ def chat():
             jsonify({"error": "Interner Serverfehler."}),
             500,
         ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
-
-
-def stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_name, user_id, user_message):
-    """Stream the OpenAI response and handle function calls within the stream"""
-    chat_key = f"chat_history_{user_id}"
-    chat_history = session.get(chat_key, [])
+def stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_message, session_data):
+    """Stream the OpenAI response and handle function calls within the stream
+    
+    Args:
+        messages: OpenAI message array
+        tools: Available tools/functions
+        tool_choice: Which tool to use
+        seller_id: The seller's ID
+        extracted_args: Any extracted date parameters
+        user_message: The original user message
+        session_data: A dictionary containing all needed session data
+    """
+    # Extract session data - this avoids accessing session in the generator
+    user_id = session_data["user_id"]
+    user_name = session_data["user_name"]
+    chat_key = session_data["chat_key"]
+    chat_history = session_data["chat_history"]
     
     # First pass - get initial response
     try:
@@ -2314,31 +2400,64 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                         final_text += text_chunk
                         yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
                 
-                # Save the complete final response to history
+                # Send the complete message for session update
                 full_response = initial_response + "\n\n" + final_text
-                chat_history.append({"user": user_message, "bot": full_response})
-                session[chat_key] = chat_history
-                store_chatlog(user_name, chat_history)
                 
+                # Send the complete message for session update
+                yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': full_response})}\n\n"
                 yield f"data: {json.dumps({'type': 'end'})}\n\n"
             else:
                 # No valid function calls, just save initial response
-                chat_history.append({"user": user_message, "bot": initial_response})
-                session[chat_key] = chat_history
-                store_chatlog(user_name, chat_history)
-                
+                # Send the complete message for session update
+                yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
                 yield f"data: {json.dumps({'type': 'end'})}\n\n"
         else:
             # No function calls, just save initial response
-            chat_history.append({"user": user_message, "bot": initial_response})
-            session[chat_key] = chat_history
-            store_chatlog(user_name, chat_history)
-            
+            # Send the complete message for session update
+            yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
             yield f"data: {json.dumps({'type': 'end'})}\n\n"
     
     except Exception as e:
         logging.exception("Fehler im Stream")
         yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler: {str(e)}'})}\n\n"
+
+@app.route('/update_chat_history', methods=['POST'])
+def update_chat_history():
+    """Update chat history in the session from streaming responses"""
+    try:
+        data = request.json
+        user_message = data.get('user_message')
+        bot_response = data.get('bot_response')
+        
+        if not user_message or not bot_response:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            
+        user_id = session.get("user_id")
+        user_name = session.get("user_name")
+        
+        if not user_id or not user_name:
+            return jsonify({'success': False, 'error': 'No active session'}), 400
+            
+        chat_key = f"chat_history_{user_id}"
+        
+        # Get current chat history or initialize it
+        chat_history = session.get(chat_key, [])
+        
+        # Add the new messages
+        chat_history.append({"user": user_message, "bot": bot_response})
+        
+        # Update the session
+        session[chat_key] = chat_history
+        session.modified = True
+        
+        # Store in the persistent storage
+        store_chatlog(user_name, chat_history)
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logging.exception("Error updating chat history")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/test_date_extraction')
 def test_date_extraction():

@@ -621,6 +621,29 @@
             .catch(err => console.error('Fehler beim Abrufen des Nutzernamens:', err));
         }
 
+        function updateSessionWithChatMessage(userMessage, botResponse) {
+            fetch("{{ url_for('update_chat_history') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    'user_message': userMessage,
+                    'bot_response': botResponse
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Error updating session:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating session:', error);
+            });
+        }
+
         userNameInput.addEventListener('input', () => {
             if (userNameInput.value.trim().length >= 3) {
                 startBtn.disabled = false;

@@ -6,7 +6,7 @@
       "optional_parameters": ["limit"],
       "sql_template": "SELECT cs._id AS cs_id, cs.bill_start, cs.bill_end, cs.arrival, cs.departure, cs.stage, cs.prov_seller, cs.care_giver_instance_id, lead_names.first_name, lead_names.last_name, agencies.name AS agency_name, DATE_DIFF(DATE(TIMESTAMP(cs.bill_end)), DATE(TIMESTAMP(cs.bill_start)), DAY) AS care_stay_duration_days FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id WHERE l.seller_id = @seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE() AND cs.rejection_reason IS NULL ORDER BY cs.bill_start DESC LIMIT @limit",
       "default_values": {
-        "limit": 100
+        "limit": 500
       },
       "result_structure": {
         "cs_id": "ID des Care Stays",
@@ -30,7 +30,7 @@
       "optional_parameters": ["limit", "days_back"],
       "sql_template": "SELECT cs._id AS cs_id, cs.bill_start, cs.bill_end, cs.arrival, cs.departure, cs.stage, cs.prov_seller, lead_names.first_name, lead_names.last_name, agencies.name AS agency_name, DATE_DIFF(DATE(TIMESTAMP(cs.bill_end)), DATE(TIMESTAMP(cs.bill_start)), DAY) AS care_stay_duration_days FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id WHERE l.seller_id = @seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_end)) < CURRENT_DATE() AND DATE(TIMESTAMP(cs.bill_end)) >= DATE_SUB(CURRENT_DATE(), INTERVAL @days_back DAY) ORDER BY cs.bill_end DESC LIMIT @limit",
       "default_values": {
-        "limit": 100,
+        "limit": 500,
         "days_back": 90
       },
       "result_structure": {
@@ -54,7 +54,7 @@
         "optional_parameters": ["limit"],
         "sql_template": "SELECT cs._id AS cs_id, cs.bill_start, cs.bill_end, cs.stage, cs.prov_seller, lead_names.first_name, lead_names.last_name, agencies.name AS agency_name, DATE_DIFF(DATE(TIMESTAMP(cs.bill_end)), DATE(TIMESTAMP(cs.bill_start)), DAY) AS care_stay_duration_days FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id WHERE l.seller_id = @seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) >= @start_date AND DATE(TIMESTAMP(cs.bill_start)) <= @end_date ORDER BY cs.bill_start DESC LIMIT @limit",
         "default_values": {
-          "limit": 100
+          "limit": 500
         },
         "parameter_types": {
           "limit": "int"
@@ -78,7 +78,7 @@
       "optional_parameters": ["limit"],
       "sql_template": "SELECT c._id AS contract_id, c.active, c.termination_reason, c.created_at, c.agency_id, c.household_id, h.lead_id, agencies.name AS agency_name, lead_names.first_name, lead_names.last_name FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id WHERE l.seller_id = @seller_id AND c.active = true ORDER BY c.created_at DESC LIMIT @limit",
       "default_values": {
-        "limit": 100
+        "limit": 500
       },
       "result_structure": {
         "contract_id": "ID des Vertrags",
@@ -100,7 +100,7 @@
       "optional_parameters": ["limit", "days_back"],
       "sql_template": "SELECT l._id AS lead_id, la.first_name, la.last_name, l.created_at AS lead_created_at, l.price, l.cost, l.purchased, l.contacted, l.source_data FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS la ON la._id = l._id WHERE l.seller_id = @seller_id AND DATE(TIMESTAMP(l.created_at)) >= DATE_SUB(CURRENT_DATE(), INTERVAL @days_back DAY) ORDER BY l.created_at DESC LIMIT @limit",
       "default_values": {
-        "limit": 100,
+        "limit": 1000,
         "days_back": 30
       },
       "result_structure": {

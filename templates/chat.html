@@ -996,13 +996,59 @@
                                                     if (loadingElement) {
                                                         loadingElement.remove();
                                                     }
+
+                                                    // Erstelle eine neue Nachricht für die zweite Phase der Antwort
+                                                    const secondBotDiv = document.createElement('div');
+                                                    secondBotDiv.className = 'message bot';
                                                     
-                                                    // If there was previous content, add a line break
-                                                    if (responseText && responseText.trim().length > 0) {
-                                                        botResponseSpan.innerHTML = responseText + '<br>';
-                                                    }
+                                                    // Styling
+                                                    secondBotDiv.style.display = 'flex';
+                                                    secondBotDiv.style.flexDirection = 'column';
+                                                    secondBotDiv.style.position = 'relative';
+                                                    secondBotDiv.style.minHeight = '100px';
+
+                                                    // Label hinzufügen
+                                                    const secondStrongLabel = document.createElement('strong');
+                                                    secondStrongLabel.textContent = 'XORA:';
+                                                    secondStrongLabel.style.position = 'absolute';
+                                                    secondStrongLabel.style.top = '12px';
+                                                    secondStrongLabel.style.left = '16px';
+                                                    secondBotDiv.appendChild(secondStrongLabel);
+
+                                                    // Content-Span mit Styling
+                                                    const secondContentSpan = document.createElement('span');
+                                                    secondContentSpan.style.display = 'block';
+                                                    secondContentSpan.style.position = 'relative';
+                                                    secondContentSpan.style.marginTop = '30px';
+                                                    secondContentSpan.style.marginLeft = '16px';
+                                                    secondContentSpan.style.padding = '0 10px 0 0';
+                                                    secondContentSpan.style.minHeight = '20px';
+                                                    secondContentSpan.style.width = 'calc(100% - 40px)';
+                                                    secondContentSpan.style.wordBreak = 'break-word';
+                                                    secondContentSpan.style.whiteSpace = 'pre-wrap';
+                                                    secondContentSpan.style.visibility = 'visible';
+                                                    secondContentSpan.style.opacity = '1';
+                                                    secondContentSpan.style.color = '#ffffff';
+                                                    secondContentSpan.innerHTML = '<em style="color: #88ccff; font-style: italic;">Bereite Daten auf...</em>';
+                                                    secondBotDiv.appendChild(secondContentSpan);
+
+                                                    // Feedback-Icons
+                                                    const secondIconsDiv = document.createElement('div');
+                                                    secondIconsDiv.className = 'feedback-icons';
+                                                    secondIconsDiv.innerHTML = `
+                                                        <span class="thumb-up" data-type="positive">👍</span>
+                                                        <span class="thumb-down" data-type="negative">👎</span>
+                                                    `;
+                                                    secondBotDiv.appendChild(secondIconsDiv);
+
+                                                    // An Chat-History anhängen
+                                                    chatHistory.appendChild(secondBotDiv);
                                                     
-                                                    // Force scroll
+                                                    // Zukünftige Textnachrichten an die neue Blase senden
+                                                    botResponseSpan = secondContentSpan;
+                                                    responseText = ''; // Text für die zweite Nachricht zurücksetzen
+                                                    
+                                                    // Scroll erzwingen
                                                     forceScrollToBottom();
                                                     break;
                                                     
@@ -1015,10 +1061,19 @@
                                                     forceScrollToBottom();
                                                     break;
                                                     
-                                                case 'complete':  // <-- ADD THIS CASE HERE
-                                                    // When we receive the complete message, update the session
+                                                case 'complete':
                                                     console.log('Complete message received, updating session');
-                                                    updateSessionWithChatMessage(data.user, data.bot);
+                                                    // Wenn wir eine zweite Bot-Nachricht haben, verwende beide für die Session-Aktualisierung
+                                                    const completeResponse = document.querySelectorAll('.message.bot span');
+                                                    let fullResponse = '';
+                                                    if (completeResponse.length > 1) {
+                                                        // Wenn zwei Nachrichten existieren, beide zusammenführen
+                                                        fullResponse = completeResponse[0].innerHTML + "\n\n" + completeResponse[1].innerHTML.replace(/<em.*?<\/em>/g, '');
+                                                    } else {
+                                                        // Sonst normal weitermachen
+                                                        fullResponse = data.bot;
+                                                    }
+                                                    updateSessionWithChatMessage(data.user, fullResponse);
                                                     break;
                                                     
                                                 case 'end':

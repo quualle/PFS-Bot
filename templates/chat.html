@@ -402,6 +402,59 @@
                 width: 100%;
             }
         }
+
+        /* Add these styles directly to the <style> section in your HTML file */
+
+        /* Ensure bot messages always have enough space for the text */
+        .message.bot {
+            min-height: 100px !important; /* Provide minimum height to prevent jumping */
+            position: relative !important;
+            padding-bottom: 40px !important; /* Ensure space for feedback icons */
+        }
+
+        /* Ensure the response text is always properly positioned */
+        .message.bot span {
+            display: block !important;
+            margin-top: 30px !important; /* Force this margin to prevent layout shifts */
+            min-height: 20px !important; /* Minimum height even when empty */
+            padding-right: 10px !important; /* Add some padding on the right */
+            width: calc(100% - 40px) !important; /* Ensure it takes up proper width */
+            word-break: break-word !important; /* Prevent overflow */
+        }
+
+        /* Keep feedback icons at the bottom right */
+        .message.bot .feedback-icons {
+            position: absolute !important;
+            bottom: 5px !important;
+            right: 10px !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure the XORA label is always visible and properly positioned */
+        .message.bot strong {
+            position: absolute !important;
+            top: 12px !important;
+            left: 16px !important;
+            margin: 0 !important;
+        }
+
+        /* Style for the "loading" indicators during streaming */
+        .message.bot em {
+            font-style: italic !important;
+            color: #88ccff !important; /* Light blue color for the loading text */
+            display: block !important;
+            margin-top: 5px !important;
+        }
+
+        .data-loading-indicator {
+            display: block !important;
+            font-style: italic !important;
+            color: #88ccff !important;
+            margin-top: 10px !important;
+            padding: 5px !important;
+            border-radius: 4px !important;
+            background-color: rgba(0,0,0,0.1) !important;
+        }
     </style>
 </head>
 <body class="{% if session.get('notfall_mode') %}notfall-active{% endif %}">
@@ -720,36 +773,41 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                // Create the bot response bubble right away with proper spacing
+                // Create bot message container
                 const botDiv = document.createElement('div');
-                botDiv.classList.add('message', 'bot');
+                botDiv.className = 'message bot';
                 
-                // Create a strong element for "XORA:"
-                const strongEl = document.createElement('strong');
-                strongEl.textContent = "XORA:";
-                botDiv.appendChild(strongEl);
+                // Add label
+                const strongLabel = document.createElement('strong');
+                strongLabel.textContent = 'XORA:';
+                botDiv.appendChild(strongLabel);
                 
-                // Create the response span with initial spacing to prevent left-alignment issues
-                const responseSpan = document.createElement('span');
-                responseSpan.style.marginTop = '30px'; // Ensure consistent spacing from the beginning
-                responseSpan.style.display = 'block'; // Make it a block to ensure it takes full width
-                responseSpan.innerHTML = ''; // Start empty
-                botDiv.appendChild(responseSpan);
+                // Add content span with proper styling
+                const contentSpan = document.createElement('span');
+                contentSpan.style.display = 'block';
+                contentSpan.style.marginTop = '30px';
+                contentSpan.style.minHeight = '20px';
+                contentSpan.style.paddingRight = '10px';
+                contentSpan.style.width = 'calc(100% - 40px)';
+                botDiv.appendChild(contentSpan);
                 
                 // Add feedback icons
-                const feedbackDiv = document.createElement('div');
-                feedbackDiv.classList.add('feedback-icons');
-                feedbackDiv.innerHTML = `
+                const iconsDiv = document.createElement('div');
+                iconsDiv.className = 'feedback-icons';
+                iconsDiv.innerHTML = `
                     <span class="thumb-up" data-type="positive">👍</span>
                     <span class="thumb-down" data-type="negative">👎</span>
                 `;
-                botDiv.appendChild(feedbackDiv);
+                botDiv.appendChild(iconsDiv);
                 
-                // Add to chat history
+                // Append to chat history
                 chatHistory.appendChild(botDiv);
                 
-                // Rest of the code stays the same but use responseSpan variable
-                const botResponseSpan = responseSpan;
+                // Force scroll after creating bubble
+                forceScrollToBottom();
+                
+                // Remaining code uses contentSpan
+                const botResponseSpan = contentSpan;
     
                 
                 // Setup for either streaming or regular response
@@ -817,79 +875,92 @@
                                                     console.log('Streaming started');
                                                     break;
                                                     
-                                                    case 'text':
-                                                        if (data.content) {
-                                                            // Escape HTML to prevent injection (only if needed)
-                                                            const escapedContent = data.content
-                                                                .replace(/&/g, '&amp;')
-                                                                .replace(/</g, '&lt;')
-                                                                .replace(/>/g, '&gt;')
-                                                                .replace(/"/g, '&quot;')
-                                                                .replace(/'/g, '&#039;');
-                                                            
-                                                            // Add the text to our aggregated response
-                                                            responseText += escapedContent;
-                                                            
-                                                            // Update the display, preserving any loading indicators
-                                                            const loadingIndicator = botResponseSpan.querySelector('.data-loading-indicator');
-                                                            if (loadingIndicator) {
-                                                                // Keep the loading indicator, but update the rest of the content
-                                                                const tempDiv = document.createElement('div');
-                                                                tempDiv.innerHTML = responseText;
-                                                                
-                                                                // Clear the span and re-add content
-                                                                botResponseSpan.innerHTML = '';
-                                                                botResponseSpan.appendChild(tempDiv);
-                                                                botResponseSpan.appendChild(loadingIndicator);
-                                                            } else {
-                                                                // No loading indicator, just update the content
-                                                                botResponseSpan.innerHTML = responseText;
-                                                            }
-                                                            
-                                                            // Format any line breaks for better display
-                                                            botResponseSpan.innerHTML = botResponseSpan.innerHTML
-                                                                .replace(/\n/g, '<br>')
-                                                                .replace(/<br><br>/g, '<br>'); // Prevent double line breaks
-                                                            
-                                                            forceScrollToBottom();
-                                                        }
-                                                        break;
-                                                    
-                                                // Replace the function_call_start and function_result handlers in the switch statement
-
-                                                    case 'function_call_start':
-                                                        functionCallActive = true;
-                                                        // Add a more elegant loading indicator that doesn't disrupt the layout
-                                                        const loadingElement = document.createElement('em');
-                                                        loadingElement.className = 'data-loading-indicator';
-                                                        loadingElement.textContent = 'Rufe Daten ab...';
-                                                        botResponseSpan.appendChild(loadingElement);
-                                                        forceScrollToBottom();
-                                                        break;
-
-                                                    case 'function_result':
-                                                        // Replace the loading indicator with a success message
+                                                    // Replace the case 'text' handler in your switch statement with this improved version:
+                                                case 'text':
+                                                    if (data.content) {
+                                                        // Simply append the text content
+                                                        responseText += data.content;
+                                                        
+                                                        // Find any loading indicators
                                                         const loadingIndicator = botResponseSpan.querySelector('.data-loading-indicator');
+                                                        
                                                         if (loadingIndicator) {
-                                                            loadingIndicator.textContent = 'Daten abgerufen!';
-                                                            loadingIndicator.style.color = '#66ffaa'; // Change to a success color
+                                                            // If there's a loading indicator, keep it and update the main content
+                                                            // Save the loading indicator
+                                                            const indicatorClone = loadingIndicator.cloneNode(true);
+                                                            
+                                                            // Update the content
+                                                            botResponseSpan.innerHTML = responseText;
+                                                            
+                                                            // Re-add the loading indicator at the end
+                                                            botResponseSpan.appendChild(indicatorClone);
+                                                        } else {
+                                                            // No loading indicator, just update the text
+                                                            botResponseSpan.textContent = responseText;
                                                         }
+                                                        
+                                                        // Force scroll
                                                         forceScrollToBottom();
-                                                        break;
+                                                    }
+                                                    break;
+                                                    
+                                                
+                                                case 'function_call_start':
+                                                    functionCallActive = true;
+                                                    
+                                                    // Remove any existing loading indicators first
+                                                    const existingIndicators = botResponseSpan.querySelectorAll('.data-loading-indicator');
+                                                    existingIndicators.forEach(el => el.remove());
+                                                    
+                                                    // Create a new loading indicator with proper styling
+                                                    const loadingDiv = document.createElement('div');
+                                                    loadingDiv.className = 'data-loading-indicator';
+                                                    loadingDiv.textContent = 'Rufe Daten ab...';
+                                                    loadingDiv.style.display = 'block';
+                                                    loadingDiv.style.fontStyle = 'italic';
+                                                    loadingDiv.style.color = '#88ccff';
+                                                    loadingDiv.style.marginTop = '10px';
+                                                    loadingDiv.style.padding = '5px';
+                                                    loadingDiv.style.borderRadius = '4px';
+                                                    loadingDiv.style.backgroundColor = 'rgba(0,0,0,0.1)';
+                                                    
+                                                    // Append it to the response span
+                                                    botResponseSpan.appendChild(loadingDiv);
+                                                    
+                                                    // Force scroll
+                                                    forceScrollToBottom();
+                                                    break;
 
-                                                    case 'final_response_start':
-                                                        // Remove the loading indicator completely for the final response
-                                                        const dataLoadingIndicator = botResponseSpan.querySelector('.data-loading-indicator');
-                                                        if (dataLoadingIndicator) {
-                                                            dataLoadingIndicator.remove();
-                                                        }
-                                                        // Add a subtle separator if there was previous content
-                                                        if (responseText.trim().length > 0) {
-                                                            responseText += '\n';
-                                                        }
-                                                        botResponseSpan.innerHTML = responseText;
-                                                        forceScrollToBottom();
-                                                        break;
+                                                // Replace the function_result case with this improved version:
+                                                case 'function_result':
+                                                    // Find the loading indicator
+                                                    const indicator = botResponseSpan.querySelector('.data-loading-indicator');
+                                                    if (indicator) {
+                                                        // Update its text and color
+                                                        indicator.textContent = 'Daten abgerufen!';
+                                                        indicator.style.color = '#66ffaa';
+                                                    }
+                                                    
+                                                    // Force scroll
+                                                    forceScrollToBottom();
+                                                    break;
+
+                                                // Replace the final_response_start case with this improved version:
+                                                case 'final_response_start':
+                                                    // Find and remove the loading indicator
+                                                    const loadingElement = botResponseSpan.querySelector('.data-loading-indicator');
+                                                    if (loadingElement) {
+                                                        loadingElement.remove();
+                                                    }
+                                                    
+                                                    // If there was previous content, add a line break
+                                                    if (responseText && responseText.trim().length > 0) {
+                                                        botResponseSpan.innerHTML = responseText + '<br>';
+                                                    }
+                                                    
+                                                    // Force scroll
+                                                    forceScrollToBottom();
+                                                    break;
                                                     
                                                 
 

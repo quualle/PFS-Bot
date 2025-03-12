@@ -416,16 +416,19 @@
         /* Stelle sicher, dass der Text in der Bot-Nachricht immer richtig positioniert ist */
         .message.bot span {
             display: block !important;
+            position: relative !important;
             margin-top: 30px !important;
-            margin-left: 16px !important; /* Hinzugefügt: Wichtiger linker Abstand */
+            margin-left: 16px !important;
+            padding: 0 10px 0 0 !important;
             min-height: 20px !important;
-            padding-right: 10px !important;
             width: calc(100% - 40px) !important;
             word-break: break-word !important;
-            white-space: pre-wrap !important; /* Hinzugefügt: Zeilenumbrüche respektieren */
-            visibility: visible !important; /* Hinzugefügt: Immer sichtbar */
-            opacity: 1 !important; /* Hinzugefügt: Volle Deckkraft */
-        }
+            white-space: pre-wrap !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            left: 0 !important;
+            color: #ffffff !important;
+}
         /* Keep feedback icons at the bottom right */
         .message.bot .feedback-icons {
             position: absolute !important;
@@ -777,28 +780,38 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                // Create bot message container
+                    // Create bot message container
                 const botDiv = document.createElement('div');
                 botDiv.className = 'message bot';
-                
+
+                // Wichtige Initialisierung direkt beim Erstellen
+                botDiv.style.display = 'flex';
+                botDiv.style.flexDirection = 'column';
+                botDiv.style.position = 'relative';
+                botDiv.style.minHeight = '100px';
+
                 // Add label
                 const strongLabel = document.createElement('strong');
                 strongLabel.textContent = 'XORA:';
+                strongLabel.style.position = 'absolute';
+                strongLabel.style.top = '12px';
+                strongLabel.style.left = '16px';
                 botDiv.appendChild(strongLabel);
-                
-                // Add content span with proper styling
 
+                // Add content span with proper styling
                 const contentSpan = document.createElement('span');
                 contentSpan.style.display = 'block';
+                contentSpan.style.position = 'relative';
                 contentSpan.style.marginTop = '30px';
                 contentSpan.style.marginLeft = '16px';
+                contentSpan.style.padding = '0 10px 0 0';
                 contentSpan.style.minHeight = '20px';
-                contentSpan.style.paddingRight = '10px';
                 contentSpan.style.width = 'calc(100% - 40px)';
                 contentSpan.style.wordBreak = 'break-word';
                 contentSpan.style.whiteSpace = 'pre-wrap';
                 contentSpan.style.visibility = 'visible';
                 contentSpan.style.opacity = '1';
+                contentSpan.style.color = '#ffffff';
                 botDiv.appendChild(contentSpan);
                 
                 // Add feedback icons

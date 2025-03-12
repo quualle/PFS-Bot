@@ -976,6 +976,7 @@
                                                     break;
 
                                                 // Replace the function_result case with this improved version:
+                                                // Finde zuerst den case 'function_result' und ändere ihn:
                                                 case 'function_result':
                                                     // Find the loading indicator
                                                     const indicator = botResponseSpan.querySelector('.data-loading-indicator');
@@ -985,71 +986,92 @@
                                                         indicator.style.color = '#66ffaa';
                                                     }
                                                     
+                                                    // Log für Debugging
+                                                    console.log('Funktion ausgeführt, warte auf final_response_start...');
+                                                    
                                                     // Force scroll
                                                     forceScrollToBottom();
+                                                    // Nach 2 Sekunden automatisch eine zweite Nachricht erstellen, falls final_response_start nicht kommt
+                                                    setTimeout(() => {
+                                                        // Nur erstellen, wenn noch keine zweite Nachricht da ist
+                                                        if (!document.querySelector('.message.bot:last-child').isSecondMessage) {
+                                                            console.log('Erstelle zweite Nachricht nach Timeout');
+                                                            // Hier den gleichen Code wie im final_response_start case einfügen
+                                                        }
+                                                    }, 2000);
+                                                    
                                                     break;
+                                                    
 
                                                 // Replace the final_response_start case with this improved version:
                                                 case 'final_response_start':
+                                                    console.log('final_response_start empfangen - erstelle zweite Nachricht');
+                                                    
                                                     // Find and remove the loading indicator
                                                     const loadingElement = botResponseSpan.querySelector('.data-loading-indicator');
                                                     if (loadingElement) {
                                                         loadingElement.remove();
                                                     }
 
-                                                    // Erstelle eine neue Nachricht für die zweite Phase der Antwort
-                                                    const secondBotDiv = document.createElement('div');
-                                                    secondBotDiv.className = 'message bot';
-                                                    
-                                                    // Styling
-                                                    secondBotDiv.style.display = 'flex';
-                                                    secondBotDiv.style.flexDirection = 'column';
-                                                    secondBotDiv.style.position = 'relative';
-                                                    secondBotDiv.style.minHeight = '100px';
+                                                    try {
+                                                        // Erstelle eine neue Nachricht für die zweite Phase der Antwort
+                                                        const secondBotDiv = document.createElement('div');
+                                                        secondBotDiv.className = 'message bot';
+                                                        
+                                                        // Styling
+                                                        secondBotDiv.style.display = 'flex';
+                                                        secondBotDiv.style.flexDirection = 'column';
+                                                        secondBotDiv.style.position = 'relative';
+                                                        secondBotDiv.style.minHeight = '100px';
 
-                                                    // Label hinzufügen
-                                                    const secondStrongLabel = document.createElement('strong');
-                                                    secondStrongLabel.textContent = 'XORA:';
-                                                    secondStrongLabel.style.position = 'absolute';
-                                                    secondStrongLabel.style.top = '12px';
-                                                    secondStrongLabel.style.left = '16px';
-                                                    secondBotDiv.appendChild(secondStrongLabel);
+                                                        // Label hinzufügen
+                                                        const secondStrongLabel = document.createElement('strong');
+                                                        secondStrongLabel.textContent = 'XORA:';
+                                                        secondStrongLabel.style.position = 'absolute';
+                                                        secondStrongLabel.style.top = '12px';
+                                                        secondStrongLabel.style.left = '16px';
+                                                        secondBotDiv.appendChild(secondStrongLabel);
 
-                                                    // Content-Span mit Styling
-                                                    const secondContentSpan = document.createElement('span');
-                                                    secondContentSpan.style.display = 'block';
-                                                    secondContentSpan.style.position = 'relative';
-                                                    secondContentSpan.style.marginTop = '30px';
-                                                    secondContentSpan.style.marginLeft = '16px';
-                                                    secondContentSpan.style.padding = '0 10px 0 0';
-                                                    secondContentSpan.style.minHeight = '20px';
-                                                    secondContentSpan.style.width = 'calc(100% - 40px)';
-                                                    secondContentSpan.style.wordBreak = 'break-word';
-                                                    secondContentSpan.style.whiteSpace = 'pre-wrap';
-                                                    secondContentSpan.style.visibility = 'visible';
-                                                    secondContentSpan.style.opacity = '1';
-                                                    secondContentSpan.style.color = '#ffffff';
-                                                    secondContentSpan.innerHTML = '<em style="color: #88ccff; font-style: italic;">Bereite Daten auf...</em>';
-                                                    secondBotDiv.appendChild(secondContentSpan);
+                                                        // Content-Span mit Styling
+                                                        const secondContentSpan = document.createElement('span');
+                                                        secondContentSpan.style.display = 'block';
+                                                        secondContentSpan.style.position = 'relative';
+                                                        secondContentSpan.style.marginTop = '30px';
+                                                        secondContentSpan.style.marginLeft = '16px';
+                                                        secondContentSpan.style.padding = '0 10px 0 0';
+                                                        secondContentSpan.style.minHeight = '20px';
+                                                        secondContentSpan.style.width = 'calc(100% - 40px)';
+                                                        secondContentSpan.style.wordBreak = 'break-word';
+                                                        secondContentSpan.style.whiteSpace = 'pre-wrap';
+                                                        secondContentSpan.style.visibility = 'visible';
+                                                        secondContentSpan.style.opacity = '1';
+                                                        secondContentSpan.style.color = '#ffffff';
+                                                        secondContentSpan.innerHTML = '<em style="color: #88ccff; font-style: italic;">Ergebnisse werden geladen...</em>';
+                                                        secondBotDiv.appendChild(secondContentSpan);
 
-                                                    // Feedback-Icons
-                                                    const secondIconsDiv = document.createElement('div');
-                                                    secondIconsDiv.className = 'feedback-icons';
-                                                    secondIconsDiv.innerHTML = `
-                                                        <span class="thumb-up" data-type="positive">👍</span>
-                                                        <span class="thumb-down" data-type="negative">👎</span>
-                                                    `;
-                                                    secondBotDiv.appendChild(secondIconsDiv);
+                                                        // Feedback-Icons
+                                                        const secondIconsDiv = document.createElement('div');
+                                                        secondIconsDiv.className = 'feedback-icons';
+                                                        secondIconsDiv.innerHTML = `
+                                                            <span class="thumb-up" data-type="positive">👍</span>
+                                                            <span class="thumb-down" data-type="negative">👎</span>
+                                                        `;
+                                                        secondBotDiv.appendChild(secondIconsDiv);
 
-                                                    // An Chat-History anhängen
-                                                    chatHistory.appendChild(secondBotDiv);
-                                                    
-                                                    // Zukünftige Textnachrichten an die neue Blase senden
-                                                    botResponseSpan = secondContentSpan;
-                                                    responseText = ''; // Text für die zweite Nachricht zurücksetzen
-                                                    
-                                                    // Scroll erzwingen
-                                                    forceScrollToBottom();
+                                                        // An Chat-History anhängen
+                                                        chatHistory.appendChild(secondBotDiv);
+                                                        
+                                                        console.log('Zweite Nachricht erstellt, wechsle Ziel für Text-Updates');
+                                                        
+                                                        // Zukünftige Textnachrichten an die neue Blase senden
+                                                        botResponseSpan = secondContentSpan;
+                                                        responseText = ''; // Text für die zweite Nachricht zurücksetzen
+                                                        
+                                                        // Scroll erzwingen
+                                                        forceScrollToBottom();
+                                                    } catch (error) {
+                                                        console.error('Fehler beim Erstellen der zweiten Nachricht:', error);
+                                                    }
                                                     break;
                                                     
                                                 

@@ -2410,6 +2410,7 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                     stream=True
                 )
                 
+                
                 yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
                 
                 final_text = ""

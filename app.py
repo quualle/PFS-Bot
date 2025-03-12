@@ -2030,7 +2030,6 @@ def create_system_prompt(table_schema):
     
     return prompt
 
-from flask import Response
 
 from flask import Response
 

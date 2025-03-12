@@ -413,15 +413,19 @@
         }
 
         /* Ensure the response text is always properly positioned */
+        /* Stelle sicher, dass der Text in der Bot-Nachricht immer richtig positioniert ist */
         .message.bot span {
             display: block !important;
-            margin-top: 30px !important; /* Force this margin to prevent layout shifts */
-            min-height: 20px !important; /* Minimum height even when empty */
-            padding-right: 10px !important; /* Add some padding on the right */
-            width: calc(100% - 40px) !important; /* Ensure it takes up proper width */
-            word-break: break-word !important; /* Prevent overflow */
+            margin-top: 30px !important;
+            margin-left: 16px !important; /* Hinzugefügt: Wichtiger linker Abstand */
+            min-height: 20px !important;
+            padding-right: 10px !important;
+            width: calc(100% - 40px) !important;
+            word-break: break-word !important;
+            white-space: pre-wrap !important; /* Hinzugefügt: Zeilenumbrüche respektieren */
+            visibility: visible !important; /* Hinzugefügt: Immer sichtbar */
+            opacity: 1 !important; /* Hinzugefügt: Volle Deckkraft */
         }
-
         /* Keep feedback icons at the bottom right */
         .message.bot .feedback-icons {
             position: absolute !important;
@@ -783,12 +787,18 @@
                 botDiv.appendChild(strongLabel);
                 
                 // Add content span with proper styling
+
                 const contentSpan = document.createElement('span');
                 contentSpan.style.display = 'block';
                 contentSpan.style.marginTop = '30px';
+                contentSpan.style.marginLeft = '16px';
                 contentSpan.style.minHeight = '20px';
                 contentSpan.style.paddingRight = '10px';
                 contentSpan.style.width = 'calc(100% - 40px)';
+                contentSpan.style.wordBreak = 'break-word';
+                contentSpan.style.whiteSpace = 'pre-wrap';
+                contentSpan.style.visibility = 'visible';
+                contentSpan.style.opacity = '1';
                 botDiv.appendChild(contentSpan);
                 
                 // Add feedback icons
@@ -878,7 +888,7 @@
                                                     // Replace the case 'text' handler in your switch statement with this improved version:
                                                 case 'text':
                                                     if (data.content) {
-                                                        // Simply append the text content
+                                                        // Append the text content
                                                         responseText += data.content;
                                                         
                                                         // Find any loading indicators
@@ -889,22 +899,32 @@
                                                             // Save the loading indicator
                                                             const indicatorClone = loadingIndicator.cloneNode(true);
                                                             
-                                                            // Update the content
+                                                            // Update the content - use innerHTML to preserve formatting
                                                             botResponseSpan.innerHTML = responseText;
                                                             
                                                             // Re-add the loading indicator at the end
                                                             botResponseSpan.appendChild(indicatorClone);
                                                         } else {
-                                                            // No loading indicator, just update the text
-                                                            botResponseSpan.textContent = responseText;
+                                                            // Update with innerHTML instead of textContent to preserve formatting
+                                                            botResponseSpan.innerHTML = responseText;
                                                         }
+                                                        
+                                                        // Ensure the span has correct styling
+                                                        botResponseSpan.style.display = 'block';
+                                                        botResponseSpan.style.marginTop = '30px';
+                                                        botResponseSpan.style.marginLeft = '16px';
+                                                        botResponseSpan.style.minHeight = '20px';
+                                                        botResponseSpan.style.paddingRight = '10px';
+                                                        botResponseSpan.style.width = 'calc(100% - 40px)';
+                                                        botResponseSpan.style.wordBreak = 'break-word';
+                                                        botResponseSpan.style.whiteSpace = 'pre-wrap';
+                                                        botResponseSpan.style.visibility = 'visible';
+                                                        botResponseSpan.style.opacity = '1';
                                                         
                                                         // Force scroll
                                                         forceScrollToBottom();
                                                     }
                                                     break;
-                                                    
-                                                
                                                 case 'function_call_start':
                                                     functionCallActive = true;
                                                     

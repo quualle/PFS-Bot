@@ -921,6 +921,7 @@ def count_tokens(messages, model=None):
 def extract_date_params(user_message):
     """Extract date parameters from user message for months like 'Mai'."""
     import datetime  # Local import to ensure we have the right module
+    import re
     extracted_args = {}
     
     # Map German month names to numbers
@@ -933,13 +934,15 @@ def extract_date_params(user_message):
     current_date = datetime.datetime.now()  # Using full namespace
     current_year = current_date.year
     
+    # Extract year if present
+    year_match = re.search(r'\b(20\d\d)\b', user_message)
+    extracted_year = int(year_match.group(1)) if year_match else current_year
+    
     # Check for month mentions
     for month_name, month_num in month_map.items():
         if month_name in user_message_lower:
-            # Assume next occurrence of this month (this year or next)
-            year = current_year
-            if current_date.month > month_num:
-                year = current_year + 1
+            # Use extracted year or current year
+            year = extracted_year
                 
             # Create start and end dates for the month
             start_date = datetime.date(year, month_num, 1)  # Using datetime.date
@@ -951,10 +954,10 @@ def extract_date_params(user_message):
                 
             extracted_args["start_date"] = start_date.strftime("%Y-%m-%d")
             extracted_args["end_date"] = end_date.strftime("%Y-%m-%d")
-            debug_print("Datumsextraktion", f"Erkannter Monat: {month_name}, Start: {extracted_args['start_date']}, Ende: {extracted_args['end_date']}")
+            debug_print("Datumsextraktion", f"Erkannter Monat: {month_name}, Jahr: {year}, Start: {extracted_args['start_date']}, Ende: {extracted_args['end_date']}")
             return extracted_args
     
-    # Fall back to dateparser
+    # Fall back to dateparser for more complex date expressions
     parsed_date = dateparser.parse(
         user_message,
         languages=["de"],
@@ -2074,26 +2077,33 @@ def chat():
                 + (f"\n\nDu sprichst mit einem Vertriebspartner mit der ID {seller_id}." if seller_id else "")
             )
 
+            # Prüfe auf Debug-Modus für erzwungene Funktionsaufrufe
+            # Setup tools and messages
             tools = create_function_definitions()
             debug_print("API Setup", f"System prompt (gekürzt): {system_prompt[:200]}...")
             debug_print("API Setup", f"Anzahl definierter Tools: {len(tools)}")
-            
+
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ]
-            
-            # Verbesserte Datumsextraktion
+
+            # Improved date extraction
             extracted_args = extract_date_params(user_message)
             debug_print("Parameter", f"Extrahierte Parameter: {extracted_args}")
 
-            # Prüfe auf Debug-Modus für erzwungene Funktionsaufrufe
+            # Check for debug mode to force function calls
             debug_force = request.args.get("force_function")
             if debug_force:
                 tool_choice = {"type": "function", "function": {"name": debug_force}}
                 debug_print("DEBUG", f"Erzwinge Funktionsaufruf: {debug_force}")
             else:
-                tool_choice = "auto"
+                # For temporal queries, strongly suggest using get_care_stays_by_date_range
+                if any(term in user_message.lower() for term in ["mai", "monat", "jahr", "care stays"]) and extracted_args:
+                    tool_choice = {"type": "function", "function": {"name": "get_care_stays_by_date_range"}}
+                    debug_print("API Calls", f"Suggesting function get_care_stays_by_date_range for date query")
+                else:
+                    tool_choice = "auto"
 
             try:
                 debug_print("API Calls", f"Anfrage an OpenAI mit Function Calling: {user_message}")
@@ -2101,9 +2111,7 @@ def chat():
                     model="o3-mini",
                     messages=messages,
                     tools=tools,
-                    tool_choice=tool_choice,
-                    # Erhöhe ggf. die Temperatur für experimentelle Zwecke
-                    
+                    tool_choice=tool_choice
                 )
                 
                 assistant_message = response.choices[0].message
@@ -2198,6 +2206,39 @@ def chat():
             500,
         ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
 
+@app.route('/test_date_extraction')
+def test_date_extraction():
+    """Test the date extraction directly"""
+    test_message = request.args.get('message', 'wie viele carestays habe ich im mai 2025')
+    
+    # Call the extraction function
+    extracted_args = extract_date_params(test_message)
+    
+    # Format output as HTML
+    output = f"""
+    <h1>Test Date Extraction</h1>
+    <p>Message: {test_message}</p>
+    <h2>Extracted Date Parameters:</h2>
+    <pre>{json.dumps(extracted_args, indent=2)}</pre>
+    
+    <h2>Test Function Call:</h2>
+    """
+    
+    # If we have date parameters, test a function call
+    if 'start_date' in extracted_args and 'end_date' in extracted_args:
+        args = {
+            'seller_id': session.get('seller_id', 'Pflegeteam Heer'),
+            'start_date': extracted_args['start_date'],
+            'end_date': extracted_args['end_date'],
+            'limit': 100
+        }
+        
+        result = handle_function_call('get_care_stays_by_date_range', args)
+        output += f"<p>Function: get_care_stays_by_date_range</p>"
+        output += f"<p>Args: {args}</p>"
+        output += f"<pre>{result}</pre>"
+    
+    return output
 
 @app.route('/test_function_call')
 def test_function_call():

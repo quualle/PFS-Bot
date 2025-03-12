@@ -459,8 +459,10 @@
             </div>
 
             <!-- Chat-Formular -->
+            <!-- Replace the existing chat form with this one -->
             <form id="chatForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="stream" value="1">  <!-- Enable streaming by default -->
                 <input type="text" name="message" placeholder="Ihre Nachricht..." required>
                 <button type="submit">Senden</button>
             </form>
@@ -680,6 +682,7 @@
         forceScrollToBottom();
 
         // CHAT-FORM
+        // Replace the existing form submit listener with this one
         chatForm.addEventListener('submit', function(event) {
             event.preventDefault();
             const userMessageText = new FormData(chatForm).get('message').trim();
@@ -694,62 +697,186 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                const xoraTyping = showTypingIndicator();
+                // Create the bot response bubble right away
+                const botDiv = document.createElement('div');
+                botDiv.classList.add('message', 'bot');
+                botDiv.innerHTML = `
+                    <strong>XORA:</strong>
+                    <span></span>
+                    <div class="feedback-icons">
+                        <span class="thumb-up" data-type="positive">👍</span>
+                        <span class="thumb-down" data-type="negative">👎</span>
+                    </div>
+                `;
+                chatHistory.appendChild(botDiv);
+                const botResponseSpan = botDiv.querySelector('span');
+                
+                // Setup for either streaming or regular response
                 const isNotfall = notfallActive ? '1' : '0';
                 const joinedNotfallOptions = selectedNotfallOptions.join(', ');
+                
+                // Determine if we should use streaming
+                const useStreaming = true; // Set to true to always use streaming
+                
+                if (useStreaming) {
+                    // Streaming approach
+                    const eventSource = new EventSource(`${window.location.pathname}?stream=1`);
+                    const payload = new URLSearchParams({
+                        'csrf_token': csrfToken,
+                        'message': userMessageText,
+                        'notfallmodus': isNotfall,
+                        'notfallart': joinedNotfallOptions,
+                        'stream': '1'
+                    });
+                    
+                    // Use fetch to initiate the streaming request
+                    fetch("{{ url_for('chat') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/event-stream'
+                        },
+                        body: payload
+                    }).then(response => {
+                        // Check if response is ok and of right type
+                        if (!response.ok || !response.headers.get('content-type').includes('text/event-stream')) {
+                            throw new Error('Network response was not ok or not an event stream');
+                        }
+                        
+                        // Set up the reader and decoder
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        
+                        // Store response parts
+                        let responseText = '';
+                        let functionCallActive = false;
+                        
+                        // Function to process the stream
+                        function processStream() {
+                            return reader.read().then(({ done, value }) => {
+                                if (done) {
+                                    console.log('Stream complete');
+                                    return;
+                                }
+                                
+                                // Decode the chunk and split into SSE messages
+                                const chunk = decoder.decode(value, { stream: true });
+                                const messages = chunk.split('\n\n');
+                                
+                                messages.forEach(message => {
+                                    if (message.startsWith('data: ')) {
+                                        try {
+                                            const data = JSON.parse(message.substring(6));
+                                            
+                                            // Handle different message types
+                                            switch (data.type) {
+                                                case 'start':
+                                                    console.log('Streaming started');
+                                                    break;
+                                                    
+                                                case 'text':
+                                                    if (data.content) {
+                                                        responseText += data.content;
+                                                        botResponseSpan.innerHTML = responseText;
+                                                        forceScrollToBottom();
+                                                    }
+                                                    break;
+                                                    
+                                                case 'function_call_start':
+                                                    functionCallActive = true;
+                                                    // Maybe add a "thinking" indicator
+                                                    responseText += '<br><em>Rufe Daten ab...</em>';
+                                                    botResponseSpan.innerHTML = responseText;
+                                                    forceScrollToBottom();
+                                                    break;
+                                                    
+                                                case 'function_result':
+                                                    responseText = responseText.replace('<br><em>Rufe Daten ab...</em>', '<br><em>Daten abgerufen!</em>');
+                                                    botResponseSpan.innerHTML = responseText;
+                                                    forceScrollToBottom();
+                                                    break;
+                                                    
+                                                case 'final_response_start':
+                                                    // Remove the "thinking" indicator
+                                                    responseText = responseText.replace('<br><em>Daten abgerufen!</em>', '<br>');
+                                                    botResponseSpan.innerHTML = responseText;
+                                                    forceScrollToBottom();
+                                                    break;
+                                                    
+                                                case 'error':
+                                                    console.error('Streaming error:', data.content);
+                                                    responseText += `<br><span style="color: red;">Error: ${data.content}</span>`;
+                                                    botResponseSpan.innerHTML = responseText;
+                                                    forceScrollToBottom();
+                                                    break;
+                                                    
+                                                case 'end':
+                                                    console.log('Streaming ended');
+                                                    break;
+                                            }
+                                        } catch (e) {
+                                            console.error('Error parsing SSE message:', e, message);
+                                        }
+                                    }
+                                });
+                                
+                                // Continue reading
+                                return processStream();
+                            }).catch(error => {
+                                console.error('Stream error:', error);
+                                responseText += `<br><span style="color: red;">Connection error: ${error.message}</span>`;
+                                botResponseSpan.innerHTML = responseText;
+                                forceScrollToBottom();
+                            });
+                        }
+                        
+                        // Start processing the stream
+                        return processStream();
+                    }).catch(error => {
+                        console.error('Fetch error:', error);
+                        botResponseSpan.innerHTML = `Error: ${error.message}`;
+                        forceScrollToBottom();
+                    });
+                } else {
+                    // Regular, non-streaming approach (fallback)
+                    const xoraTyping = showTypingIndicator();
+                    const payload = new URLSearchParams({
+                        'csrf_token': csrfToken,
+                        'message': userMessageText,
+                        'notfallmodus': isNotfall,
+                        'notfallart': joinedNotfallOptions
+                    });
 
-                const payload = new URLSearchParams({
-                    'csrf_token': csrfToken,
-                    'message': userMessageText,
-                    'notfallmodus': isNotfall,
-                    'notfallart': joinedNotfallOptions
-                });
+                    fetch("{{ url_for('chat') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: payload
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        xoraTyping.remove();
 
-                fetch("{{ url_for('chat') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-
-                    body: payload
-
-                })
-                .then(r => r.json())
-                .then(data => {
-                    xoraTyping.remove();
-
-                    if (data.response) {
-                        const botDiv = document.createElement('div');
-                        botDiv.classList.add('message', 'bot');
-                        botDiv.innerHTML = `
-                            <strong>XORA:</strong>
-                            <span>${data.response}</span>
-                            <div class="feedback-icons">
-                                <span class="thumb-up" data-type="positive">👍</span>
-                                <span class="thumb-down" data-type="negative">👎</span>
-                            </div>
-                        `;
-                        chatHistory.appendChild(botDiv);
-                    } else if (data.error) {
-                        const errDiv = document.createElement('div');
-                        errDiv.classList.add('flash', 'flash-danger');
-                        errDiv.textContent = data.error;
-                        chatHistory.appendChild(errDiv);
-                    }
-                    forceScrollToBottom();
-                    attachFeedbackHandlers();
-                })
-                .catch(err => {
-                    xoraTyping.remove();
-                    const errDiv = document.createElement('div');
-                    errDiv.classList.add('flash', 'flash-danger');
-                    errDiv.textContent = "Fehler beim Senden der Nachricht.";
-                    chatHistory.appendChild(errDiv);
-                    forceScrollToBottom();
-                    console.error(err);
-                });
+                        if (data.response) {
+                            botResponseSpan.innerHTML = data.response;
+                        } else if (data.error) {
+                            botResponseSpan.innerHTML = `<span style="color: red;">${data.error}</span>`;
+                        }
+                        forceScrollToBottom();
+                        attachFeedbackHandlers();
+                    })
+                    .catch(err => {
+                        xoraTyping.remove();
+                        botResponseSpan.innerHTML = `<span style="color: red;">Fehler beim Senden der Nachricht: ${err.message}</span>`;
+                        forceScrollToBottom();
+                        console.error(err);
+                    });
+                }
             });
 
             chatForm.reset();

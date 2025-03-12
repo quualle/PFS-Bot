@@ -1094,18 +1094,19 @@ Dein Standardverhalten bei Datenabfragen:
 1. Analysiere die Nutzerfrage
 2. Wähle die passende Funktion
 3. Rufe die Funktion mit korrekten Parametern auf
-4. Warte auf das Ergebnis
-5. Nutze dieses Ergebnis für deine Antwort
+4. Nutze die Ergebnisse für deine Antwort
 
 WICHTIG ZUR ANTWORTFORMATIERUNG:
-1. Verwende KEINE Formulierungen wie "Ich rufe die Daten ab", "Einen Moment bitte" oder "Lass mich das nachschauen"
-2. Antworte direkt und präzise mit den Ergebnissen der Datenbankabfrage
-3. Beginne deine Antwort mit einer klaren Zusammenfassung (z.B. "Du hast derzeit X aktive Care Stays.")
-4. Vermeide Fülltext wie "Basierend auf den Daten" oder "Wie ich sehen kann"
+1. Gib alle Informationen in EINER Antwort
+2. Verwende KEINE einleitenden Sätze wie "Ich rufe die Daten ab", "Einen Moment bitte" oder "Lass mich das nachschauen"
+3. Antworte direkt und präzise mit den Ergebnissen der Datenbankabfrage
+4. Beginne deine Antwort mit einer klaren Zusammenfassung (z.B. "Du hast derzeit X aktive Care Stays.")
+5. Vermeide Fülltext wie "Basierend auf den Daten" oder "Wie ich sehen kann"
 
 """
     
     return prompt
+
 
 @app.route('/test_session')
 def test_session():
@@ -1993,7 +1994,7 @@ def create_system_prompt(table_schema):
     
     return prompt
 
-
+from flask import Response
 @app.route("/", methods=["GET", "POST"])
 def chat():
     try:
@@ -2032,6 +2033,9 @@ def chat():
             user_message = request.form.get("message", "").strip()
             notfall_aktiv = request.form.get("notfallmodus") == "1"
             notfall_art = request.form.get("notfallart", "").strip()
+            
+            # Check if this is a streaming request
+            stream_mode = request.form.get("stream", "0") == "1"
 
             if not user_message:
                 flash("Bitte geben Sie eine Nachricht ein.", "warning")
@@ -2077,7 +2081,6 @@ def chat():
                 + (f"\n\nDu sprichst mit einem Vertriebspartner mit der ID {seller_id}." if seller_id else "")
             )
 
-            # Prüfe auf Debug-Modus für erzwungene Funktionsaufrufe
             # Setup tools and messages
             tools = create_function_definitions()
             debug_print("API Setup", f"System prompt (gekürzt): {system_prompt[:200]}...")
@@ -2106,6 +2109,12 @@ def chat():
                     tool_choice = "auto"
 
             try:
+                # If streaming is requested, handle it differently
+                if stream_mode and request.headers.get("Accept") == "text/event-stream":
+                    return Response(stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_name, user_id, user_message),
+                                   content_type="text/event-stream")
+                
+                # Standard non-streaming flow
                 debug_print("API Calls", f"Anfrage an OpenAI mit Function Calling: {user_message}")
                 response = openai.chat.completions.create(
                     model="o3-mini",
@@ -2205,6 +2214,131 @@ def chat():
             jsonify({"error": "Interner Serverfehler."}),
             500,
         ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
+
+
+def stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_name, user_id, user_message):
+    """Stream the OpenAI response and handle function calls within the stream"""
+    chat_key = f"chat_history_{user_id}"
+    chat_history = session.get(chat_key, [])
+    
+    # First pass - get initial response
+    try:
+        debug_print("API Calls", f"Streaming-Anfrage an OpenAI mit Function Calling")
+        response = openai.chat.completions.create(
+            model="o3-mini",
+            messages=messages,
+            tools=tools,
+            tool_choice=tool_choice,
+            stream=True  # Enable streaming
+        )
+        
+        initial_response = ""
+        function_calls_data = []
+        has_function_calls = False
+        
+        # Stream the initial response
+        yield f"data: {json.dumps({'type': 'start'})}\n\n"
+        
+        for chunk in response:
+            if chunk.choices[0].delta.content:
+                text_chunk = chunk.choices[0].delta.content
+                initial_response += text_chunk
+                yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
+            
+            # Check if this chunk contains function call info
+            if hasattr(chunk.choices[0].delta, 'tool_calls') and chunk.choices[0].delta.tool_calls:
+                has_function_calls = True
+                # Collect function call data
+                for tool_call in chunk.choices[0].delta.tool_calls:
+                    if not function_calls_data:
+                        function_calls_data = [{"id": tool_call.index, "name": "", "args": ""}]
+                    
+                    if hasattr(tool_call, 'function'):
+                        if hasattr(tool_call.function, 'name') and tool_call.function.name:
+                            function_calls_data[tool_call.index]["name"] = tool_call.function.name
+                        
+                        if hasattr(tool_call.function, 'arguments') and tool_call.function.arguments:
+                            function_calls_data[tool_call.index]["args"] += tool_call.function.arguments
+        
+        # If function calls detected, execute them
+        if has_function_calls:
+            yield f"data: {json.dumps({'type': 'function_call_start'})}\n\n"
+            
+            function_responses = []
+            for func_data in function_calls_data:
+                if func_data["name"] and func_data["args"]:
+                    try:
+                        function_name = func_data["name"]
+                        function_args = json.loads(func_data["args"])
+                        
+                        # Add seller_id and extracted date parameters
+                        if seller_id:
+                            function_args["seller_id"] = seller_id
+                        
+                        for key, value in extracted_args.items():
+                            if key not in function_args or not function_args[key]:
+                                function_args[key] = value
+                        
+                        # Execute the function
+                        debug_print("Function", f"Streaming: Executing {function_name} with args {function_args}")
+                        function_response = handle_function_call(function_name, function_args)
+                        
+                        # Add to function responses
+                        function_responses.append({
+                            "role": "tool",
+                            "tool_call_id": func_data["id"],
+                            "content": function_response
+                        })
+                        
+                        yield f"data: {json.dumps({'type': 'function_result', 'name': function_name})}\n\n"
+                    except Exception as e:
+                        debug_print("Function", f"Error executing function: {str(e)}")
+                        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Funktionsausführung: {str(e)}'})}\n\n"
+            
+            # Second call to get final response
+            if function_responses:
+                second_messages = messages + [{"role": "assistant", "content": initial_response, "tool_calls": function_calls_data}] + function_responses
+                
+                final_response = openai.chat.completions.create(
+                    model="o3-mini",
+                    messages=second_messages,
+                    stream=True
+                )
+                
+                yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
+                
+                final_text = ""
+                for chunk in final_response:
+                    if chunk.choices[0].delta.content:
+                        text_chunk = chunk.choices[0].delta.content
+                        final_text += text_chunk
+                        yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
+                
+                # Save the complete final response to history
+                full_response = initial_response + "\n\n" + final_text
+                chat_history.append({"user": user_message, "bot": full_response})
+                session[chat_key] = chat_history
+                store_chatlog(user_name, chat_history)
+                
+                yield f"data: {json.dumps({'type': 'end'})}\n\n"
+            else:
+                # No valid function calls, just save initial response
+                chat_history.append({"user": user_message, "bot": initial_response})
+                session[chat_key] = chat_history
+                store_chatlog(user_name, chat_history)
+                
+                yield f"data: {json.dumps({'type': 'end'})}\n\n"
+        else:
+            # No function calls, just save initial response
+            chat_history.append({"user": user_message, "bot": initial_response})
+            session[chat_key] = chat_history
+            store_chatlog(user_name, chat_history)
+            
+            yield f"data: {json.dumps({'type': 'end'})}\n\n"
+    
+    except Exception as e:
+        logging.exception("Fehler im Stream")
+        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler: {str(e)}'})}\n\n"
 
 @app.route('/test_date_extraction')
 def test_date_extraction():

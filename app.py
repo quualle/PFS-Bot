@@ -2306,13 +2306,11 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
     chat_key = session_data["chat_key"]
     chat_history = session_data["chat_history"]
     
-    # First pass - get initial response
-
-
-    yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream-Start'})}\n\n"
-    yield f"data: {json.dumps({'type': 'text', 'content': 'Test-Content vom Server'})}\n\n"
-    
     try:
+        # Debug-Events für die Verbindungsdiagnose
+        yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream-Start'})}\n\n"
+        yield f"data: {json.dumps({'type': 'text', 'content': 'Test-Content vom Server'})}\n\n"
+
         debug_print("API Calls", f"Streaming-Anfrage an OpenAI mit Function Calling")
         response = openai.chat.completions.create(
             model="o3-mini",
@@ -2356,6 +2354,7 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
         # If function calls detected, execute them
         if has_function_calls:
             yield f"data: {json.dumps({'type': 'function_call_start'})}\n\n"
+            yield f"data: {json.dumps({'type': 'debug', 'message': f'Detected {len(function_calls_data)} function calls'})}\n\n"
             
             function_responses = []
             for func_data in function_calls_data:
@@ -2374,6 +2373,8 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                         
                         # Execute the function
                         debug_print("Function", f"Streaming: Executing {function_name} with args {function_args}")
+                        yield f"data: {json.dumps({'type': 'debug', 'message': f'Executing function {function_name}'})}\n\n"
+                        
                         function_response = handle_function_call(function_name, function_args)
                         
                         # Add to function responses
@@ -2383,34 +2384,9 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                             "content": function_response
                         })
                         
-                        # Nach dem Code, der die Funktion ausführt und function_result sendet
                         yield f"data: {json.dumps({'type': 'function_result', 'name': function_name})}\n\n"
-
-                        # Debug-Event hinzufügen
-                        yield f"data: {json.dumps({'type': 'debug', 'message': 'Starting second API call'})}\n\n"
-
-                        # Zweiten API-Call vorbereiten...
-                        final_response = openai.chat.completions.create(
-                            model="o3-mini",
-                            messages=second_messages,
-                            stream=True
-                        )
-
-                        # WICHTIG: Final response start event - stelle sicher, dass es gesendet wird
-                        yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
-
-                        # Debug-Event hinzufügen
-                        yield f"data: {json.dumps({'type': 'debug', 'message': 'Second API call started, streaming results'})}\n\n"
-
-                        final_text = ""
-                        for chunk in final_response:
-                            if chunk.choices[0].delta.content:
-                                text_chunk = chunk.choices[0].delta.content
-                                final_text += text_chunk
-                                # Debug-Info hinzufügen für die ersten Chunks
-                                if len(final_text) < 100:
-                                    yield f"data: {json.dumps({'type': 'debug', 'message': f'Chunk received: {text_chunk}'})}\n\n"
-                                yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
+                        yield f"data: {json.dumps({'type': 'debug', 'message': f'Function executed successfully'})}\n\n"
+                        
                     except Exception as e:
                         debug_print("Function", f"Error executing function: {str(e)}")
                         yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Funktionsausführung: {str(e)}'})}\n\n"
@@ -2436,50 +2412,62 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                     "tool_calls": formatted_tool_calls
                 }] + function_responses
 
-                yield f"data: {json.dumps({'type': 'debug', 'message': 'Starting second API call'})}\n\n"
-
-                # Bevor der zweite API-Call durchgeführt wird:
+                # Debug vor dem zweiten API-Call
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Preparing for second API call'})}\n\n"
+                
+                # WICHTIG: Final response start event - stelle sicher, dass es gesendet wird
                 yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
-
-                # Debug-Event hinzufügen
-                yield f"data: {json.dumps({'type': 'debug', 'message': 'Second API call started, streaming results'})}\n\n"
                 
-                final_response = openai.chat.completions.create(
-                    model="o3-mini",
-                    messages=second_messages,
-                    stream=True
-                )
+                # Initiiere den zweiten API-Call
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Starting second API call'})}\n\n"
                 
-
-                
-                
-                final_text = ""
-                for chunk in final_response:
-                    if chunk.choices[0].delta.content:
-                        text_chunk = chunk.choices[0].delta.content
-                        final_text += text_chunk
-                        yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
-                
-                # Send the complete message for session update
-                full_response = initial_response + "\n\n" + final_text
-                
-                # Send the complete message for session update
-                yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': full_response})}\n\n"
-                yield f"data: {json.dumps({'type': 'end'})}\n\n"
+                try:
+                    final_response = openai.chat.completions.create(
+                        model="o3-mini",
+                        messages=second_messages,
+                        stream=True
+                    )
+                    
+                    yield f"data: {json.dumps({'type': 'debug', 'message': 'Second API call initiated'})}\n\n"
+                    
+                    final_text = ""
+                    for chunk in final_response:
+                        if chunk.choices[0].delta.content:
+                            text_chunk = chunk.choices[0].delta.content
+                            final_text += text_chunk
+                            yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
+                    
+                    # Vollständige Antwort zusammenstellen
+                    full_response = initial_response + "\n\n" + final_text
+                    
+                    # Session aktualisieren und Stream beenden
+                    yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': full_response})}\n\n"
+                    yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream complete with function execution'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'end'})}\n\n"
+                    
+                except Exception as e:
+                    debug_print("API Calls", f"Error in second call: {str(e)}")
+                    yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler beim zweiten API-Call: {str(e)}'})}\n\n"
+                    # Trotz Fehler die Session aktualisieren
+                    yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
+                    yield f"data: {json.dumps({'type': 'end'})}\n\n"
             else:
-                # No valid function calls, just save initial response
-                # Send the complete message for session update
+                # No valid function responses, just save initial response
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Function execution produced no valid responses'})}\n\n"
                 yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
                 yield f"data: {json.dumps({'type': 'end'})}\n\n"
         else:
             # No function calls, just save initial response
-            # Send the complete message for session update
+            yield f"data: {json.dumps({'type': 'debug', 'message': 'No function calls detected'})}\n\n"
             yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
             yield f"data: {json.dumps({'type': 'end'})}\n\n"
     
     except Exception as e:
         logging.exception("Fehler im Stream")
         yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler: {str(e)}'})}\n\n"
+        # Auch bei Fehler versuchen, Stream ordnungsgemäß zu beenden
+        yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': 'Es ist ein Fehler aufgetreten.'})}\n\n"
+        yield f"data: {json.dumps({'type': 'end'})}\n\n"    
 
 @app.route('/update_stream_chat_history', methods=['POST'])
 def update_stream_chat_history():

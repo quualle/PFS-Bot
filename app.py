@@ -2421,8 +2421,8 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
         logging.exception("Fehler im Stream")
         yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler: {str(e)}'})}\n\n"
 
-@app.route('/update_chat_history', methods=['POST'])
-def update_chat_history():
+@app.route('/update_stream_chat_history', methods=['POST'])
+def update_stream_chat_history():
     """Update chat history in the session from streaming responses"""
     try:
         data = request.json

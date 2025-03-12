@@ -622,7 +622,7 @@
         }
 
         function updateSessionWithChatMessage(userMessage, botResponse) {
-            fetch("{{ url_for('update_chat_history') }}", {
+            fetch("{{ url_for('update_stream_chat_history') }}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -828,11 +828,19 @@
                                                     forceScrollToBottom();
                                                     break;
                                                     
+                                                
+
                                                 case 'error':
                                                     console.error('Streaming error:', data.content);
                                                     responseText += `<br><span style="color: red;">Error: ${data.content}</span>`;
                                                     botResponseSpan.innerHTML = responseText;
                                                     forceScrollToBottom();
+                                                    break;
+                                                    
+                                                case 'complete':  // <-- ADD THIS CASE HERE
+                                                    // When we receive the complete message, update the session
+                                                    console.log('Complete message received, updating session');
+                                                    updateSessionWithChatMessage(data.user, data.bot);
                                                     break;
                                                     
                                                 case 'end':

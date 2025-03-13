@@ -2921,7 +2921,7 @@ def chat():
                             content_type="text/event-stream"
                         )
                            
-                        )
+                        
                 
                 # Nicht-Streaming-Modus
                 if use_legacy_approach:

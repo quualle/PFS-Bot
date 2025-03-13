@@ -2901,20 +2901,26 @@ def chat():
                         )
                     else:
                         # Neues Streaming mit verbessertem Tool-Auswahlprozess
+                        # Neues Streaming mit verbessertem Tool-Auswahlprozess
                         tool_config = load_tool_config()
+                        selected_tool = select_optimal_tool_with_reasoning(user_message, tools, tool_config)[0]
+                                                
+                        # Korrektes Format für tool_choice erstellen
+                        tool_choice = {"type": "function", "function": {"name": selected_tool}} if selected_tool else "auto"
+                                                
                         return Response(
-                            # Wir verwenden weiterhin die bestehende stream_response Funktion,
-                            # aber mit einem intelligenteren Tool-Choice-Mechanismus
                             stream_response(
                                 messages, 
                                 tools, 
-                                select_optimal_tool_with_reasoning(user_message, tools, tool_config)[0], 
+                                tool_choice,  # Statt dem String das korrekt formatierte Objekt übergeben
                                 seller_id, 
                                 extract_enhanced_date_params(user_message), 
                                 user_message, 
                                 session_data
                             ),
                             content_type="text/event-stream"
+                        )
+                           
                         )
                 
                 # Nicht-Streaming-Modus

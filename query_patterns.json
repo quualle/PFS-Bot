@@ -1,5 +1,141 @@
 {
   "common_queries": {
+
+    
+      "get_active_care_stays_now": {
+        "description": "Ruft alle aktiven Care Stays ab, die den aktuellen Tag umfassen (laufende Betreuungen)",
+        "required_parameters": ["seller_id"],
+        "optional_parameters": ["limit"],
+        "sql_template": "SELECT cs._id AS cs_id, cs.bill_start, cs.bill_end, cs.stage, cs.prov_seller, lead_names.first_name, lead_names.last_name, agencies.name AS agency_name, DATE_DIFF(DATE(TIMESTAMP(cs.bill_end)), DATE(TIMESTAMP(cs.bill_start)), DAY) AS care_stay_duration_days FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id WHERE l.seller_id = @seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) <= CURRENT_DATE() AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE() ORDER BY cs.bill_start DESC LIMIT @limit",
+        "default_values": {
+          "limit": 500
+        },
+        "result_structure": {
+          "cs_id": "ID des Care Stays",
+          "bill_start": "Startdatum der Abrechnung",
+          "bill_end": "Enddatum der Abrechnung",
+          "stage": "Status des Care Stays",
+          "prov_seller": "Provision für den Verkäufer",
+          "first_name": "Vorname des Kunden",
+          "last_name": "Nachname des Kunden",
+          "agency_name": "Name der Agentur",
+          "care_stay_duration_days": "Dauer des Care Stays in Tagen"
+        }
+      },
+    
+      "get_contract_terminations": {
+        "description": "Ruft beendete Verträge ab, mit Unterscheidung zwischen ernsthaften und nicht-ernsthaften Kündigungen",
+        "required_parameters": ["seller_id"],
+        "optional_parameters": ["start_date", "end_date", "limit"],
+        "sql_template": "WITH terminated_contracts AS (SELECT c._id AS contract_id, c.active, c.termination_reason, c.created_at, c.updated_at, lead_names.first_name, lead_names.last_name, agencies.name AS agency_name, CASE WHEN EXISTS (SELECT 1 FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs WHERE cs.contract_id = c._id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) <= DATE(TIMESTAMP(cs.bill_end))) THEN 'Ernsthaft' ELSE 'Nicht ernsthaft' END AS termination_type FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id WHERE l.seller_id = @seller_id AND c.active = false AND (@start_date IS NULL OR DATE(TIMESTAMP(c.updated_at)) >= @start_date) AND (@end_date IS NULL OR DATE(TIMESTAMP(c.updated_at)) <= @end_date)) SELECT contract_id, first_name, last_name, agency_name, termination_reason, termination_type, created_at, updated_at, (SELECT COUNT(*) FROM terminated_contracts WHERE termination_type = 'Ernsthaft') AS serious_terminations_count, (SELECT COUNT(*) FROM terminated_contracts WHERE termination_type = 'Nicht ernsthaft') AS non_serious_terminations_count, (SELECT COUNT(*) FROM terminated_contracts) AS total_terminations_count FROM terminated_contracts ORDER BY updated_at DESC LIMIT @limit",
+        "default_values": {
+          "limit": 100
+        },
+        "result_structure": {
+          "contract_id": "ID des Vertrags",
+          "first_name": "Vorname des Kunden",
+          "last_name": "Nachname des Kunden",
+          "agency_name": "Name der Agentur",
+          "termination_reason": "Grund für die Kündigung",
+          "termination_type": "Art der Kündigung (Ernsthaft/Nicht ernsthaft)",
+          "created_at": "Erstellungsdatum des Vertrags",
+          "updated_at": "Datum der Vertragsbeendigung",
+          "serious_terminations_count": "Anzahl ernsthafter Kündigungen",
+          "non_serious_terminations_count": "Anzahl nicht-ernsthafter Kündigungen",
+          "total_terminations_count": "Gesamtanzahl der Kündigungen"
+        }
+      },
+    
+      "get_purchased_leads": {
+        "description": "Ruft gekaufte Leads in einem bestimmten Zeitraum ab, mit Information zu reklamierten Leads",
+        "required_parameters": ["seller_id"],
+        "optional_parameters": ["start_date", "end_date", "limit"],
+        "sql_template": "WITH lead_data AS (SELECT l._id AS lead_id, la.first_name, la.last_name, l.created_at, l.price, l.purchased, l.reclaimed, l.reclaim_reason FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS la ON la._id = l._id WHERE l.seller_id = @seller_id AND l.purchased = true AND (@start_date IS NULL OR DATE(TIMESTAMP(l.created_at)) >= @start_date) AND (@end_date IS NULL OR DATE(TIMESTAMP(l.created_at)) <= @end_date)) SELECT lead_id, first_name, last_name, created_at, price, reclaimed, reclaim_reason, (SELECT COUNT(*) FROM lead_data) AS total_purchased_leads, (SELECT COUNT(*) FROM lead_data WHERE reclaimed = true) AS reclaimed_leads_count, (SELECT COUNT(*) FROM lead_data WHERE reclaimed = false) AS net_leads_count FROM lead_data ORDER BY created_at DESC LIMIT @limit",
+        "default_values": {
+          "limit": 100
+        },
+        "result_structure": {
+          "lead_id": "ID des Leads",
+          "first_name": "Vorname des Leads",
+          "last_name": "Nachname des Leads",
+          "created_at": "Erstellungsdatum",
+          "price": "Preis des Leads",
+          "reclaimed": "Wurde reklamiert",
+          "reclaim_reason": "Grund für die Reklamation",
+          "total_purchased_leads": "Gesamtzahl gekaufter Leads (Brutto)",
+          "reclaimed_leads_count": "Anzahl reklamierter Leads",
+          "net_leads_count": "Netto-Anzahl von Leads (ohne Reklamationen)"
+        }
+      },
+    
+      "get_contracts_by_agency": {
+        "description": "Ruft aktive Verträge für eine bestimmte Agentur ab",
+        "required_parameters": ["seller_id", "agency_name"],
+        "optional_parameters": ["limit"],
+        "sql_template": "SELECT c._id AS contract_id, c.active, c.created_at, agencies.name AS agency_name, lead_names.first_name, lead_names.last_name, (SELECT COUNT(*) FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c2 JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h2 ON c2.household_id = h2._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l2 ON h2.lead_id = l2._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS a2 ON c2.agency_id = a2._id WHERE l2.seller_id = @seller_id AND c2.active = true AND LOWER(a2.name) LIKE CONCAT('%', LOWER(@agency_name), '%')) AS total_contracts_count FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id WHERE l.seller_id = @seller_id AND c.active = true AND LOWER(agencies.name) LIKE CONCAT('%', LOWER(@agency_name), '%') ORDER BY c.created_at DESC LIMIT @limit",
+        "default_values": {
+          "limit": 100
+        },
+        "result_structure": {
+          "contract_id": "ID des Vertrags",
+          "active": "Status des Vertrags",
+          "created_at": "Erstellungsdatum des Vertrags",
+          "agency_name": "Name der Agentur",
+          "first_name": "Vorname des Kunden",
+          "last_name": "Nachname des Kunden",
+          "total_contracts_count": "Gesamtzahl der aktiven Verträge mit dieser Agentur"
+        }
+      },
+    
+      "get_customers_on_pause": {
+        "description": "Ruft Kunden ab, die sich in einer Betreuungspause befinden (aktiver Vertrag, aber aktuell kein laufender Care Stay)",
+        "required_parameters": ["seller_id"],
+        "optional_parameters": ["limit"],
+        "sql_template": "WITH active_contracts AS (SELECT c._id AS contract_id, c.created_at, h.lead_id, lead_names.first_name, lead_names.last_name, agencies.name AS agency_name FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS lead_names ON l._id = lead_names._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id WHERE l.seller_id = @seller_id AND c.active = true), last_care_stays AS (SELECT c.contract_id, MAX(cs.bill_end) AS last_bill_end FROM active_contracts c LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON c.contract_id = cs.contract_id WHERE cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) < CURRENT_DATE() GROUP BY c.contract_id), current_care_stays AS (SELECT c.contract_id FROM active_contracts c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON c.contract_id = cs.contract_id WHERE cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) <= CURRENT_DATE() AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE()) SELECT ac.contract_id, ac.first_name, ac.last_name, ac.agency_name, lcs.last_bill_end, DATE_DIFF(CURRENT_DATE(), DATE(TIMESTAMP(lcs.last_bill_end)), DAY) AS days_on_pause, (SELECT COUNT(*) FROM last_care_stays lcs2 WHERE lcs2.contract_id NOT IN (SELECT contract_id FROM current_care_stays) AND lcs2.last_bill_end IS NOT NULL) AS total_paused_customers FROM active_contracts ac LEFT JOIN last_care_stays lcs ON ac.contract_id = lcs.contract_id WHERE ac.contract_id NOT IN (SELECT contract_id FROM current_care_stays) AND lcs.last_bill_end IS NOT NULL ORDER BY lcs.last_bill_end DESC LIMIT @limit",
+        "default_values": {
+          "limit": 100
+        },
+        "result_structure": {
+          "contract_id": "ID des Vertrags",
+          "first_name": "Vorname des Kunden",
+          "last_name": "Nachname des Kunden",
+          "agency_name": "Name der Agentur",
+          "last_bill_end": "Ende des letzten Care Stays",
+          "days_on_pause": "Tage seit dem letzten Care Stay",
+          "total_paused_customers": "Gesamtzahl der Kunden in Pause"
+        }
+      },
+    
+      "get_customer_history": {
+        "description": "Ruft die vollständige Geschichte eines Kunden ab, einschließlich aller Care Stays und Verträge",
+        "required_parameters": ["customer_name"],
+        "optional_parameters": ["seller_id", "limit"],
+        "sql_template": "WITH customer_info AS (SELECT l._id AS lead_id, l.seller_id, la.first_name, la.last_name, l.created_at AS lead_created_at, h._id AS household_id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l JOIN `gcpxbixpflegehilfesenioren.dataform_staging.leads_and_seller_and_source_with_address` AS la ON l._id = la._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON h.lead_id = l._id WHERE (@seller_id IS NULL OR l.seller_id = @seller_id) AND (LOWER(la.first_name) LIKE CONCAT('%', LOWER(@customer_name), '%') OR LOWER(la.last_name) LIKE CONCAT('%', LOWER(@customer_name), '%'))), contracts AS (SELECT c._id AS contract_id, c.active, c.termination_reason, c.created_at AS contract_created_at, c.updated_at AS contract_updated_at, ci.lead_id, ci.first_name, ci.last_name, agencies.name AS agency_name FROM customer_info ci JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON ci.household_id = c.household_id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.agencies` AS agencies ON c.agency_id = agencies._id), care_stays AS (SELECT cs._id AS care_stay_id, cs.bill_start, cs.bill_end, cs.stage, cs.prov_seller, co.contract_id, co.lead_id, co.first_name, co.last_name, co.agency_name, cg.first_name AS caregiver_first_name, cg.last_name AS caregiver_last_name, DATE_DIFF(DATE(TIMESTAMP(cs.bill_end)), DATE(TIMESTAMP(cs.bill_start)), DAY) AS care_stay_duration_days FROM contracts co JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON co.contract_id = cs.contract_id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_giver_instances` cgi ON cs.care_giver_instance_id = cgi._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_givers` cg ON cgi.care_giver_id = cg._id WHERE cs.stage = 'Bestätigt'), tickets AS (SELECT t._id AS ticket_id, t.subject, t.created_at AS ticket_created_at, t.ticketable_type, CASE WHEN t.ticketable_type = 'Lead' THEN ci.lead_id WHEN t.ticketable_type = 'Contract' THEN t.ticketable_id WHEN t.ticketable_type = 'CareStay' THEN cs1.contract_id END AS related_id FROM customer_info ci LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.tickets` t ON (t.ticketable_type = 'Lead' AND t.ticketable_id = ci.lead_id) LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs1 ON (t.ticketable_type = 'CareStay' AND t.ticketable_id = cs1._id)) SELECT ci.lead_id, ci.first_name, ci.last_name, ci.lead_created_at, (SELECT COUNT(*) FROM contracts WHERE lead_id = ci.lead_id) AS contracts_count, (SELECT COUNT(*) FROM care_stays WHERE lead_id = ci.lead_id) AS care_stays_count, (SELECT MIN(contract_created_at) FROM contracts WHERE lead_id = ci.lead_id) AS first_contract_date, (SELECT MIN(bill_start) FROM care_stays WHERE lead_id = ci.lead_id) AS first_care_stay_date, (SELECT SUM(care_stay_duration_days) FROM care_stays WHERE lead_id = ci.lead_id) AS total_care_days, (SELECT STRING_AGG(DISTINCT agency_name, ', ') FROM contracts WHERE lead_id = ci.lead_id) AS agencies, (SELECT JSON_ARRAY((SELECT ARRAY_AGG(STRUCT(contract_id, active, termination_reason, contract_created_at, contract_updated_at, agency_name)) FROM contracts WHERE lead_id = ci.lead_id))) AS contract_details, (SELECT JSON_ARRAY((SELECT ARRAY_AGG(STRUCT(care_stay_id, bill_start, bill_end, stage, caregiver_first_name, caregiver_last_name, care_stay_duration_days)) FROM care_stays WHERE lead_id = ci.lead_id ORDER BY bill_start DESC))) AS care_stay_details, (SELECT JSON_ARRAY((SELECT ARRAY_AGG(STRUCT(ticket_id, subject, ticket_created_at, ticketable_type)) FROM tickets WHERE related_id IN (SELECT contract_id FROM contracts WHERE lead_id = ci.lead_id) OR related_id = ci.lead_id ORDER BY ticket_created_at DESC))) AS ticket_details FROM customer_info ci LIMIT @limit",
+        "default_values": {
+          "limit": 10
+        },
+        "result_structure": {
+          "lead_id": "ID des Leads",
+          "first_name": "Vorname des Kunden",
+          "last_name": "Nachname des Kunden",
+          "lead_created_at": "Erstellungsdatum des Leads",
+          "contracts_count": "Anzahl der Verträge",
+          "care_stays_count": "Anzahl der Care Stays",
+          "first_contract_date": "Datum des ersten Vertrags",
+          "first_care_stay_date": "Datum des ersten Care Stays",
+          "total_care_days": "Gesamtzahl der Betreuungstage",
+          "agencies": "Liste der Agenturen",
+          "contract_details": "Detaillierte Vertragsinformationen (JSON)",
+          "care_stay_details": "Detaillierte Care Stay Informationen (JSON)",
+          "ticket_details": "Tickets im Zusammenhang mit dem Kunden (JSON)"
+        }
+      },
+    
+
+
+
+
+
     "get_active_care_stays": {
       "description": "Ruft aktive Care Stays für einen Verkäufer ab",
       "required_parameters": ["seller_id"],

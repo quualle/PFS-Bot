@@ -961,6 +961,74 @@ def get_seller_data(seller_id, data_type=None):
 ####################################
 # EXTRACT INFOS FROM USER QUERY
 ####################################
+def format_customer_details(result_data):
+    """Formatiert Kundendaten für bessere Lesbarkeit"""
+    try:
+        if not result_data or "data" not in result_data or not result_data["data"]:
+            return "Keine Kundendaten gefunden."
+        
+        customer = result_data["data"][0]
+        output = f"# Kundenübersicht für {customer['first_name']} {customer['last_name']}\n\n"
+        
+        # Basisdaten
+        output += f"**Kunde seit:** {format_date(customer['lead_created_at'])}\n"
+        output += f"**Anzahl Verträge:** {customer['contracts_count']}\n"
+        output += f"**Anzahl Care Stays:** {customer['care_stays_count']}\n"
+        output += f"**Gesamte Betreuungstage:** {customer['total_care_days'] or 0}\n"
+        output += f"**Zusammenarbeit mit Agenturen:** {customer['agencies'] or 'Keine'}\n\n"
+        
+        # Vertragsübersicht
+        if customer.get('contracts_summary'):
+            output += "## Vertragsübersicht\n"
+            for line in customer['contracts_summary'].split('\n'):
+                if line.strip():
+                    output += f"- {line}\n"
+            output += "\n"
+        
+        # Care Stays Übersicht
+        if customer.get('care_stays_summary'):
+            output += "## Pflegeeinsätze\n"
+            for line in customer['care_stays_summary'].split('\n'):
+                if line.strip():
+                    output += f"- {line}\n"
+            output += "\n"
+            
+        # Zusammenfassung
+        output += "## Zusammenfassung\n"
+        first_date = format_date(customer.get('first_contract_date', ''))
+        output += f"Kunde seit {first_date}" 
+        
+        if customer.get('care_stays_count') and int(customer.get('care_stays_count', 0)) > 0:
+            if customer.get('total_care_days'):
+                avg_duration = int(customer['total_care_days']) / int(customer['care_stays_count'])
+                output += f" mit durchschnittlich {avg_duration:.1f} Tagen pro Einsatz.\n"
+            else:
+                output += ".\n"
+        else:
+            output += ".\n"
+        
+        return output
+    except Exception as e:
+        logging.exception(f"Fehler bei der Formatierung der Kundendaten: {e}")
+        return f"Fehler bei der Formatierung: {str(e)}"
+
+def format_date(date_str):
+    """Formatiert ein Datum in lesbares Format"""
+    if not date_str:
+        return "unbekannt"
+    try:
+        # Versuche zuerst ISO-Format zu parsen
+        date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        return date_obj.strftime("%d.%m.%Y")
+    except ValueError:
+        try:
+            # Versuche andere gängige Formate
+            from dateutil import parser
+            date_obj = parser.parse(date_str)
+            return date_obj.strftime("%d.%m.%Y")
+        except:
+            # Fallback: Gib das Original zurück
+            return date_str
 
 def extract_date_params(user_message):
     """Extract date parameters from user message for months like 'Mai'."""
@@ -1752,18 +1820,6 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
 def process_user_query(user_message, session_data):
     """
     Verbesserter mehrstufiger Prozess zur intelligenten Verarbeitung von Benutzeranfragen
-    
-    1. Tool-Auswahl: Wählt das optimale Tool basierend auf der Anfrage
-    2. Parameter-Extraktion: Extrahiert benötigte Parameter mit erweiterter Erkennung
-    3. Tool-Ausführung: Führt das Tool mit den Parametern aus
-    4. Antwort-Generierung: Erstellt eine benutzerfreundliche Antwort
-    
-    Args:
-        user_message: Die Nachricht des Benutzers
-        session_data: Session-Daten (enthält seller_id etc.)
-        
-    Returns:
-        str: Die generierte Antwort
     """
     # Lade Tools und Konfigurationen
     tools = create_function_definitions()
@@ -1771,12 +1827,18 @@ def process_user_query(user_message, session_data):
     
     debug_print("Anfrage", f"Verarbeite Anfrage: '{user_message}'")
     
-    # SCHRITT 1+2: Tool auswählen mit Reasoning
+    # Aktuelles Datum für zeitliche Anfragen
+    current_date = datetime.now()
+    current_date_str = current_date.strftime("%Y-%m-%d")
+    
+    # Füge das aktuelle Datum zu Session-Daten hinzu
+    session_data["current_date"] = current_date_str
+    
+    # SCHRITT 1: Tool auswählen mit Reasoning
     selected_tool, reasoning = select_optimal_tool_with_reasoning(user_message, tools, tool_config)
     debug_print("Anfrage", f"Ausgewähltes Tool: {selected_tool}, Begründung: {reasoning}")
     
-    # SCHRITT 3: Parameter extrahieren mit verbesserter Erkennung
-    # Lade Tool-Informationen für die Parameterextraktion
+    # SCHRITT 2: Parameter extrahieren mit verbesserter Erkennung
     tool_info = {}
     try:
         with open("query_patterns.json", "r", encoding="utf-8") as f:
@@ -1792,6 +1854,14 @@ def process_user_query(user_message, session_data):
     # Standard-Parameter aus Session hinzufügen
     if "seller_id" in session_data and session_data["seller_id"]:
         extracted_params["seller_id"] = session_data["seller_id"]
+    
+    # Frage nach Monatszeiträumen benötigen spezielle Behandlung
+    if selected_tool in ["get_monthly_performance", "get_care_stays_by_date_range"] and "monat" in user_message.lower():
+        date_params = extract_enhanced_date_params(user_message)
+        if date_params and "start_date" in date_params and "end_date" in date_params:
+            extracted_params.update(date_params)
+            if selected_tool == "get_care_stays_by_date_range":
+                extracted_params["filter_type"] = "active"  # Default: Alle aktiven im Zeitraum
     
     # Standardwerte aus der Tool-Definition hinzufügen
     if selected_tool in tool_info:
@@ -1812,12 +1882,25 @@ def process_user_query(user_message, session_data):
             if missing_params == ["seller_id"] and "seller_id" not in extracted_params:
                 debug_print("Parameter", "Verwende Standard-seller_id für Datenbankanfrage")
                 extracted_params["seller_id"] = "62d00b56a384fd908f7f5a6c"  # Standardwert
+            # Spezialbehandlung für Zeitraumparameter
+            elif missing_params == ["start_date", "end_date"] or "start_date" in missing_params or "end_date" in missing_params:
+                # Aktueller Monat als Standardzeitraum
+                month_start = datetime(current_date.year, current_date.month, 1)
+                if current_date.month == 12:
+                    month_end = datetime(current_date.year, 12, 31)
+                else:
+                    next_month = datetime(current_date.year, current_date.month + 1, 1)
+                    month_end = next_month - timedelta(days=1)
+                
+                extracted_params["start_date"] = month_start.strftime("%Y-%m-%d")
+                extracted_params["end_date"] = month_end.strftime("%Y-%m-%d")
+                debug_print("Parameter", f"Verwende aktuellen Monat als Standardzeitraum: {extracted_params['start_date']} bis {extracted_params['end_date']}")
             else:
                 # Versuch mit LLM, die fehlenden Parameter zu extrahieren
                 llm_params = extract_parameters_with_llm(user_message, selected_tool, missing_params)
                 extracted_params.update(llm_params)
     
-    # SCHRITT 4: Tool ausführen
+    # SCHRITT 3: Tool ausführen
     try:
         debug_print("Tool", f"Führe Tool aus: {selected_tool} mit Parametern: {extracted_params}")
         tool_result = handle_function_call(selected_tool, extracted_params)
@@ -1835,62 +1918,23 @@ def process_user_query(user_message, session_data):
         return (f"Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. "
                 f"Bitte versuchen Sie es erneut oder formulieren Sie Ihre Anfrage anders.")
     
+    # SCHRITT 4: Spezialbehandlung für bestimmte Abfragen
+    formatted_result = None
+    try:
+        if selected_tool == "get_customer_history":
+            formatted_result = format_customer_details(json.loads(tool_result))
+            debug_print("Antwort", "Kunde-Historie formatiert")
+    except Exception as format_error:
+        debug_print("Antwort", f"Fehler bei der Formatierung: {format_error}")
+    
     # SCHRITT 5: Antwort generieren
     try:
-        # Angepassten System-Prompt erstellen basierend auf der Art der Anfrage
-        system_prompt = """
-        Du bist ein hilfreicher Assistent, der Datenbankanfragen präzise und direkt beantwortet.
-        Dir wird ein Funktionsergebnis bereitgestellt. Nutze es, um eine benutzerfreundliche Antwort zu erstellen.
+        # Wenn bereits eine formatierte Antwort vorliegt, nutze diese
+        if formatted_result:
+            return formatted_result
         
-        WICHTIGE REGELN:
-        1. Antworte IMMER direkt und ohne Einleitungen wie "Basierend auf den Daten..." oder "Ich habe die Daten abgerufen..."
-        2. Beginne deine Antwort mit einer klaren Zusammenfassung der wichtigsten Daten
-        3. Strukturiere komplexe Informationen mit Aufzählungspunkten für bessere Lesbarkeit
-        4. Verwende korrektes Deutsch mit präziser Fachsprache
-        5. Wenn keine Daten gefunden wurden, sage das klar und prägnant
-        """
-        
-        # Ergänze den Prompt basierend auf dem Tool-Typ
-        if "active" in selected_tool or "now" in selected_tool:
-            system_prompt += """
-            Bei Abfragen zu AKTIVEN KUNDEN oder LAUFENDEN EINSÄTZEN:
-            - Nenne zuerst die Gesamtzahl der aktiven Care Stays
-            - Liste dann die wichtigsten Kundennamen mit Agentur auf
-            - Erwähne das Enddatum der laufenden Betreuungen
-            """
-        elif "terminat" in selected_tool:
-            system_prompt += """
-            Bei Abfragen zu KÜNDIGUNGEN:
-            - Trenne klar zwischen ernsthaften und nicht-ernsthaften Kündigungen
-            - Erläutere kurz den Unterschied (ernsthafte Kündigungen = Vertrag mit begonnenem Care Stay)
-            - Nenne die häufigsten Kündigungsgründe, falls vorhanden
-            """
-        elif "lead" in selected_tool:
-            system_prompt += """
-            Bei Abfragen zu LEADS:
-            - Unterscheide zwischen Brutto-Leads (alle) und Netto-Leads (ohne reklamierte)
-            - Gib klare Zahlen zu gekauften und reklamierten Leads
-            """
-        elif "agency" in selected_tool:
-            system_prompt += """
-            Bei Abfragen zu AGENTUREN:
-            - Nenne die genaue Anzahl der Verträge mit der jeweiligen Agentur
-            - Liste die wichtigsten Kunden mit dieser Agentur auf
-            """
-        elif "pause" in selected_tool:
-            system_prompt += """
-            Bei Abfragen zu BETREUUNGSPAUSEN:
-            - Gib an, wie lange die Kunden schon in Pause sind (in Tagen)
-            - Erkläre, dass eine Pause bedeutet: aktiver Vertrag, aber aktuell kein laufender Care Stay
-            """
-        elif "history" in selected_tool or "details" in selected_tool:
-            system_prompt += """
-            Bei Abfragen zur KUNDENHISTORIE:
-            - Gib einen chronologischen Überblick über die wichtigsten Ereignisse
-            - Beginne mit dem ersten Vertrag/Care Stay
-            - Erwähne Wechsel von Pflegekräften und besondere Vorkommnisse
-            - Schreibe in einem erzählenden, aber faktenbasierten Stil
-            """
+        # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
+        system_prompt = create_enhanced_system_prompt(selected_tool)
         
         messages = [
             {"role": "system", "content": system_prompt},
@@ -1931,14 +1975,127 @@ def process_user_query(user_message, session_data):
                 else:
                     # Allgemeine Antwort mit den ersten 3 Datensätzen
                     if data_count <= 3:
-                        return f"Es wurden {data_count} Datensätze gefunden: {json.dumps(result_data['data'], indent=2, ensure_ascii=False)}"
+                        return f"Es wurden {data_count} Datensätze gefunden. Details: {format_simple_results(result_data['data'])}"
                     else:
-                        return f"Es wurden {data_count} Datensätze gefunden. Hier sind die ersten 3: {json.dumps(result_data['data'][:3], indent=2, ensure_ascii=False)}"
+                        return f"Es wurden {data_count} Datensätze gefunden. Hier sind die ersten 3: {format_simple_results(result_data['data'][:3])}"
             else:
                 return "Leider wurden keine Daten zu Ihrer Anfrage gefunden."
         except Exception as fallback_error:
             debug_print("Antwort", f"Fehler bei der Fallback-Antwortgenerierung: {fallback_error}")
             return "Es ist ein technisches Problem aufgetreten. Bitte versuchen Sie es später erneut oder formulieren Sie Ihre Anfrage anders."
+
+def create_enhanced_system_prompt(selected_tool):
+    """Erstellt einen verbesserten System-Prompt basierend auf der Art der Abfrage"""
+    base_prompt = """
+    Du bist ein präziser Datenassistent, der Datenbankabfragen beantwortet.
+    
+    WICHTIGE ANTWORTREGELN:
+    1. Beginne sofort mit der Antwort ohne Einleitungen wie "Basierend auf den Daten..."
+    2. Fasse die wichtigsten Daten am Anfang klar zusammen
+    3. Strukturiere komplexe Informationen mit Aufzählungspunkten
+    4. Bei leeren Ergebnissen erkläre kurz und präzise, warum möglicherweise keine Daten gefunden wurden
+    5. Benutze eine knappe, aber vollständige Ausdrucksweise
+    
+    FACHBEGRIFFE:
+    - "Carestay/Care Stay": Ein Pflegeeinsatz bei einem Kunden
+    - "Lead": Ein potenzieller Kunde, der noch keinen Vertrag abgeschlossen hat
+    - "Kündigung": Ein Vertrag, der nicht mehr aktiv ist, bei dem mind. ein Care Stay durchgeführt wurde
+    - "Pause": Ein aktiver Vertrag ohne aktuell laufenden Care Stay, aber mit mind. einem früheren Care Stay
+    
+    Heutiges Datum: """ + datetime.now().strftime("%d.%m.%Y")
+    
+    # Spezialisierte Prompts je nach Tool-Typ
+    tool_specific_prompts = {
+        "get_active_care_stays_now": """
+        Diese Anfrage betrifft AKTUELLE CARESTAYS:
+        1. Nenne zuerst die GESAMTZAHL der aktuell laufenden Care Stays
+        2. Führe einige Kunden mit Agentur und Enddatum auf
+        3. Die Daten sind AKTUELL von HEUTE, erwähne das explizit
+        """,
+        
+        "get_customers_on_pause": """
+        Diese Anfrage betrifft KUNDEN IN PAUSE:
+        1. Erkläre kurz, dass Pause bedeutet: Aktiver Vertrag ohne laufenden Care Stay, aber mit früherem Care Stay
+        2. Nenne die GESAMTZAHL der Kunden in Pause
+        3. Liste einige Kunden mit Tagen seit Ende des letzten Care Stays auf
+        """,
+        
+        "get_contract_terminations": """
+        Diese Anfrage betrifft KÜNDIGUNGEN:
+        1. Unterscheide zwischen ernsthaften (mit Care Stay) und nicht-ernsthaften Kündigungen
+        2. Nenne die GESAMTZAHL beider Kategorien
+        3. Führe einige Kündigungen mit Datum, Agentur und Grund auf
+        """,
+        
+        "get_monthly_performance": """
+        Diese Anfrage betrifft die MONATLICHE PERFORMANCE:
+        1. Nenne den betrachteten Zeitraum klar und deutlich
+        2. Fasse die Gesamtzahlen zusammen: Care Stays und Gesamtumsatz
+        3. Liste alle Kunden mit Umsatz in diesem Zeitraum auf
+        """,
+        
+        "get_revenue_by_agency": """
+        Diese Anfrage betrifft UMSATZ nach AGENTUR:
+        1. Nenne die Gesamtsumme und Anzahl der Care Stays für jede Agentur
+        2. Führe für jede Agentur die Kunden mit Umsatz auf
+        3. Formatiere die Auflistung mit Kundenname und Betrag
+        """,
+        
+        "get_leads_converted_to_customers": """
+        Diese Anfrage betrifft LEAD-KONVERSIONEN:
+        1. Nenne die GESAMTZAHL der konvertierten Leads im Zeitraum
+        2. Führe konvertierte Leads mit Konversionsdauer (Tagen) auf
+        3. Erkläre, dass nur neue Kunden ohne vorherige Verträge berücksichtigt wurden
+        """
+    }
+    
+    # Wähle den passenden spezifischen Prompt, falls verfügbar
+    if selected_tool in tool_specific_prompts:
+        return base_prompt + tool_specific_prompts[selected_tool]
+    
+    # Fallback: Allgemeiner Prompt
+    return base_prompt + """
+    GENERELLE ANTWORTREGELN FÜR ALLE ABFRAGEN:
+    1. Wenn die Daten zeitbezogen sind, erwähne den Zeitraum
+    2. Führe die wichtigsten Datenpunkte auf (max. 10 Beispiele)
+    3. Behalte die Fachterminologie bei (Care Stay, Lead, etc.)
+    """
+
+def format_simple_results(data_list):
+    """Formatiert einfache Ergebnisse für Fallback-Antworten"""
+    if not data_list:
+        return "Keine Daten"
+    
+    result = []
+    for item in data_list:
+        try:
+            # Versuche, häufig vorkommende Eigenschaften zu formatieren
+            parts = []
+            if "first_name" in item and "last_name" in item:
+                parts.append(f"{item['first_name']} {item['last_name']}")
+            if "agency_name" in item:
+                parts.append(f"Agentur: {item['agency_name']}")
+            if "bill_start" in item and "bill_end" in item:
+                parts.append(f"Zeitraum: {format_date(item['bill_start'])} bis {format_date(item['bill_end'])}")
+            if "prov_seller" in item:
+                parts.append(f"Provision: {item['prov_seller']}€")
+            
+            if parts:
+                result.append(" | ".join(parts))
+            else:
+                # Fallback: Zeige die ersten paar Eigenschaften
+                simple_parts = []
+                count = 0
+                for key, value in item.items():
+                    if count < 3 and key not in ["_id", "cs_id", "contract_id", "lead_id"]:
+                        simple_parts.append(f"{key}: {value}")
+                        count += 1
+                result.append(" | ".join(simple_parts))
+        except:
+            # Bei Fehlern: Vereinfacht darstellen
+            result.append(str(item)[:100] + "...")
+    
+    return "\n".join(result)
 
 def create_function_definitions():
     """
@@ -2006,81 +2163,6 @@ def create_function_definitions():
         tools.append(function_def)
     
     return tools
-
-def create_system_prompt(table_schema):
-    """
-    Erstellt einen System-Prompt, der die Datenstruktur und verfügbaren Funktionen beschreibt.
-    
-    Args:
-        table_schema (dict): Das JSON-Schema der Tabellen und Beziehungen
-        
-    Returns:
-        str: Der System-Prompt für OpenAI
-    """
-    current_date = datetime.now().strftime("%d.%m.%Y")
-    
-    prompt = f"""
-Du bist ein hilfreicher Assistent namens XORA, der Fragen anhand einer Wissensbasis beantwortet. Heute ist der {current_date}.
-
-Du kannst auf folgende Daten zugreifen:
-"""
-    
-    # Beschreibe die verfügbaren Tabellen
-    for table_name, table_info in table_schema['tables'].items():
-        prompt += f"\n- {table_name}: {table_info['description']}"
-    
-    prompt += """
-
-Wenn der Benutzer nach spezifischen Daten fragt, nutze die passende Funktion, um diese abzurufen.
-Bei Fragen zu Statistiken, Trends oder Zusammenfassungen nutze die entsprechenden Funktionen.
-
-Deine Antworten sollen gut lesbar durch Absätze sein. Jedoch nicht zu viele Absätze, damit die optische vertikale Streckung nicht zu groß wird.
-Beginne deine Antwort nicht mit Leerzeichen, sondern direkt mit dem Inhalt.
-
-Wenn die Antwort nicht in der Wissensbasis enthalten ist, erfindest du nichts, sondern sagst, dass du es nicht weißt.
-"""
-
-    prompt += """
- Du bist ein Assistent, der NIEMALS Fragen zu Datenbank-Daten direkt beantwortet!
-
-1. Bei JEDER Frage zu Care Stays, Verträgen, Leads oder anderen Daten MUSST du eine der bereitgestellten Funktionen verwenden.
-2. Ohne Funktionsaufruf hast du KEINEN Zugriff auf aktuelle Daten.
-3. Generiere NIEMALS Antworten aus eigenem Wissen, wenn die Information in der Datenbank zu finden ist.
-4. Bei zeitbezogenen Anfragen (z.B. "im Mai") nutze IMMER die Funktion get_care_stays_by_date_range.
-
-Dein Standardverhalten bei Datenabfragen:
-1. Analysiere die Nutzerfrage
-2. Wähle die passende Funktion
-3. Rufe die Funktion mit korrekten Parametern auf
-4. Nutze die Ergebnisse für deine Antwort
-
-WICHTIG ZUR ANTWORTFORMATIERUNG:
-1. Gib alle Informationen in EINER Antwort
-2. Verwende KEINE einleitenden Sätze wie "Ich rufe die Daten ab", "Einen Moment bitte" oder "Lass mich das nachschauen"
-3. Antworte direkt und präzise mit den Ergebnissen der Datenbankabfrage
-4. Beginne deine Antwort mit einer klaren Zusammenfassung (z.B. "Du hast derzeit X aktive Care Stays.")
-5. Vermeide Fülltext wie "Basierend auf den Daten" oder "Wie ich sehen kann"
-
-"""
-
-    prompt += """
-
-KRITISCH WICHTIG: Ich kann KEINE Daten aus der Datenbank abrufen, 
-wenn du nicht eine der bereitgestellten Funktionen verwendest!
-
-- Bei JEDER Frage zu Daten wie Care Stays, Kunden, Verträgen MUSST du 
-  eine der bereitgestellten Funktionen verwenden.
-- Beantworte Datenbankfragen NIEMALS direkt aus eigenem Wissen.
-- Wenn der Nutzer Informationen über Care Stays, Kunden oder andere Daten fragt,
-  rufe IMMER die entsprechende Funktion auf, auch wenn die Anfrage unpräzise ist.
-- Wenn du dir unsicher bist, ob eine Funktion benötigt wird, verwende sie trotzdem.
-"""
-    
-    return prompt
-
-
-
-
 
 
 @app.route('/test_session')

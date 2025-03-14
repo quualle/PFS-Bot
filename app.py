@@ -13,7 +13,7 @@ import requests  # Added import for requests
 from datetime import datetime, timedelta
 import dateparser
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from flask_wtf import CSRFProtect
 from flask_session import Session
 from dotenv import load_dotenv
@@ -539,6 +539,29 @@ def aktualisiere_themen(themen_dict):
                     file.write(f"{punkt_nummer}) {punkt_titel}\n")
             file.write("\n")
 
+
+###########################################
+# Notfall-LOG-Funktion
+###########################################
+def log_notfall_event(user_id, notfall_art, user_message):
+    log_path = "notfall_logs.json"
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "user_id": user_id,
+        "notfall_art": notfall_art,
+        "message": user_message
+    }
+    logs = []
+    if os.path.exists(log_path):
+        with open(log_path, 'r', encoding='utf-8') as f:
+            try:
+                logs = json.load(f)
+            except:
+                logs = []
+    logs.append(log_entry)
+    with open(log_path, 'w', encoding='utf-8') as f:
+        json.dump(logs, f, ensure_ascii=False, indent=2)
+
 ###########################################
 # Wissenseintrag in JSON + Pinecone speichern
 ###########################################
@@ -580,6 +603,69 @@ def speichere_wissensbasis(eintrag):
        
     else:
         flash("Thema und Unterthema müssen angegeben werden.", 'warning')
+
+
+
+###########################################
+# Kontakt mit OpenAI
+###########################################
+def contact_openai(messages, model=None):
+    model = 'o3-mini'  # Changed from o3-mini-preview to o3-mini to match the model used in the chat route
+    debug_print("API Calls", "contact_openai wurde aufgerufen – jetzt auf o3-mini gesetzt.")
+    try:
+        # Create the tool definitions first
+        tools = create_function_definitions()
+        
+        # Add explicit tool_choice parameter to guide the model to use functions
+        response = openai.chat.completions.create(
+            model=model, 
+            messages=messages,
+            tools=tools,  # Add the tools parameter
+            tool_choice="auto"  # Auto lets the model decide when to use functions
+        )
+        
+        if response and response.choices:
+            assistant_message = response.choices[0].message
+            antwort_content = assistant_message.content.strip() if assistant_message.content else ""
+            debug_print("API Calls", f"Antwort von OpenAI: {antwort_content}")
+
+            # Check if the model chose to call a function
+            tool_calls = assistant_message.tool_calls
+            if tool_calls:
+                debug_print("API Calls", f"Function Calls erkannt: {tool_calls}")
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+                    debug_print("API Calls", f"Funktion vom LLM gewählt: {function_name}, Argumente: {function_args}")
+
+            return antwort_content, tool_calls  # Return both the content and tool calls
+        else:
+            antwort_content = "Keine Antwort erhalten."
+            debug_print("API Calls", antwort_content)
+            return antwort_content, None
+        
+    except Exception as e:
+        debug_print("API Calls", f"Fehler: {e}")
+        flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
+        return None, None
+
+def count_tokens(messages, model=None):
+    model = 'o3-mini'
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        encoding = tiktoken.get_encoding("cl100k_base")
+    token_count = 0
+    for msg in messages:
+        token_count += len(encoding.encode(msg['content']))
+        token_count += 4
+    token_count += 2
+    return token_count
+
+
+###########################################
+# BigQuery Datenbezug
+###########################################
 
 def get_user_id_from_email(email):
     """
@@ -872,103 +958,9 @@ def get_seller_data(seller_id, data_type=None):
     
     return result
 
-###########################################
-# Notfall-LOG-Funktion
-###########################################
-def log_notfall_event(user_id, notfall_art, user_message):
-    log_path = "notfall_logs.json"
-    log_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "user_id": user_id,
-        "notfall_art": notfall_art,
-        "message": user_message
-    }
-    logs = []
-    if os.path.exists(log_path):
-        with open(log_path, 'r', encoding='utf-8') as f:
-            try:
-                logs = json.load(f)
-            except:
-                logs = []
-    logs.append(log_entry)
-    with open(log_path, 'w', encoding='utf-8') as f:
-        json.dump(logs, f, ensure_ascii=False, indent=2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###########################################
-# Kontakt mit OpenAI
-###########################################
-def contact_openai(messages, model=None):
-    model = 'o3-mini'  # Changed from o3-mini-preview to o3-mini to match the model used in the chat route
-    debug_print("API Calls", "contact_openai wurde aufgerufen – jetzt auf o3-mini gesetzt.")
-    try:
-        # Create the tool definitions first
-        tools = create_function_definitions()
-        
-        # Add explicit tool_choice parameter to guide the model to use functions
-        response = openai.chat.completions.create(
-            model=model, 
-            messages=messages,
-            tools=tools,  # Add the tools parameter
-            tool_choice="auto"  # Auto lets the model decide when to use functions
-        )
-        
-        if response and response.choices:
-            assistant_message = response.choices[0].message
-            antwort_content = assistant_message.content.strip() if assistant_message.content else ""
-            debug_print("API Calls", f"Antwort von OpenAI: {antwort_content}")
-
-            # Check if the model chose to call a function
-            tool_calls = assistant_message.tool_calls
-            if tool_calls:
-                debug_print("API Calls", f"Function Calls erkannt: {tool_calls}")
-                for tool_call in tool_calls:
-                    function_name = tool_call.function.name
-                    function_args = json.loads(tool_call.function.arguments)
-                    debug_print("API Calls", f"Funktion vom LLM gewählt: {function_name}, Argumente: {function_args}")
-
-            return antwort_content, tool_calls  # Return both the content and tool calls
-        else:
-            antwort_content = "Keine Antwort erhalten."
-            debug_print("API Calls", antwort_content)
-            return antwort_content, None
-        
-    except Exception as e:
-        debug_print("API Calls", f"Fehler: {e}")
-        flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
-        return None, None
-
-def count_tokens(messages, model=None):
-    model = 'o3-mini'
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        encoding = tiktoken.get_encoding("cl100k_base")
-    token_count = 0
-    for msg in messages:
-        token_count += len(encoding.encode(msg['content']))
-        token_count += 4
-    token_count += 2
-    return token_count
-
-
-###########################################
-# BigQuery Datenbezug
-###########################################
+####################################
+# EXTRACT INFOS FROM USER QUERY
+####################################
 
 def extract_date_params(user_message):
     """Extract date parameters from user message for months like 'Mai'."""
@@ -1485,6 +1477,12 @@ def extract_enhanced_date_params(user_message):
     
     return extracted_args
 
+
+####################################
+# Function calling/ Tool Usage
+####################################
+
+
 def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     """
     Wählt das optimale Tool anhand eines mehrschichtigen Ansatzes:
@@ -1599,96 +1597,6 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     
     debug_print("Tool-Auswahl", f"Fallback zur Standardabfrage: {fallback_tool}")
     return fallback_tool, f"Fallback zur Standardabfrage. Reasoning: {reasoning}"
-
-def process_user_query(user_message, session_data):
-    """
-    Verbesserter mehrstufiger Prozess zur Verarbeitung von Benutzeranfragen
-    """
-    # Lade Tools und Konfigurationen
-    tools = create_function_definitions()
-    tool_config = load_tool_config()
-    
-    debug_print("Anfrage", f"Verarbeite Anfrage: '{user_message}'")
-    
-    # SCHRITT 1+2: Tool auswählen
-    selected_tool, reasoning = select_optimal_tool_with_reasoning(user_message, tools, tool_config)
-    debug_print("Anfrage", f"Ausgewähltes Tool: {selected_tool}, Begründung: {reasoning}")
-    
-    # SCHRITT 3: Parameter extrahieren
-    extracted_params = {}
-    
-    # Standard-Parameter aus Session
-    if "seller_id" in session_data and session_data["seller_id"]:
-        extracted_params["seller_id"] = session_data["seller_id"]
-    
-    # Datumsparameter extrahieren
-    date_params = extract_enhanced_date_params(user_message)
-    extracted_params.update(date_params)
-    
-    # Lade Default-Werte für das Tool
-    try:
-        with open("query_patterns.json", "r", encoding="utf-8") as f:
-            query_patterns = json.load(f)
-            if selected_tool in query_patterns.get("common_queries", {}):
-                defaults = query_patterns["common_queries"][selected_tool].get("default_values", {})
-                for param, value in defaults.items():
-                    if param not in extracted_params:
-                        extracted_params[param] = value
-    except Exception as e:
-        debug_print("Parameter", f"Fehler beim Laden der Default-Werte: {e}")
-    
-    debug_print("Parameter", f"Extrahierte Parameter: {extracted_params}")
-    
-    # SCHRITT 4: Tool ausführen
-    try:
-        tool_result = handle_function_call(selected_tool, extracted_params)
-        debug_print("Tool", "Tool-Ausführung erfolgreich")
-    except Exception as e:
-        debug_print("Tool", f"Fehler bei der Tool-Ausführung: {e}")
-        return f"Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten."
-    
-    # SCHRITT 5: Antwort generieren
-    try:
-        system_prompt = """
-        Du bist ein hilfreicher Assistent, der Datenbankanfragen präzise und direkt beantwortet.
-        Dir wird ein Funktionsergebnis bereitgestellt. Nutze es, um eine benutzerfreundliche Antwort zu erstellen.
-        
-        WICHTIGE REGELN:
-        1. Antworte IMMER direkt und ohne Einleitungen wie "Basierend auf den Daten..." oder "Ich habe die Daten abgerufen..."
-        2. Beginne deine Antwort mit einer klaren Zusammenfassung der wichtigsten Daten
-        3. Strukturiere komplexe Informationen mit Aufzählungspunkten für bessere Lesbarkeit
-        4. Wenn keine Daten gefunden wurden, sage das klar und prägnant
-        """
-        
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-            {"role": "function", "name": selected_tool, "content": tool_result}
-        ]
-        
-        response = openai.chat.completions.create(
-            model="o3-mini",
-            messages=messages
-        )
-        
-        final_response = response.choices[0].message.content
-        debug_print("Antwort", f"Antwort generiert (gekürzt): {final_response[:100]}...")
-        return final_response
-    except Exception as e:
-        debug_print("Antwort", f"Fehler bei der Antwortgenerierung: {e}")
-        # Fallback-Antwort
-        try:
-            result_data = json.loads(tool_result)
-            if "data" in result_data and len(result_data["data"]) > 0:
-                return f"Ich habe {len(result_data['data'])} Datensätze gefunden. Hier sind die Informationen: {json.dumps(result_data['data'][:5], indent=2)}"
-            else:
-                return "Leider wurden keine Daten zu Ihrer Anfrage gefunden."
-        except:
-            return "Es konnten keine passenden Daten gefunden werden."
-
-
-
-import re
 
 def load_tool_config():
     """Lädt die Tool-Konfiguration aus einer YAML-Datei"""
@@ -2169,6 +2077,11 @@ wenn du nicht eine der bereitgestellten Funktionen verwendest!
 """
     
     return prompt
+
+
+
+
+
 
 @app.route('/test_session')
 def test_session():
@@ -3092,9 +3005,6 @@ def create_system_prompt(table_schema):
     
     return prompt
 
-
-from flask import Response
-
 @app.route("/", methods=["GET", "POST"])
 def chat():
     try:
@@ -3389,7 +3299,7 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
     try:
         # Debug-Events für die Verbindungsdiagnose
         yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream-Start'})}\n\n"
-        yield f"data: {json.dumps({'type': 'text', 'content': 'Test-Content vom Server'})}\n\n"
+        #yield f"data: {json.dumps({'type': 'text', 'content': 'Test-Content vom Server'})}\n\n"
 
         debug_print("API Calls", f"Streaming-Anfrage an OpenAI mit Function Calling")
         response = openai.chat.completions.create(

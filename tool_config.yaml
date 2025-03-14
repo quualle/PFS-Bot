@@ -1,0 +1,198 @@
+#tool_config.yaml
+
+tool_categories:
+  # Kategorie für "aktive Kunden" / "laufende Einsätze"
+  active_customers_query:
+    patterns:
+      - wie viele kunden
+      - aktive kunden
+      - laufende einsätze
+      - laufende carestays
+      - wie viele betreue ich
+      - aktuelle betreuungen
+      - momentan betreuung
+      - aktuell
+      - jetzt
+      - gerade
+      - laufen
+      - vertrag haben
+      - how many customers
+      - buchungen
+    default_tool: get_active_care_stays
+
+  # Kategorie für Kündigungen
+  termination_query:
+    patterns:
+      - kündigungen
+      - gekündigt
+      - vertrag beendet
+      - kunden verloren
+      - abgesprungen
+      - nicht verlängert
+      - vertrag nicht verlängert
+      - betreuung beendet
+      - einsatz beendet
+      - nicht mehr
+      - ausstiege
+    default_tool: get_contract_terminations  # (Neue Funktion - muss erstellt werden)
+
+  # Kategorie für Lead-Abfragen
+  lead_query:
+    patterns:
+      - wie viele leads
+      - lead gekauft
+      - leads genommen
+      - lead-kauf
+      - leads reklamiert
+      - brutto leads
+      - netto leads
+      - verfügbare leads
+      - lead
+      - interessenten
+      - potenzielle kunden
+      - neue anfragen
+    default_tool: get_recent_leads
+
+  # Kategorie für Agentur-spezifische Abfragen
+  agency_query:
+    patterns:
+      - agentur
+      - vermittlung
+      - anbieter
+      - vermittelt
+      - arbeite ich mit
+      - von der agentur
+      - mit der agentur
+      - verträge mit
+      - kunden bei
+      - senioport
+      - medipe
+      - promedica
+      - pflegeagentur
+    default_tool: get_contracts_by_agency  # (Neue Funktion - muss erstellt werden)
+
+  # Kategorie für Betreuungspausen
+  care_pause_query:
+    patterns:
+      - pause
+      - pausiert
+      - pausieren
+      - zwischen zwei einsätzen
+      - betreuungspause
+      - pflegepause
+      - lücke
+      - wartend
+      - ohne betreuung
+      - keine pflegekraft
+    default_tool: get_customers_on_pause  # (Neue Funktion - muss erstellt werden)
+
+  # Kategorie für kundenbezogene Abfragen
+  customer_details_query:
+    patterns:
+      - kunde seit
+      - wie lange
+      - wie viele einsätze
+      - wie oft gewechselt
+      - wann gestartet
+      - historie
+      - verlauf
+      - geschichte
+      - erzähl mir
+      - details zu
+      - alles über
+    default_tool: get_customer_history  # (Neue Funktion - muss erstellt werden)
+
+  # Kategorie für zeitraumbezogene Abfragen (erweitert)
+  time_query:
+    patterns:
+      - carestays
+      - einsätze
+      - betreuungen
+      - monat
+      - monatlich
+      - jahr
+      - jährlich
+      - januar
+      - februar
+      - märz
+      - april
+      - mai
+      - juni
+      - juli
+      - august
+      - september
+      - oktober
+      - november
+      - dezember
+      - zeitraum
+      - von bis
+      - zwischen
+      - in
+      - nächst
+      - vergangen
+      - letztes
+    default_tool: get_care_stays_by_date_range
+
+  # Kategorie für Vertrags-Abfragen (mit klarer Differenzierung)
+  contract_query:
+    patterns:
+      - vertrag
+      - verträge
+      - vertraglich
+      - unterzeichnet
+      - unterschrieben
+      - dokument
+      - contract
+      - contracts
+      - vereinbarung
+      - binden
+    default_tool: get_active_contracts
+
+  # Kategorie für Statistik-Abfragen
+  statistics_query:
+    patterns:
+      - statistik
+      - statistics
+      - performance
+      - umsatz
+      - revenue
+      - bilanz
+      - auswertung
+      - zusammenfassung
+      - durchschnitt
+      - entwicklung
+      - trend
+      - gesamt
+      - übersicht
+    default_tool: get_user_statistics
+
+# Fallback-Tool, wenn keine Kategorie erkannt wird
+fallback_tool: get_care_stays_by_date_range
+
+# Direkte Muster-zu-Tool Zuordnungen für sehr spezifische Anfragen
+force_tool_patterns:
+  get_active_care_stays:
+    - "wie viele kunden betreue ich gerade"
+    - "aktuelle betreuungen"
+    - "laufende carestays"
+    - "aktive kunden"
+    - "wie viele kunden habe ich momentan"
+    - "aktuelle buchungen"
+  
+  get_care_stays_by_date_range:
+    - "im monat"
+    - "im jahr"
+    - "in 2025"
+    - "im mai"
+    - "im april"
+    - "im märz"
+    - "zeitraum"
+    - "zwischen"
+    - "von bis"
+  
+  get_user_statistics:
+    - "zeig mir meine statistik"
+    - "wie war meine performance"
+    - "meine kennzahlen"
+    - "gesamtübersicht"
+    - "monatliche entwicklung"

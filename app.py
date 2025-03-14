@@ -740,7 +740,7 @@ def get_leads_for_seller(seller_id):
             l.seller_id = @seller_id
         ORDER BY 
             l.created_at DESC
-        LIMIT 500
+        LIMIT 5000
         """
         
         job_config = bigquery.QueryJobConfig(
@@ -787,7 +787,7 @@ def get_contracts_for_seller(seller_id):
             c.seller_id = @seller_id
         ORDER BY 
             c.created_at DESC
-        LIMIT 100
+        LIMIT 1000
         """
         
         job_config = bigquery.QueryJobConfig(
@@ -833,7 +833,7 @@ def get_households_for_seller(seller_id):
             h.seller_id = @seller_id
         ORDER BY 
             h.created_at DESC
-        LIMIT 150
+        LIMIT 1000
         """
         
         job_config = bigquery.QueryJobConfig(

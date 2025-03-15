@@ -35,13 +35,21 @@ def create_query_selection_prompt(
     # Extract important information about each query
     query_descriptions = []
     for query_name, query_data in query_patterns.items():
-        query_descriptions.append({
+        query_info = {
             "name": query_name,
             "description": query_data.get("description", ""),
             "required_parameters": query_data.get("required_parameters", []),
             "optional_parameters": query_data.get("optional_parameters", []),
             "result_structure": query_data.get("result_structure", {})
-        })
+        }
+        
+        # Add use cases and limitations if available
+        if "use_cases" in query_data:
+            query_info["use_cases"] = query_data.get("use_cases", [])
+        if "avoid_when" in query_data:
+            query_info["avoid_when"] = query_data.get("avoid_when", [])
+            
+        query_descriptions.append(query_info)
     
     # Include conversation history context if available
     history_context = ""
@@ -52,9 +60,39 @@ def create_query_selection_prompt(
             content = message.get("content", "")
             history_context += f"{role}: {content}\n"
     
+    # Provide domain context
+    domain_context = """
+Dies ist ein System zur Datenabfrage für ein Pflegevermittlungsunternehmen.
+Die Hauptentitäten sind:
+- Leads: Potentielle Kunden, die Interesse gezeigt haben
+- Kunden/Haushalte: Personen mit aktiven Verträgen
+- Verträge: Vereinbarungen zwischen Kunden und Agenturen
+- Care Stays: Konkrete Pflegeeinsätze mit Pflegekräften
+- Agenturen: Vermitteln Pflegekräfte an Kunden
+- Pflegekräfte: Personen, die Pflegedienste anbieten
+"""
+    
+    # Decision tree guidance
+    decision_tree = """
+Folge diesem Entscheidungsprozess:
+1. Identifiziere das Hauptthema der Anfrage: Kunden, Verträge, Einsätze, Agenturen, Statistik
+2. Prüfe zeitliche Dimension: aktuell, vergangen, zukünftig, Zeitraum?
+3. Bestimme spezifische Entitäten: bestimmter Kunde, alle Kunden, bestimmte Agentur?
+4. Wähle die Query mit der höchsten Spezifität für diese Kombination
+
+Beispielentscheidungen:
+- "Zeige aktuelle Einsätze" → get_active_care_stays_now (aktueller Zeitpunkt)
+- "Zeige Einsätze im Mai" → get_care_stays_by_date_range (spezifischer Zeitraum)
+- "Zeige Kunde Müller" → get_customer_history (spezifischer Kunde)
+- "Wieviel Umsatz im letzten Quartal?" → get_monthly_performance (Umsatzstatistik mit Zeitraum)
+- "Welche Kündigungen gab es im Mai?" → get_contract_terminations (Kündigungsstatistik mit Zeitraum)
+"""
+    
     # Create the prompt content
     prompt_content = f"""
 You are a query selection assistant for a senior care database system. Your task is to select the most appropriate database query based on a user's request.
+
+{domain_context}
 
 {history_context}
 
@@ -62,6 +100,8 @@ User request: "{user_request}"
 
 Available queries:
 {json.dumps(query_descriptions, indent=2)}
+
+{decision_tree}
 
 Instructions:
 1. Analyze the user request to understand the semantic meaning and intent
@@ -78,6 +118,7 @@ Important considerations:
 - For questions about revenue or earnings, prefer get_revenue_by_agency or get_monthly_performance
 - For questions about specific customers, prefer get_customer_history
 - For terminations or contract ends, prefer get_contract_terminations
+- For questions about terminated contracts with distinctions between real terminations and agency switches, use get_contract_terminations
 
 Format your response as JSON with these fields:
 - selected_query: [query name]

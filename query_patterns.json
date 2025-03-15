@@ -63,7 +63,7 @@
         "end_date": "date"
       },
       "use_cases": [
-        "Wenn nach Kündigungen in einem bestimmten Zeitraum gefragt wird",
+        "Wenn nach Kündigungen in einem bestimmten Zeitraum gefragt wird - WICHTIG: immer die Aufschlüsselung ernsthaft vs. Agenturwechsel dazugeben",
         "Wenn eine Aufschlüsselung nach Kündigungsarten (ernsthaft vs. Agenturwechsel) benötigt wird",
         "Wenn Trends bei Vertragsbeendigungen analysiert werden sollen"
       ],

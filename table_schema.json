@@ -1,7 +1,4 @@
-//table_schema.json
-
-
-                    {
+{
   "tables": {
     "agencies": {
       "description": "Enthält Informationen zu den Vermittlungsagenturen für Pflegekräfte",

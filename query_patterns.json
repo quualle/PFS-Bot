@@ -1,7 +1,3 @@
-/*
-query_patterns.json
-*/
-
 {
   "common_queries": {
     "get_active_care_stays_now": {

@@ -26,6 +26,14 @@ import tiktoken
 import yaml
 import re
 
+try:
+    from query_selector import select_query_with_llm, update_selection_feedback
+    USE_LLM_QUERY_SELECTOR = True
+    logging.info("LLM-based query selector loaded successfully")
+except ImportError as e:
+    logging.warning(f"LLM-based query selector not available: {e}")
+    USE_LLM_QUERY_SELECTOR = False
+
 def load_tool_config():
     """Lädt die Tool-Konfiguration aus einer YAML-Datei"""
     TOOL_CONFIG_PATH = "tool_config.yaml"
@@ -1549,16 +1557,139 @@ def extract_enhanced_date_params(user_message):
 ####################################
 # Function calling/ Tool Usage
 ####################################
+import json
+import logging
+from openai import OpenAI
 
+client = OpenAI()  # Annahme: dein API-Key ist in der Umgebung gesetzt
+
+def load_tool_descriptions():
+    """Lädt die Tools-Definitionen aus der query_patterns.json-Datei"""
+    try:
+        with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            query_patterns = json.load(f)
+        return query_patterns.get('common_queries', {})
+    except Exception as e:
+        logging.error(f"Fehler beim Laden der Tool-Definitionen: {e}")
+        return {}
+
+def create_tool_description_prompt():
+    """Erstellt eine benutzerfreundliche Beschreibung aller verfügbaren Tools"""
+    tools = load_tool_descriptions()
+    
+    descriptions = []
+    for tool_name, tool_info in tools.items():
+        desc = f"TOOL: {tool_name}\n"
+        desc += f"BESCHREIBUNG: {tool_info['description']}\n"
+        desc += f"PARAMETER: {', '.join(tool_info['required_parameters'])}"
+        if tool_info.get('optional_parameters'):
+            desc += f" (optional: {', '.join(tool_info['optional_parameters'])})"
+        desc += "\n"
+        
+        # Füge Beispielanwendungsfälle hinzu, falls vorhanden
+        if 'active_care_stays_now' in tool_name:
+            desc += "ANWENDUNGSFÄLLE: Aktuelle Kunden, laufende Betreuungen, momentane Situation\n"
+        elif 'contract_terminations' in tool_name:
+            desc += "ANWENDUNGSFÄLLE: Kündigungen, beendete Verträge, verlorene Kunden\n"
+        elif 'customers_on_pause' in tool_name:
+            desc += "ANWENDUNGSFÄLLE: Kunden in Pause, Verträge ohne aktive Betreuung\n"
+        elif 'care_stays_by_date_range' in tool_name:
+            desc += "ANWENDUNGSFÄLLE: Betreuungen in bestimmten Monaten/Jahren, zeitraumbezogene Analysen\n"
+        
+        descriptions.append(desc)
+    
+    return "\n".join(descriptions)
+
+def select_tool(user_message):
+    """Wählt das passende Tool für die Benutzeranfrage mithilfe des LLM aus"""
+    tool_descriptions = create_tool_description_prompt()
+    
+    # Erstellen eines präzisen Prompts für das LLM
+    prompt = f"""
+Du bist ein Experte für die Analyse von Benutzeranfragen in einem CRM-System für Pflegevermittlung. 
+Wähle das optimale Tool basierend auf der folgenden Anfrage.
+
+BENUTZERANFRAGE: "{user_message}"
+
+VERFÜGBARE TOOLS:
+{tool_descriptions}
+
+WICHTIG:
+- Wähle genau EIN Tool aus
+- Extrahiere alle notwendigen Parameter aus der Anfrage
+- Bei zeitbezogenen Anfragen, nutze immer das Tool für Datumsintervalle (get_care_stays_by_date_range)
+- Bei Fragen zu aktuellen Kunden nutze immer get_active_care_stays_now
+- Bei Kündigungen und Vertragsfragen nutze immer get_contract_terminations
+
+ANTWORTFORMAT:
+{
+  "tool": "name_des_tools",
+  "reasoning": "Begründung für die Auswahl",
+  "parameters": {
+    "param1": "Wert1",
+    "param2": "Wert2"
+  }
+}
+"""
+    
+    try:
+        # LLM-Anfrage
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo", # oder o3-mini, je nach Verfügbarkeit
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1, # Niedrig für konsistente, deterministische Antworten
+            response_format={"type": "json_object"}
+        )
+        
+        # Antwort parsen
+        response_text = response.choices[0].message.content
+        result = json.loads(response_text)
+        
+        # Debugging-Informationen
+        logging.debug(f"LLM hat Tool '{result['tool']}' ausgewählt. Begründung: {result['reasoning']}")
+        
+        return result
+    except Exception as e:
+        logging.error(f"Fehler bei der LLM-Tool-Auswahl: {e}")
+        # Fallback auf ein Standard-Tool
+        return {
+            "tool": "get_active_care_stays_now",
+            "reasoning": "Fallback aufgrund eines Fehlers",
+            "parameters": {}
+        }
 
 def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     """
-    Wählt das optimale Tool anhand eines mehrschichtigen Ansatzes:
-    1. Regelbasierte Schnellerkennung mit Muster-Matching
-    2. Kategorie-basierte Einschränkung
-    3. LLM-basierte Entscheidung mit Chain-of-Thought
-    4. Fallback-Mechanismus
+    Wählt das optimale Tool anhand des semantischen Verständnisses der Anfrage.
+    Nutzt entweder die LLM-basierte Methode oder Pattern-Matching je nach Konfiguration.
     """
+    # Prüfen, ob wir die LLM-basierte Methode verwenden sollen
+    if 'USE_LLM_QUERY_SELECTOR' in globals() and USE_LLM_QUERY_SELECTOR:
+        debug_print("Tool-Auswahl", "Verwende LLM-basierte Abfrage-Auswahl")
+        try:
+            # Extrahiere die verfügbaren Tool-Namen
+            available_tool_names = [tool["function"]["name"] for tool in tools]
+            
+            # Nutze die select_query_with_llm Methode zur semantischen Auswahl
+            query_name, parameters = select_query_with_llm(
+                user_message, 
+                conversation_history=None,  # TODO: Könnte session.get('chat_history') sein
+                user_id=None  # Wird später im Code mit seller_id ergänzt
+            )
+            
+            # Prüfe, ob das gewählte Tool verfügbar ist
+            if query_name in available_tool_names:
+                debug_print("Tool-Auswahl", f"LLM hat Tool gewählt: {query_name}")
+                return query_name, f"LLM-basierte Auswahl: {query_name}"
+            else:
+                debug_print("Tool-Auswahl", f"LLM-gewähltes Tool {query_name} ist nicht verfügbar")
+        except Exception as e:
+            debug_print("Tool-Auswahl", f"Fehler bei LLM-Auswahl: {e}")
+            logging.exception("Fehler bei LLM-Auswahl des Tools")
+            # Falls ein Fehler auftritt, fallen wir zurück auf Pattern-Matching
+    
+    # Falls LLM-Auswahl nicht aktiviert oder fehlgeschlagen ist:
+    # Fallback auf traditionelles Pattern-Matching oder Chain-of-Thought LLM
     user_message_lower = user_message.lower()
     
     # SCHICHT 1: Direkte Muster-Erkennung für häufige Anfragen
@@ -1702,121 +1833,6 @@ def load_tool_config():
             }
         }
 
-def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
-    """
-    Wählt das optimale Tool anhand eines mehrschichtigen Ansatzes:
-    1. Regelbasierte Schnellerkennung mit Muster-Matching
-    2. Kategorie-basierte Einschränkung
-    3. LLM-basierte Entscheidung mit Chain-of-Thought
-    4. Fallback-Mechanismus
-    """
-    user_message_lower = user_message.lower()
-    
-    # SCHICHT 1: Direkte Muster-Erkennung für häufige Anfragen
-    # Prüfe auf explizite Muster, die bestimmte Tools erzwingen
-    for tool_name, patterns in tool_config.get("force_tool_patterns", {}).items():
-        for pattern in patterns:
-            if pattern.lower() in user_message_lower:
-                debug_print("Tool-Auswahl", f"Regelbasierte Auswahl: Erkanntes Muster '{pattern}'")
-                return tool_name, f"Regelbasierte Auswahl: Erkanntes Muster '{pattern}'"
-    
-    # SCHICHT 2: Kategorie-Erkennung
-    detected_categories = []
-    for category, config in tool_config.get("tool_categories", {}).items():
-        for pattern in config.get("patterns", []):
-            if pattern.lower() in user_message_lower:
-                detected_categories.append(category)
-                break
-    
-    # Wenn Kategorien erkannt wurden, beschränke Tool-Auswahl
-    if detected_categories:
-        category_tools = []
-        for category in detected_categories:
-            default_tool = tool_config["tool_categories"][category].get("default_tool")
-            if default_tool:
-                category_tools.append(default_tool)
-        
-        if len(category_tools) == 1:
-            debug_print("Tool-Auswahl", f"Kategorie-basierte Auswahl: {', '.join(detected_categories)}")
-            return category_tools[0], f"Kategorie-basierte Auswahl: Erkannte Kategorie(n) {', '.join(detected_categories)}"
-    
-    # SCHICHT 3: LLM-basierte Entscheidung mit Chain-of-Thought
-    system_prompt = """
-    Du bist ein Experte für die Auswahl des optimalen Tools basierend auf Benutzeranfragen.
-    Deine Aufgabe ist es, das am besten geeignete Tool für die Anfrage auszuwählen.
-    
-    WICHTIGE REGELN:
-    - Bei ALLEN Fragen zu Daten (Care Stays, Verträge, Leads, etc.) MUSS ein passendes Tool gewählt werden
-    - Bei Fragen zu bestimmten Zeiträumen (Monaten, Jahren) wähle immer get_care_stays_by_date_range
-    - Bei unklaren Anfragen zu Care Stays wähle immer get_care_stays_by_date_range
-    - Gehe bei Datenbankabfragen immer auf Nummer sicher und wähle ein Tool
-    
-    Führe eine Chain-of-Thought durch:
-    1. Analysiere die Art der Anfrage (Was wird gefragt? Wozu?)
-    2. Identifiziere Schlüsselwörter und Absichten (Zeitraum, Benutzer, Statistiken?)
-    3. Wähle das am besten geeignete Tool
-    
-    Antworte in diesem Format:
-    ANALYSE: [Deine Analyse der Anfrage]
-    SCHLÜSSELWÖRTER: [Erkannte Schlüsselwörter]
-    TOOL: [Name des gewählten Tools]
-    """
-    
-    # Erstelle Tool-Übersichtsbeschreibungen für den Prompt
-    tool_descriptions = ""
-    for tool in tools:
-        tool_name = tool["function"]["name"]
-        tool_desc = tool["function"]["description"]
-        required_params = tool["function"]["parameters"].get("required", [])
-        tool_descriptions += f"- {tool_name}: {tool_desc}\n  Benötigte Parameter: {', '.join(required_params)}\n"
-    
-    # LLM-Aufruf für Tool-Auswahl
-    messages = [
-        {"role": "system", "content": system_prompt + "\n\nVerfügbare Tools:\n" + tool_descriptions},
-        {"role": "user", "content": f"Benutzeranfrage: '{user_message}'\nWelches Tool passt am besten?"}
-    ]
-    
-    try:
-        debug_print("Tool-Auswahl", "Starte LLM-Aufruf zur Tool-Bestimmung")
-        response = openai.chat.completions.create(
-            model="o3-mini",
-            messages=messages,
-            max_tokens=250
-        )
-        
-        response_text = response.choices[0].message.content.strip()
-        debug_print("Tool-Auswahl", f"LLM Tool-Auswahl: {response_text}")
-        
-        # Parse das strukturierte Antwortformat
-        tool_match = re.search(r'TOOL:\s*(\w+)', response_text)
-        if tool_match:
-            tool_choice = tool_match.group(1)
-            
-            # Überprüfe, ob das Tool existiert
-            for tool in tools:
-                if tool["function"]["name"] == tool_choice:
-                    return tool_choice, response_text
-        
-        # Extrahiere Reasoning, auch wenn Tool nicht gefunden wurde
-        analysis = re.search(r'ANALYSE:\s*(.+?)(?=SCHLÜSSELWÖRTER:|$)', response_text, re.DOTALL)
-        reasoning = analysis.group(1).strip() if analysis else response_text
-    except Exception as e:
-        debug_print("Tool-Auswahl", f"Fehler bei LLM Tool-Auswahl: {e}")
-        reasoning = f"LLM-Fehler: {str(e)}"
-    
-    # SCHICHT 4: Fallback-Mechanismus
-    # Bei unsicheren/nicht erkannten Anfragen, verwende das Fallback-Tool
-    fallback_tool = tool_config.get("fallback_tool", "get_care_stays_by_date_range")
-    
-    # Prüfe auf Datumserwähnungen als zusätzliche Heuristik für Fallback
-    date_params = extract_enhanced_date_params(user_message)
-    if date_params and "start_date" in date_params and "end_date" in date_params:
-        debug_print("Tool-Auswahl", f"Fallback aufgrund erkannter Datumsinformationen")
-        return "get_care_stays_by_date_range", f"Fallback aufgrund erkannter Datumsinformationen: {date_params}"
-    
-    debug_print("Tool-Auswahl", f"Fallback zur Standardabfrage: {fallback_tool}")
-    return fallback_tool, f"Fallback zur Standardabfrage. Reasoning: {reasoning}"
-
 def process_user_query(user_message, session_data):
     """
     Verbesserter mehrstufiger Prozess zur intelligenten Verarbeitung von Benutzeranfragen
@@ -1911,6 +1927,14 @@ def process_user_query(user_message, session_data):
             status = parsed_result.get("status", "unknown")
             data_count = len(parsed_result.get("data", [])) if "data" in parsed_result else 0
             debug_print("Tool", f"Tool-Ausführung erfolgreich: Status={status}, Datensätze={data_count}")
+
+            # Add feedback for LLM query selector
+            if 'USE_LLM_QUERY_SELECTOR' in globals() and USE_LLM_QUERY_SELECTOR:
+                try:
+                    # Mark this query selection as successful if results were returned without error
+                    update_selection_feedback(user_message, selected_tool, success=True)
+                except Exception as e:
+                    logging.error(f"Error updating selection feedback: {e}")
         except:
             debug_print("Tool", "Tool-Ausführung erfolgreich, aber Ergebnis konnte nicht geparst werden")
     except Exception as e:
@@ -2164,6 +2188,461 @@ def create_function_definitions():
     
     return tools
 
+def stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_message, session_data):
+    """Stream the OpenAI response and handle function calls within the stream
+    
+    Args:
+        messages: OpenAI message array
+        tools: Available tools/functions
+        tool_choice: Which tool to use
+        seller_id: The seller's ID
+        extracted_args: Any extracted date parameters
+        user_message: The original user message
+        session_data: A dictionary containing all needed session data
+    """
+    # Extract session data - this avoids accessing session in the generator
+    user_id = session_data["user_id"]
+    user_name = session_data["user_name"]
+    chat_key = session_data["chat_key"]
+    chat_history = session_data["chat_history"]
+    
+    try:
+        # Debug-Events für die Verbindungsdiagnose
+        yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream-Start'})}\n\n"
+        #yield f"data: {json.dumps({'type': 'text', 'content': 'Test-Content vom Server'})}\n\n"
+
+        debug_print("API Calls", f"Streaming-Anfrage an OpenAI mit Function Calling")
+        response = openai.chat.completions.create(
+            model="o3-mini",
+            messages=messages,
+            tools=tools,
+            tool_choice=tool_choice,
+            stream=True  # Enable streaming
+        )
+        
+        initial_response = ""
+        function_calls_data = []
+        has_function_calls = False
+        
+        # Stream the initial response
+        yield f"data: {json.dumps({'type': 'start'})}\n\n"
+        
+        for chunk in response:
+            if chunk.choices[0].delta.content:
+                text_chunk = chunk.choices[0].delta.content
+                initial_response += text_chunk
+                yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
+            
+            # Check if this chunk contains function call info
+            if hasattr(chunk.choices[0].delta, 'tool_calls') and chunk.choices[0].delta.tool_calls:
+                has_function_calls = True
+                # Collect function call data
+                for tool_call in chunk.choices[0].delta.tool_calls:
+                    tool_index = tool_call.index
+                    
+                    # Initialize the tool call if needed
+                    while len(function_calls_data) <= tool_index:
+                        function_calls_data.append({"id": str(tool_index), "name": "", "args": ""})
+                    
+                    if hasattr(tool_call, 'function'):
+                        if hasattr(tool_call.function, 'name') and tool_call.function.name:
+                            function_calls_data[tool_index]["name"] = tool_call.function.name
+                        
+                        if hasattr(tool_call.function, 'arguments') and tool_call.function.arguments:
+                            function_calls_data[tool_index]["args"] += tool_call.function.arguments
+        
+        # If function calls detected, execute them
+        if has_function_calls:
+            yield f"data: {json.dumps({'type': 'function_call_start'})}\n\n"
+            yield f"data: {json.dumps({'type': 'debug', 'message': f'Detected {len(function_calls_data)} function calls'})}\n\n"
+            
+            function_responses = []
+            for func_data in function_calls_data:
+                if func_data["name"] and func_data["args"]:
+                    try:
+                        function_name = func_data["name"]
+                        function_args = json.loads(func_data["args"])
+                        
+                        # Add seller_id and extracted date parameters
+                        if seller_id:
+                            function_args["seller_id"] = seller_id
+                        
+                        for key, value in extracted_args.items():
+                            if key not in function_args or not function_args[key]:
+                                function_args[key] = value
+                        
+                        # Execute the function
+                        debug_print("Function", f"Streaming: Executing {function_name} with args {function_args}")
+                        yield f"data: {json.dumps({'type': 'debug', 'message': f'Executing function {function_name}'})}\n\n"
+                        
+                        function_response = handle_function_call(function_name, function_args)
+                        
+                        # Add to function responses
+                        function_responses.append({
+                            "role": "tool",
+                            "tool_call_id": func_data["id"],
+                            "content": function_response
+                        })
+                        
+                        yield f"data: {json.dumps({'type': 'function_result', 'name': function_name})}\n\n"
+                        yield f"data: {json.dumps({'type': 'debug', 'message': f'Function executed successfully'})}\n\n"
+                        
+                    except Exception as e:
+                        debug_print("Function", f"Error executing function: {str(e)}")
+                        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Funktionsausführung: {str(e)}'})}\n\n"
+            
+            # Second call to get final response
+            if function_responses:
+                # Properly format the tool_calls with the required 'type' field
+                formatted_tool_calls = []
+                for func_data in function_calls_data:
+                    formatted_tool_calls.append({
+                        "type": "function",  # This is the required field
+                        "id": func_data["id"],
+                        "function": {
+                            "name": func_data["name"],
+                            "arguments": func_data["args"]
+                        }
+                    })
+                
+                # Create the second messages with properly formatted tool_calls
+                second_messages = messages + [{
+                    "role": "assistant", 
+                    "content": initial_response,
+                    "tool_calls": formatted_tool_calls
+                }] + function_responses
+
+                # Debug vor dem zweiten API-Call
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Preparing for second API call'})}\n\n"
+                
+                # WICHTIG: Final response start event - stelle sicher, dass es gesendet wird
+                yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
+                
+                # Initiiere den zweiten API-Call
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Starting second API call'})}\n\n"
+                
+                try:
+                    final_response = openai.chat.completions.create(
+                        model="o3-mini",
+                        messages=second_messages,
+                        stream=True
+                    )
+                    
+                    yield f"data: {json.dumps({'type': 'debug', 'message': 'Second API call initiated'})}\n\n"
+                    
+                    final_text = ""
+                    for chunk in final_response:
+                        if chunk.choices[0].delta.content:
+                            text_chunk = chunk.choices[0].delta.content
+                            final_text += text_chunk
+                            yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
+                    
+                    # Vollständige Antwort zusammenstellen
+                    full_response = initial_response + "\n\n" + final_text
+                    
+                    # Session aktualisieren und Stream beenden
+                    yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': full_response})}\n\n"
+                    yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream complete with function execution'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'end'})}\n\n"
+                    
+                except Exception as e:
+                    debug_print("API Calls", f"Error in second call: {str(e)}")
+                    yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler beim zweiten API-Call: {str(e)}'})}\n\n"
+                    # Trotz Fehler die Session aktualisieren
+                    yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
+                    yield f"data: {json.dumps({'type': 'end'})}\n\n"
+            else:
+                # No valid function responses, just save initial response
+                yield f"data: {json.dumps({'type': 'debug', 'message': 'Function execution produced no valid responses'})}\n\n"
+                yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
+                yield f"data: {json.dumps({'type': 'end'})}\n\n"
+        else:
+            # No function calls, just save initial response
+            yield f"data: {json.dumps({'type': 'debug', 'message': 'No function calls detected'})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
+            yield f"data: {json.dumps({'type': 'end'})}\n\n"
+    
+    except Exception as e:
+        logging.exception("Fehler im Stream")
+        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler: {str(e)}'})}\n\n"
+        # Auch bei Fehler versuchen, Stream ordnungsgemäß zu beenden
+        yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': 'Es ist ein Fehler aufgetreten.'})}\n\n"
+        yield f"data: {json.dumps({'type': 'end'})}\n\n"    
+
+
+
+@app.route("/", methods=["GET", "POST"])
+def chat():
+    try:
+        user_id = session.get("user_id")
+        user_name = session.get("user_name")
+
+        if not user_name:
+            return redirect(url_for("google_login"))
+
+        seller_id = session.get("seller_id")
+        if not seller_id and session.get("email"):
+            seller_id = get_user_id_from_email(session.get("email"))
+            if seller_id:
+                session["seller_id"] = seller_id
+                session.modified = True
+
+        chat_key = f"chat_history_{user_id}"
+        if chat_key not in session:
+            session[chat_key] = []
+        chat_history = session[chat_key]
+
+        # Einfache Anzeige der Chat-History
+        display_chat_history = chat_history
+
+        try:
+            with open("table_schema.json", "r", encoding="utf-8") as f:
+                table_schema = json.load(f)
+            with open("query_patterns.json", "r", encoding="utf-8") as f:
+                query_patterns = json.load(f)
+        except Exception as e:
+            logging.error(f"Fehler beim Laden der Schema-Dateien: {e}")
+            table_schema = {"tables": {}}
+            query_patterns = {"common_queries": {}}
+
+        if request.method == "POST":
+            user_message = request.form.get("message", "").strip()
+            notfall_aktiv = request.form.get("notfallmodus") == "1"
+            notfall_art = request.form.get("notfallart", "").strip()
+            
+            # Check if this is a streaming request
+            stream_mode = request.form.get("stream", "0") == "1"
+
+            if not user_message:
+                flash("Bitte geben Sie eine Nachricht ein.", "warning")
+                return (
+                    jsonify({"error": "Bitte geben Sie eine Nachricht ein."}),
+                    400,
+                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                    url_for("chat")
+                )
+
+            wissensbasis = download_wissensbasis()
+            if not wissensbasis:
+                flash("Die Wissensbasis konnte nicht geladen werden.", "danger")
+                return (
+                    jsonify({"error": "Die Wissensbasis konnte nicht geladen werden."}),
+                    500,
+                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                    url_for("chat")
+                )
+
+            if notfall_aktiv:
+                session["notfall_mode"] = True
+                user_message = (
+                    f"ACHTUNG NOTFALL - Thema 9: Notfälle & Vertragsgefährdungen.\n"
+                    f"Ausgewählte Notfalloption(en): {notfall_art}\n\n"
+                    + user_message
+                )
+                log_notfall_event(user_id, notfall_art, user_message)
+            else:
+                session.pop("notfall_mode", None)
+
+            # Verbesserter System Prompt
+            system_prompt = create_system_prompt(table_schema)
+            prompt_wissensbasis_abschnitte = [
+                f"Thema: {thema}, Unterthema: {unterthema_full}, Beschreibung: {details.get('beschreibung', '')}, Inhalt: {'. '.join(details.get('inhalt', []))}"
+                for thema, unterthemen in wissensbasis.items()
+                for unterthema_full, details in unterthemen.items()
+            ]
+            system_prompt += f"\n\nWissensbasis:\n{chr(10).join(prompt_wissensbasis_abschnitte)}"
+            system_prompt = (
+                f"Der Name deines Gesprächspartners lautet {user_name}.\n"
+                + system_prompt
+                + (f"\n\nDu sprichst mit einem Vertriebspartner mit der ID {seller_id}." if seller_id else "")
+            )
+
+            # Setup tools and message collections for different approaches
+            tools = create_function_definitions()
+            debug_print("API Setup", f"System prompt (gekürzt): {system_prompt[:200]}...")
+            debug_print("API Setup", f"Anzahl definierter Tools: {len(tools)}")
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ]
+
+            # Sammle alle relevanten Session-Daten für den mehrstufigen Prozess
+            session_data = {
+                "user_id": user_id,
+                "user_name": user_name,
+                "seller_id": seller_id,
+                "email": session.get("email"),
+                "chat_key": chat_key,
+                "chat_history": list(chat_history) if stream_mode else None  # Nur für Streaming benötigt
+            }
+
+            # Debug-Modus: Direkte Erzwingung eines bestimmten Tools
+            debug_force = request.args.get("force_function")
+            if debug_force:
+                debug_print("DEBUG", f"Erzwinge Funktionsaufruf: {debug_force}")
+                # Hier verwenden wir die alte Methode der direkten OpenAI-Aufrufe mit erzwungenem Tool
+                tool_choice = {"type": "function", "function": {"name": debug_force}}
+                use_legacy_approach = True
+            else:
+                # Für den normalen Betrieb verwenden wir den neuen mehrstufigen Ansatz
+                use_legacy_approach = False
+
+            try:
+                # Streaming-Modus
+                if stream_mode and request.headers.get("Accept") == "text/event-stream":
+                    if use_legacy_approach:
+                        # Legacy Streaming mit direkter Tool-Auswahl für Debug
+                        return Response(
+                            stream_response(messages, tools, tool_choice, seller_id, extract_date_params(user_message), user_message, session_data),
+                            content_type="text/event-stream"
+                        )
+                    else:
+                        # Neues Streaming mit verbessertem Tool-Auswahlprozess
+                        # Neues Streaming mit verbessertem Tool-Auswahlprozess
+                        tool_config = load_tool_config()
+                        selected_tool = select_optimal_tool_with_reasoning(user_message, tools, tool_config)[0]
+                                                
+                        # Korrektes Format für tool_choice erstellen
+                        tool_choice = {"type": "function", "function": {"name": selected_tool}} if selected_tool else "auto"
+                                                
+                        return Response(
+                            stream_response(
+                                messages, 
+                                tools, 
+                                tool_choice,  # Statt dem String das korrekt formatierte Objekt übergeben
+                                seller_id, 
+                                extract_enhanced_date_params(user_message), 
+                                user_message, 
+                                session_data
+                            ),
+                            content_type="text/event-stream"
+                        )
+                           
+                        
+                
+                # Nicht-Streaming-Modus
+                if use_legacy_approach:
+                    # Legacy-Ansatz (für Debug-Modus)
+                    debug_print("API Calls", f"Legacy-Ansatz mit explizitem Function Calling: {debug_force}")
+                    response = openai.chat.completions.create(
+                        model="o3-mini",
+                        messages=messages,
+                        tools=tools,
+                        tool_choice=tool_choice
+                    )
+                    
+                    assistant_message = response.choices[0].message
+                    debug_print("API Response", f"Message type: {type(assistant_message)}")
+                    debug_print("API Response", f"Has tool calls: {hasattr(assistant_message, 'tool_calls') and bool(assistant_message.tool_calls)}")
+
+                    # Initialize the antwort variable
+                    antwort = None
+
+                    if assistant_message.tool_calls:
+                        debug_print("API Calls", f"Function Calls erkannt: {assistant_message.tool_calls}")
+                        function_responses = []
+
+                        for tool_call in assistant_message.tool_calls:
+                            function_name = tool_call.function.name
+                            function_args = json.loads(tool_call.function.arguments)
+                            debug_print("Function", f"Name: {function_name}, Argumente vor Modifikation: {function_args}")
+
+                            # Standardargumente hinzufügen und überschreiben
+                            if seller_id:
+                                function_args["seller_id"] = seller_id
+                            
+                            # Nur extrahierte Datumswerte hinzufügen, wenn sie nicht bereits gesetzt sind
+                            extracted_args = extract_enhanced_date_params(user_message)
+                            for key, value in extracted_args.items():
+                                if key not in function_args or not function_args[key]:
+                                    function_args[key] = value
+
+                            debug_print("Function", f"Argumente nach Modifikation: {function_args}")
+                            function_response = handle_function_call(function_name, function_args)
+                            
+                            # Parsen der Function Response für bessere Logging
+                            try:
+                                parsed_response = json.loads(function_response)
+                                response_status = parsed_response.get("status", "unknown")
+                                response_count = len(parsed_response.get("data", [])) if "data" in parsed_response else 0
+                                debug_print("Function Response", f"Status: {response_status}, Anzahl Ergebnisse: {response_count}")
+                            except:
+                                debug_print("Function Response", "Konnte Response nicht parsen")
+                            
+                            function_responses.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tool_call.id,
+                                    "content": function_response,
+                                }
+                            )
+
+                        # Second call to OpenAI with function results
+                        second_messages = messages + [assistant_message.model_dump(exclude_unset=True)] + function_responses
+                        debug_print("API Calls", f"Zweiter Aufruf an OpenAI mit {len(function_responses)} Funktionsantworten")
+                        second_response = openai.chat.completions.create(model="o3-mini", messages=second_messages)
+                        final_message = second_response.choices[0].message
+                        antwort = final_message.content
+                        debug_print("API Calls", f"Finale Antwort: {antwort[:100]}...")
+
+                    else:
+                        antwort = assistant_message.content
+                        debug_print("API Calls", f"Direkte Antwort (kein Function Call): {antwort[:100]}...")
+                        # Warnung ins Log schreiben, wenn keine Funktion aufgerufen wurde
+                        if any(term in user_message.lower() for term in ["care", "pflege", "kunden", "verträge", "mai", "monat"]):
+                            logging.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
+                
+                else:
+                    # Neuer mehrstufiger Ansatz
+                    debug_print("API Calls", f"Verwende mehrstufigen Ansatz für: {user_message}")
+                    antwort = process_user_query(user_message, session_data)
+                    debug_print("API Calls", f"Mehrstufige Antwort: {antwort[:100]}...")
+
+                # Chat-History aktualisieren
+                if antwort:  # Check if antwort is defined
+                    chat_history.append({"user": user_message, "bot": antwort})
+                    session[chat_key] = chat_history
+                    store_chatlog(user_name, chat_history)
+
+                    return (
+                        jsonify({"response": antwort}),
+                        200,
+                    ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                        url_for("chat")
+                    )
+                else:
+                    error_message = "Keine Antwort erhalten."
+                    debug_print("API Calls", error_message)
+                    return (
+                        jsonify({"error": error_message}),
+                        500,
+                    ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                        url_for("chat")
+                    )
+                    
+            except Exception as e:
+                logging.exception("Fehler beim Verarbeiten der Anfrage")
+                error_message = f"Fehler bei der Kommunikation: {str(e)}"
+                debug_print("API Calls", error_message)
+                flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", "danger")
+                return (
+                    jsonify({"error": error_message}),
+                    500,
+                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
+                    url_for("chat")
+                )
+
+        stats = calculate_chat_stats()
+        return render_template("chat.html", chat_history=display_chat_history, stats=stats)
+
+    except Exception as e:
+        logging.exception("Fehler in chat-Funktion.")
+        flash("Ein unerwarteter Fehler ist aufgetreten.", "danger")
+        return (
+            jsonify({"error": "Interner Serverfehler."}),
+            500,
+        ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
 
 @app.route('/test_session')
 def test_session():
@@ -3086,460 +3565,6 @@ def create_system_prompt(table_schema):
     """
     
     return prompt
-
-@app.route("/", methods=["GET", "POST"])
-def chat():
-    try:
-        user_id = session.get("user_id")
-        user_name = session.get("user_name")
-
-        if not user_name:
-            return redirect(url_for("google_login"))
-
-        seller_id = session.get("seller_id")
-        if not seller_id and session.get("email"):
-            seller_id = get_user_id_from_email(session.get("email"))
-            if seller_id:
-                session["seller_id"] = seller_id
-                session.modified = True
-
-        chat_key = f"chat_history_{user_id}"
-        if chat_key not in session:
-            session[chat_key] = []
-        chat_history = session[chat_key]
-
-        # Einfache Anzeige der Chat-History
-        display_chat_history = chat_history
-
-        try:
-            with open("table_schema.json", "r", encoding="utf-8") as f:
-                table_schema = json.load(f)
-            with open("query_patterns.json", "r", encoding="utf-8") as f:
-                query_patterns = json.load(f)
-        except Exception as e:
-            logging.error(f"Fehler beim Laden der Schema-Dateien: {e}")
-            table_schema = {"tables": {}}
-            query_patterns = {"common_queries": {}}
-
-        if request.method == "POST":
-            user_message = request.form.get("message", "").strip()
-            notfall_aktiv = request.form.get("notfallmodus") == "1"
-            notfall_art = request.form.get("notfallart", "").strip()
-            
-            # Check if this is a streaming request
-            stream_mode = request.form.get("stream", "0") == "1"
-
-            if not user_message:
-                flash("Bitte geben Sie eine Nachricht ein.", "warning")
-                return (
-                    jsonify({"error": "Bitte geben Sie eine Nachricht ein."}),
-                    400,
-                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
-                    url_for("chat")
-                )
-
-            wissensbasis = download_wissensbasis()
-            if not wissensbasis:
-                flash("Die Wissensbasis konnte nicht geladen werden.", "danger")
-                return (
-                    jsonify({"error": "Die Wissensbasis konnte nicht geladen werden."}),
-                    500,
-                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
-                    url_for("chat")
-                )
-
-            if notfall_aktiv:
-                session["notfall_mode"] = True
-                user_message = (
-                    f"ACHTUNG NOTFALL - Thema 9: Notfälle & Vertragsgefährdungen.\n"
-                    f"Ausgewählte Notfalloption(en): {notfall_art}\n\n"
-                    + user_message
-                )
-                log_notfall_event(user_id, notfall_art, user_message)
-            else:
-                session.pop("notfall_mode", None)
-
-            # Verbesserter System Prompt
-            system_prompt = create_system_prompt(table_schema)
-            prompt_wissensbasis_abschnitte = [
-                f"Thema: {thema}, Unterthema: {unterthema_full}, Beschreibung: {details.get('beschreibung', '')}, Inhalt: {'. '.join(details.get('inhalt', []))}"
-                for thema, unterthemen in wissensbasis.items()
-                for unterthema_full, details in unterthemen.items()
-            ]
-            system_prompt += f"\n\nWissensbasis:\n{chr(10).join(prompt_wissensbasis_abschnitte)}"
-            system_prompt = (
-                f"Der Name deines Gesprächspartners lautet {user_name}.\n"
-                + system_prompt
-                + (f"\n\nDu sprichst mit einem Vertriebspartner mit der ID {seller_id}." if seller_id else "")
-            )
-
-            # Setup tools and message collections for different approaches
-            tools = create_function_definitions()
-            debug_print("API Setup", f"System prompt (gekürzt): {system_prompt[:200]}...")
-            debug_print("API Setup", f"Anzahl definierter Tools: {len(tools)}")
-
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ]
-
-            # Sammle alle relevanten Session-Daten für den mehrstufigen Prozess
-            session_data = {
-                "user_id": user_id,
-                "user_name": user_name,
-                "seller_id": seller_id,
-                "email": session.get("email"),
-                "chat_key": chat_key,
-                "chat_history": list(chat_history) if stream_mode else None  # Nur für Streaming benötigt
-            }
-
-            # Debug-Modus: Direkte Erzwingung eines bestimmten Tools
-            debug_force = request.args.get("force_function")
-            if debug_force:
-                debug_print("DEBUG", f"Erzwinge Funktionsaufruf: {debug_force}")
-                # Hier verwenden wir die alte Methode der direkten OpenAI-Aufrufe mit erzwungenem Tool
-                tool_choice = {"type": "function", "function": {"name": debug_force}}
-                use_legacy_approach = True
-            else:
-                # Für den normalen Betrieb verwenden wir den neuen mehrstufigen Ansatz
-                use_legacy_approach = False
-
-            try:
-                # Streaming-Modus
-                if stream_mode and request.headers.get("Accept") == "text/event-stream":
-                    if use_legacy_approach:
-                        # Legacy Streaming mit direkter Tool-Auswahl für Debug
-                        return Response(
-                            stream_response(messages, tools, tool_choice, seller_id, extract_date_params(user_message), user_message, session_data),
-                            content_type="text/event-stream"
-                        )
-                    else:
-                        # Neues Streaming mit verbessertem Tool-Auswahlprozess
-                        # Neues Streaming mit verbessertem Tool-Auswahlprozess
-                        tool_config = load_tool_config()
-                        selected_tool = select_optimal_tool_with_reasoning(user_message, tools, tool_config)[0]
-                                                
-                        # Korrektes Format für tool_choice erstellen
-                        tool_choice = {"type": "function", "function": {"name": selected_tool}} if selected_tool else "auto"
-                                                
-                        return Response(
-                            stream_response(
-                                messages, 
-                                tools, 
-                                tool_choice,  # Statt dem String das korrekt formatierte Objekt übergeben
-                                seller_id, 
-                                extract_enhanced_date_params(user_message), 
-                                user_message, 
-                                session_data
-                            ),
-                            content_type="text/event-stream"
-                        )
-                           
-                        
-                
-                # Nicht-Streaming-Modus
-                if use_legacy_approach:
-                    # Legacy-Ansatz (für Debug-Modus)
-                    debug_print("API Calls", f"Legacy-Ansatz mit explizitem Function Calling: {debug_force}")
-                    response = openai.chat.completions.create(
-                        model="o3-mini",
-                        messages=messages,
-                        tools=tools,
-                        tool_choice=tool_choice
-                    )
-                    
-                    assistant_message = response.choices[0].message
-                    debug_print("API Response", f"Message type: {type(assistant_message)}")
-                    debug_print("API Response", f"Has tool calls: {hasattr(assistant_message, 'tool_calls') and bool(assistant_message.tool_calls)}")
-
-                    # Initialize the antwort variable
-                    antwort = None
-
-                    if assistant_message.tool_calls:
-                        debug_print("API Calls", f"Function Calls erkannt: {assistant_message.tool_calls}")
-                        function_responses = []
-
-                        for tool_call in assistant_message.tool_calls:
-                            function_name = tool_call.function.name
-                            function_args = json.loads(tool_call.function.arguments)
-                            debug_print("Function", f"Name: {function_name}, Argumente vor Modifikation: {function_args}")
-
-                            # Standardargumente hinzufügen und überschreiben
-                            if seller_id:
-                                function_args["seller_id"] = seller_id
-                            
-                            # Nur extrahierte Datumswerte hinzufügen, wenn sie nicht bereits gesetzt sind
-                            extracted_args = extract_enhanced_date_params(user_message)
-                            for key, value in extracted_args.items():
-                                if key not in function_args or not function_args[key]:
-                                    function_args[key] = value
-
-                            debug_print("Function", f"Argumente nach Modifikation: {function_args}")
-                            function_response = handle_function_call(function_name, function_args)
-                            
-                            # Parsen der Function Response für bessere Logging
-                            try:
-                                parsed_response = json.loads(function_response)
-                                response_status = parsed_response.get("status", "unknown")
-                                response_count = len(parsed_response.get("data", [])) if "data" in parsed_response else 0
-                                debug_print("Function Response", f"Status: {response_status}, Anzahl Ergebnisse: {response_count}")
-                            except:
-                                debug_print("Function Response", "Konnte Response nicht parsen")
-                            
-                            function_responses.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "content": function_response,
-                                }
-                            )
-
-                        # Second call to OpenAI with function results
-                        second_messages = messages + [assistant_message.model_dump(exclude_unset=True)] + function_responses
-                        debug_print("API Calls", f"Zweiter Aufruf an OpenAI mit {len(function_responses)} Funktionsantworten")
-                        second_response = openai.chat.completions.create(model="o3-mini", messages=second_messages)
-                        final_message = second_response.choices[0].message
-                        antwort = final_message.content
-                        debug_print("API Calls", f"Finale Antwort: {antwort[:100]}...")
-
-                    else:
-                        antwort = assistant_message.content
-                        debug_print("API Calls", f"Direkte Antwort (kein Function Call): {antwort[:100]}...")
-                        # Warnung ins Log schreiben, wenn keine Funktion aufgerufen wurde
-                        if any(term in user_message.lower() for term in ["care", "pflege", "kunden", "verträge", "mai", "monat"]):
-                            logging.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
-                
-                else:
-                    # Neuer mehrstufiger Ansatz
-                    debug_print("API Calls", f"Verwende mehrstufigen Ansatz für: {user_message}")
-                    antwort = process_user_query(user_message, session_data)
-                    debug_print("API Calls", f"Mehrstufige Antwort: {antwort[:100]}...")
-
-                # Chat-History aktualisieren
-                if antwort:  # Check if antwort is defined
-                    chat_history.append({"user": user_message, "bot": antwort})
-                    session[chat_key] = chat_history
-                    store_chatlog(user_name, chat_history)
-
-                    return (
-                        jsonify({"response": antwort}),
-                        200,
-                    ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
-                        url_for("chat")
-                    )
-                else:
-                    error_message = "Keine Antwort erhalten."
-                    debug_print("API Calls", error_message)
-                    return (
-                        jsonify({"error": error_message}),
-                        500,
-                    ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
-                        url_for("chat")
-                    )
-                    
-            except Exception as e:
-                logging.exception("Fehler beim Verarbeiten der Anfrage")
-                error_message = f"Fehler bei der Kommunikation: {str(e)}"
-                debug_print("API Calls", error_message)
-                flash("Es gab ein Problem bei der Kommunikation mit dem Bot.", "danger")
-                return (
-                    jsonify({"error": error_message}),
-                    500,
-                ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else redirect(
-                    url_for("chat")
-                )
-
-        stats = calculate_chat_stats()
-        return render_template("chat.html", chat_history=display_chat_history, stats=stats)
-
-    except Exception as e:
-        logging.exception("Fehler in chat-Funktion.")
-        flash("Ein unerwarteter Fehler ist aufgetreten.", "danger")
-        return (
-            jsonify({"error": "Interner Serverfehler."}),
-            500,
-        ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
-
-def stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_message, session_data):
-    """Stream the OpenAI response and handle function calls within the stream
-    
-    Args:
-        messages: OpenAI message array
-        tools: Available tools/functions
-        tool_choice: Which tool to use
-        seller_id: The seller's ID
-        extracted_args: Any extracted date parameters
-        user_message: The original user message
-        session_data: A dictionary containing all needed session data
-    """
-    # Extract session data - this avoids accessing session in the generator
-    user_id = session_data["user_id"]
-    user_name = session_data["user_name"]
-    chat_key = session_data["chat_key"]
-    chat_history = session_data["chat_history"]
-    
-    try:
-        # Debug-Events für die Verbindungsdiagnose
-        yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream-Start'})}\n\n"
-        #yield f"data: {json.dumps({'type': 'text', 'content': 'Test-Content vom Server'})}\n\n"
-
-        debug_print("API Calls", f"Streaming-Anfrage an OpenAI mit Function Calling")
-        response = openai.chat.completions.create(
-            model="o3-mini",
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice,
-            stream=True  # Enable streaming
-        )
-        
-        initial_response = ""
-        function_calls_data = []
-        has_function_calls = False
-        
-        # Stream the initial response
-        yield f"data: {json.dumps({'type': 'start'})}\n\n"
-        
-        for chunk in response:
-            if chunk.choices[0].delta.content:
-                text_chunk = chunk.choices[0].delta.content
-                initial_response += text_chunk
-                yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
-            
-            # Check if this chunk contains function call info
-            if hasattr(chunk.choices[0].delta, 'tool_calls') and chunk.choices[0].delta.tool_calls:
-                has_function_calls = True
-                # Collect function call data
-                for tool_call in chunk.choices[0].delta.tool_calls:
-                    tool_index = tool_call.index
-                    
-                    # Initialize the tool call if needed
-                    while len(function_calls_data) <= tool_index:
-                        function_calls_data.append({"id": str(tool_index), "name": "", "args": ""})
-                    
-                    if hasattr(tool_call, 'function'):
-                        if hasattr(tool_call.function, 'name') and tool_call.function.name:
-                            function_calls_data[tool_index]["name"] = tool_call.function.name
-                        
-                        if hasattr(tool_call.function, 'arguments') and tool_call.function.arguments:
-                            function_calls_data[tool_index]["args"] += tool_call.function.arguments
-        
-        # If function calls detected, execute them
-        if has_function_calls:
-            yield f"data: {json.dumps({'type': 'function_call_start'})}\n\n"
-            yield f"data: {json.dumps({'type': 'debug', 'message': f'Detected {len(function_calls_data)} function calls'})}\n\n"
-            
-            function_responses = []
-            for func_data in function_calls_data:
-                if func_data["name"] and func_data["args"]:
-                    try:
-                        function_name = func_data["name"]
-                        function_args = json.loads(func_data["args"])
-                        
-                        # Add seller_id and extracted date parameters
-                        if seller_id:
-                            function_args["seller_id"] = seller_id
-                        
-                        for key, value in extracted_args.items():
-                            if key not in function_args or not function_args[key]:
-                                function_args[key] = value
-                        
-                        # Execute the function
-                        debug_print("Function", f"Streaming: Executing {function_name} with args {function_args}")
-                        yield f"data: {json.dumps({'type': 'debug', 'message': f'Executing function {function_name}'})}\n\n"
-                        
-                        function_response = handle_function_call(function_name, function_args)
-                        
-                        # Add to function responses
-                        function_responses.append({
-                            "role": "tool",
-                            "tool_call_id": func_data["id"],
-                            "content": function_response
-                        })
-                        
-                        yield f"data: {json.dumps({'type': 'function_result', 'name': function_name})}\n\n"
-                        yield f"data: {json.dumps({'type': 'debug', 'message': f'Function executed successfully'})}\n\n"
-                        
-                    except Exception as e:
-                        debug_print("Function", f"Error executing function: {str(e)}")
-                        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Funktionsausführung: {str(e)}'})}\n\n"
-            
-            # Second call to get final response
-            if function_responses:
-                # Properly format the tool_calls with the required 'type' field
-                formatted_tool_calls = []
-                for func_data in function_calls_data:
-                    formatted_tool_calls.append({
-                        "type": "function",  # This is the required field
-                        "id": func_data["id"],
-                        "function": {
-                            "name": func_data["name"],
-                            "arguments": func_data["args"]
-                        }
-                    })
-                
-                # Create the second messages with properly formatted tool_calls
-                second_messages = messages + [{
-                    "role": "assistant", 
-                    "content": initial_response,
-                    "tool_calls": formatted_tool_calls
-                }] + function_responses
-
-                # Debug vor dem zweiten API-Call
-                yield f"data: {json.dumps({'type': 'debug', 'message': 'Preparing for second API call'})}\n\n"
-                
-                # WICHTIG: Final response start event - stelle sicher, dass es gesendet wird
-                yield f"data: {json.dumps({'type': 'final_response_start'})}\n\n"
-                
-                # Initiiere den zweiten API-Call
-                yield f"data: {json.dumps({'type': 'debug', 'message': 'Starting second API call'})}\n\n"
-                
-                try:
-                    final_response = openai.chat.completions.create(
-                        model="o3-mini",
-                        messages=second_messages,
-                        stream=True
-                    )
-                    
-                    yield f"data: {json.dumps({'type': 'debug', 'message': 'Second API call initiated'})}\n\n"
-                    
-                    final_text = ""
-                    for chunk in final_response:
-                        if chunk.choices[0].delta.content:
-                            text_chunk = chunk.choices[0].delta.content
-                            final_text += text_chunk
-                            yield f"data: {json.dumps({'type': 'text', 'content': text_chunk})}\n\n"
-                    
-                    # Vollständige Antwort zusammenstellen
-                    full_response = initial_response + "\n\n" + final_text
-                    
-                    # Session aktualisieren und Stream beenden
-                    yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': full_response})}\n\n"
-                    yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream complete with function execution'})}\n\n"
-                    yield f"data: {json.dumps({'type': 'end'})}\n\n"
-                    
-                except Exception as e:
-                    debug_print("API Calls", f"Error in second call: {str(e)}")
-                    yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler beim zweiten API-Call: {str(e)}'})}\n\n"
-                    # Trotz Fehler die Session aktualisieren
-                    yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
-                    yield f"data: {json.dumps({'type': 'end'})}\n\n"
-            else:
-                # No valid function responses, just save initial response
-                yield f"data: {json.dumps({'type': 'debug', 'message': 'Function execution produced no valid responses'})}\n\n"
-                yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
-                yield f"data: {json.dumps({'type': 'end'})}\n\n"
-        else:
-            # No function calls, just save initial response
-            yield f"data: {json.dumps({'type': 'debug', 'message': 'No function calls detected'})}\n\n"
-            yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': initial_response})}\n\n"
-            yield f"data: {json.dumps({'type': 'end'})}\n\n"
-    
-    except Exception as e:
-        logging.exception("Fehler im Stream")
-        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler: {str(e)}'})}\n\n"
-        # Auch bei Fehler versuchen, Stream ordnungsgemäß zu beenden
-        yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': 'Es ist ein Fehler aufgetreten.'})}\n\n"
-        yield f"data: {json.dumps({'type': 'end'})}\n\n"    
 
 @app.route('/update_stream_chat_history', methods=['POST'])
 def update_stream_chat_history():

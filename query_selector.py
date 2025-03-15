@@ -117,8 +117,8 @@ Important considerations:
 - For questions about active care stays, prefer get_active_care_stays_now
 - For questions about revenue or earnings, prefer get_revenue_by_agency or get_monthly_performance
 - For questions about specific customers, prefer get_customer_history
-- For terminations or contract ends, prefer get_contract_terminations
-- For questions about terminated contracts with distinctions between real terminations and agency switches, use get_contract_terminations
+- For terminations or contract ends, prefer get_contract_terminations and always give back 'ernsthafte' terminations and 'agenturwechsel' separately and as a sum
+- For questions about terminated contracts with distinctions between 'ernsthaft' terminations and 'agenturwechsel', use get_contract_terminations
 
 Format your response as JSON with these fields:
 - selected_query: [query name]

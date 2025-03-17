@@ -823,8 +823,9 @@ def login():
 @api.route('/auth/google-login')
 def google_login():
     """Google OAuth Login Route"""
-    # Create URL for Google OAuth page
-    redirect_uri = url_for('api.google_callback', _external=True)
+    # Create URL for Google OAuth page - must match exactly what's registered in Google Console
+    redirect_uri = url_for('google_callback', _external=True)
+    logging.info(f"Google login - redirect URI: {redirect_uri}")
     
     google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
     params = {
@@ -854,7 +855,7 @@ def google_callback():
             'code': code,
             'client_id': os.getenv('GOOGLE_CLIENT_ID'),
             'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
-            'redirect_uri': url_for('api.google_callback', _external=True),
+            'redirect_uri': url_for('google_callback', _external=True),
             'grant_type': 'authorization_code'
         }
         

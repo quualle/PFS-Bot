@@ -1368,10 +1368,23 @@ from api.routes import api
 # Register blueprints
 app.register_blueprint(api)
 
-# Direct redirection to Google login
+# Direct redirection to Google login - same path as original app for OAuth compatibility
+@app.route('/google_login')
+def google_login():
+    return redirect('/api/auth/google-login')
+
+# Compatibility alias for direct-google-login
 @app.route('/direct-google-login')
 def direct_google_login():
-    return redirect('/api/auth/google-login')
+    return redirect('/google_login')
+
+# Add Google callback route for OAuth compatibility
+@app.route('/google_callback')
+def google_callback():
+    """Redirect Google callback to API route for handling OAuth callback"""
+    # Just pass all query parameters along to the API route
+    query_string = request.query_string.decode('utf-8')
+    return redirect(f'/api/auth/google-callback?{query_string}')
 
 # Serve the React app for any other routes
 @app.route('/', defaults={'path': ''})
@@ -1380,7 +1393,7 @@ def serve(path):
     # Check if the user is already authenticated
     if path == '' and 'user' not in session:
         # If not authenticated and accessing the root route, redirect to Google login
-        return redirect('/direct-google-login')
+        return redirect('/google_login')
     
     # Normal serving of static files
     if path != "" and os.path.exists(os.path.join(app.template_folder, path)):

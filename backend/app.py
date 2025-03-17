@@ -711,9 +711,7 @@ def stream_response(messages, tools, tool_choice, seller_id, date_params, user_m
     """Streaming-Response für die Chat-Antwort"""
     try:
         # Show we're starting the process
-        yield f"data: {json.dumps({'type': 'status', 'content': 'Starting response generation...'})}
-
-"
+        yield 'data: ' + json.dumps({'type': 'status', 'content': 'Starting response generation...'}) + '\n\n'
         
         # First API call to determine the tool to use
         debug_print("Streaming", f"Making first API call with tool_choice: {tool_choice}")
@@ -745,9 +743,7 @@ def stream_response(messages, tools, tool_choice, seller_id, date_params, user_m
                         "name": tool_call_delta.function.name,
                         "arguments": ""
                     }
-                    yield f"data: {json.dumps({'type': 'tool_start', 'content': f'Using {tool_call_delta.function.name} to answer your question...'})}
-
-"
+                    yield 'data: ' + json.dumps({'type': 'tool_start', 'content': f'Using {tool_call_delta.function.name} to answer your question...'}) + '\n\n'
                 
                 # Append function arguments if present
                 if tool_call_delta.function.arguments:
@@ -763,9 +759,7 @@ def stream_response(messages, tools, tool_choice, seller_id, date_params, user_m
                 # If it's regular content
                 content_chunk = chunk.choices[0].delta.content
                 assistant_message_content += content_chunk
-                yield f"data: {json.dumps({'type': 'text', 'content': content_chunk})}
-
-"
+                yield 'data: ' + json.dumps({'type': 'text', 'content': content_chunk}) + '\n\n'
             
             # Check for the end of the message
             if chunk.choices[0].finish_reason == "tool_calls":
@@ -792,9 +786,7 @@ def stream_response(messages, tools, tool_choice, seller_id, date_params, user_m
                                 function_args[param] = value
                         
                         # Show that we're executing the function
-                        yield f"data: {json.dumps({'type': 'status', 'content': f'Executing {function_name}...'})}
-
-"
+                        yield 'data: ' + json.dumps({'type': 'status', 'content': f'Executing {function_name}...'}) + '\n\n'
                         
                         # Execute the function
                         function_response = handle_function_call_wrapper(function_name, function_args)
@@ -818,9 +810,7 @@ def stream_response(messages, tools, tool_choice, seller_id, date_params, user_m
                         })
                         
                         # Make a new API call with the function result
-                        yield f"data: {json.dumps({'type': 'status', 'content': 'Processing results...'})}
-
-"
+                        yield 'data: ' + json.dumps({'type': 'status', 'content': 'Processing results...'}) + '\n\n'
                         
                         second_response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",
@@ -834,9 +824,7 @@ def stream_response(messages, tools, tool_choice, seller_id, date_params, user_m
                             if chunk.choices[0].delta.content:
                                 content_chunk = chunk.choices[0].delta.content
                                 final_response += content_chunk
-                                yield f"data: {json.dumps({'type': 'text', 'content': content_chunk})}
-
-"
+                                yield 'data: ' + json.dumps({'type': 'text', 'content': content_chunk}) + '\n\n'
                         
                         # Store in chat history if requested and we have session data
                         if session_data and "chat_history" in session_data and session_data["chat_history"] is not None:
@@ -859,9 +847,7 @@ def stream_response(messages, tools, tool_choice, seller_id, date_params, user_m
         error_message = f"Error in streaming response: {str(e)}"
         logging.error(error_message)
         traceback.print_exc()
-        yield f"data: {json.dumps({'type': 'error', 'content': error_message})}
-
-"
+        yield 'data: ' + json.dumps({'type': 'error', 'content': error_message}) + '\n\n'
 
 def get_user_id_from_email(email):
     """Gets the seller_id from a user email using BigQuery"""

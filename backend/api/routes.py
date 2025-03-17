@@ -7,6 +7,7 @@ import logging
 import sys
 import traceback
 import uuid
+import requests
 from datetime import datetime, timedelta
 import openai
 

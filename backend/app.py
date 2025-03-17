@@ -1173,9 +1173,7 @@ def api_send_message():
             # Load wissensbasis
             wissensbasis = download_wissensbasis()
             if not wissensbasis:
-                yield f"data: {json.dumps({'type': 'error', 'content': 'Die Wissensbasis konnte nicht geladen werden.'})}
-
-"
+                yield 'data: ' + json.dumps({'type': 'error', 'content': 'Die Wissensbasis konnte nicht geladen werden.'}) + '\n\n'
                 return
             
             # Setup system prompt

@@ -1368,10 +1368,21 @@ from api.routes import api
 # Register blueprints
 app.register_blueprint(api)
 
+# Direct redirection to Google login
+@app.route('/direct-google-login')
+def direct_google_login():
+    return redirect('/api/auth/google-login')
+
 # Serve the React app for any other routes
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
+    # Check if the user is already authenticated
+    if path == '' and 'user' not in session:
+        # If not authenticated and accessing the root route, redirect to Google login
+        return redirect('/direct-google-login')
+    
+    # Normal serving of static files
     if path != "" and os.path.exists(os.path.join(app.template_folder, path)):
         return render_template(path)
     return render_template('index.html')

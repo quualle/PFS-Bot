@@ -119,7 +119,8 @@ Important considerations:
 - For questions about specific customers, prefer get_customer_history
 - For terminations or contract ends, prefer get_contract_terminations and always give back 'ernsthafte' terminations and 'agenturwechsel' separately and as a sum
 - For questions about terminated contracts with distinctions between 'ernsthaft' terminations and 'agenturwechsel', use get_contract_terminations
-- For questions about "Pause". "Betreuungspause" or any other terms which describes a customer still be under contract but currently without carestay, use get_customers_on_pause
+- For questions about "Pause". "Betreuungspause" or any other terms which describes a customer still be under contract but currently without carestay, use get_customers_on_pause. Answer immediatly with the data about the break and also the next carestays
+
 
 Format your response as JSON with these fields:
 - selected_query: [query name]

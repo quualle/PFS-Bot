@@ -71,10 +71,20 @@ pip install -r requirements.txt
 
 #### Development Mode
 
-To run both frontend and backend in development mode:
+1. Start the frontend development server:
 
 ```bash
-npm run dev
+# From the frontend directory
+cd frontend
+npm run start
+```
+
+2. In a separate terminal, start the backend server:
+
+```bash
+# From the project root
+cd backend
+python app.py
 ```
 
 This will start:
@@ -85,14 +95,36 @@ This will start:
 
 To build and run the application in production mode:
 
+1. Build the React frontend:
+
 ```bash
+cd frontend
 npm run build
-npm start
+```
+
+2. Start the backend server:
+
+```bash
+cd ../backend
+python app.py
 ```
 
 This will:
-1. Build the React frontend
+1. Build the React frontend into static files
 2. Start the Flask server which will serve both the API and the built frontend
+
+#### Environment Variables
+
+The application requires the following environment variables to be set:
+
+- `OPENAI_API_KEY`: Your OpenAI API key for chat functionality
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to Google Cloud service account for BigQuery access
+- `GOOGLE_CLIENT_ID`: Google OAuth client ID for Google login
+- `GOOGLE_CLIENT_SECRET`: Google OAuth client secret for Google login
+- `FRONTEND_URL`: URL of the frontend (default: http://localhost:3000)
+- `SECRET_KEY`: Secret key for Flask session encryption
+
+You can set these in a `.env` file in the `backend` directory.
 
 ## Features
 

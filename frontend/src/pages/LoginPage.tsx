@@ -154,6 +154,27 @@ const LoginPage: React.FC = () => {
               >
                 {isLoading ? <CircularProgress size={24} /> : 'Start Chatting'}
               </Button>
+              
+              <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Or continue with
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  fullWidth
+                  onClick={() => window.location.href = '/api/auth/google-login'}
+                  startIcon={
+                    <img 
+                      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                      alt="Google" 
+                      style={{ width: 18, height: 18 }}
+                    />
+                  }
+                >
+                  Sign in with Google
+                </Button>
+              </Box>
             </Box>
           </TabPanel>
 

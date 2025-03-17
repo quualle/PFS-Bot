@@ -63,6 +63,11 @@ Session(app)
 # Initialize CSRF Protection
 csrf = CSRFProtect(app)
 
+# Disable CSRF protection for API routes (for development)
+@csrf.exempt
+def csrf_exempt_api():
+    return request.path.startswith('/api/')
+
 # Enable CORS for development/production
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 

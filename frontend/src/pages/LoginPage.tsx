@@ -163,7 +163,10 @@ const LoginPage: React.FC = () => {
                   variant="outlined"
                   color="primary"
                   fullWidth
-                  onClick={() => window.location.href = '/api/auth/google-login'}
+                  onClick={() => {
+                    // Use absolute URL with protocol and domain
+                    window.location.href = window.location.origin + '/api/auth/google-login';
+                  }}
                   startIcon={
                     <img 
                       src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 

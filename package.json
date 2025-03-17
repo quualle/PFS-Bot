@@ -6,10 +6,13 @@
   "scripts": {
     "start": "npm run start:backend",
     "start:frontend": "cd frontend && npm start",
-    "start:backend": "cd backend && python app.py",
+    "start:backend": "cd backend && python3 app.py",
     "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "build": "cd frontend && npm run build",
-    "postinstall": "cd frontend && npm install"
+    "postinstall": "cd frontend && npm install",
+    "setup-all": "npm install && cd frontend && npm install && cd ../backend && pip3 install -r requirements.txt",
+    "backend": "cd backend && python3 app.py",
+    "frontend": "cd frontend && npm start"
   },
   "dependencies": {
     "concurrently": "^8.2.2"

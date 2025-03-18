@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import dateparser
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response, g
 from flask_wtf import CSRFProtect
+from flask_wtf.csrf import generate_csrf
 from flask_session import Session
 from dotenv import load_dotenv
 from google.cloud import storage
@@ -1396,9 +1397,7 @@ def serve(path):
         return redirect('/google_login')
     
     # Get CSRF token for the response
-    csrf_token = ''
-    if not getattr(g, 'csrf_valid', False):  # Check if token needs refreshing
-        csrf_token = csrf.generate_csrf()
+    csrf_token = generate_csrf()
     
     # Normal serving of static files
     if path != "" and os.path.exists(os.path.join(app.template_folder, path)):

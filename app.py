@@ -27,7 +27,7 @@ import yaml
 import re
 
 try:
-    from query_selector import select_query_with_llm, update_selection_feedback
+    from query_selector import select_query_with_llm, update_selection_feedback, process_clarification_response
     USE_LLM_QUERY_SELECTOR = True
     logging.info("LLM-based query selector loaded successfully")
 except ImportError as e:
@@ -1704,7 +1704,7 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
                 original_request = session.pop("human_in_loop_original_request", user_message)
                 
                 # Verarbeite die Benutzerantwort zur Rückfrage
-                query_name, parameters = query_selector.process_clarification_response(
+                query_name, parameters = process_clarification_response(
                     clarification_option, original_request
                 )
             else:
@@ -3220,41 +3220,88 @@ def chat():
                                 content_type="text/event-stream"
                             )
                         
+                        # Spezielle Keywords für Direktabfragen
+                        elif "pause" in user_message_lower or "pausen" in user_message_lower:
+                            selected_tool = "get_customers_on_pause"
+                            params = {"seller_id": seller_id}
+                            
+                            # Direkte Ausführung ohne Streaming                            
+                            try:
+                                result = handle_function_call(selected_tool, params)
+                                result_data = json.loads(result)
+                                if "data" in result_data and len(result_data["data"]) > 0:
+                                    count = result_data.get("count", len(result_data["data"]))
+                                    response_text = f"Sie haben aktuell {count} Kunden in Betreuungspause."
+                                else:
+                                    response_text = "Aktuell sind keine Kunden in Betreuungspause."
+                                
+                                return Response(
+                                    stream_text_response(response_text, user_message, session_data),
+                                    content_type="text/event-stream"
+                                )
+                            except Exception as e:
+                                logging.error(f"Fehler bei direkter Pausenabfrage: {e}")
+                                response_text = "Bei der Abfrage der Pausen ist ein Fehler aufgetreten."
+                                return Response(
+                                    stream_text_response(response_text, user_message, session_data),
+                                    content_type="text/event-stream"
+                                )
+                        
                         # "Wie viele" Fragen direkt an die entsprechende Funktion leiten
                         elif "wie viele" in user_message_lower and "carestay" in user_message_lower:
                             selected_tool = "get_active_care_stays_now"
-                            tool_choice = {"type": "function", "function": {"name": selected_tool}}
-                            return Response(
-                                stream_response(
-                                    messages, 
-                                    tools, 
-                                    tool_choice,
-                                    seller_id, 
-                                    {"seller_id": seller_id}, 
-                                    user_message, 
-                                    session_data
-                                ),
-                                content_type="text/event-stream"
-                            )
+                            params = {"seller_id": seller_id}
+                            
+                            # Direkte Ausführung ohne Streaming                            
+                            try:
+                                result = handle_function_call(selected_tool, params)
+                                result_data = json.loads(result)
+                                if "data" in result_data and len(result_data["data"]) > 0:
+                                    count = result_data.get("count", len(result_data["data"]))
+                                    response_text = f"Sie haben aktuell {count} aktive Care-Stays."
+                                else:
+                                    response_text = "Aktuell sind keine Care-Stays aktiv."
+                                
+                                return Response(
+                                    stream_text_response(response_text, user_message, session_data),
+                                    content_type="text/event-stream"
+                                )
+                            except Exception as e:
+                                logging.error(f"Fehler bei direkter Care-Stay-Abfrage: {e}")
+                                response_text = "Bei der Abfrage der Care-Stays ist ein Fehler aufgetreten."
+                                return Response(
+                                    stream_text_response(response_text, user_message, session_data),
+                                    content_type="text/event-stream"
+                                )
                         
                         # Andere Kundenanfragen
                         elif "kunde" in user_message_lower or "kunden" in user_message_lower:
                             if "wie viele" in user_message_lower:
                                 # Anzahl der aktiven Verträge = Anzahl Kunden
                                 selected_tool = "get_active_contracts"
-                                tool_choice = {"type": "function", "function": {"name": selected_tool}}
-                                return Response(
-                                    stream_response(
-                                        messages, 
-                                        tools, 
-                                        tool_choice,
-                                        seller_id, 
-                                        {"seller_id": seller_id}, 
-                                        user_message, 
-                                        session_data
-                                    ),
-                                    content_type="text/event-stream"
-                                )
+                                params = {"seller_id": seller_id}
+                                
+                                # Direkte Ausführung ohne Streaming                            
+                                try:
+                                    result = handle_function_call(selected_tool, params)
+                                    result_data = json.loads(result)
+                                    if "data" in result_data and len(result_data["data"]) > 0:
+                                        count = result_data.get("count", len(result_data["data"]))
+                                        response_text = f"Sie haben aktuell {count} aktive Kunden."
+                                    else:
+                                        response_text = "Aktuell sind keine Kunden aktiv."
+                                    
+                                    return Response(
+                                        stream_text_response(response_text, user_message, session_data),
+                                        content_type="text/event-stream"
+                                    )
+                                except Exception as e:
+                                    logging.error(f"Fehler bei direkter Kundenabfrage: {e}")
+                                    response_text = "Bei der Abfrage der Kunden ist ein Fehler aufgetreten."
+                                    return Response(
+                                        stream_text_response(response_text, user_message, session_data),
+                                        content_type="text/event-stream"
+                                    )
                             # Sonst normaler Ablauf
                         
                         # Korrektes Format für tool_choice erstellen

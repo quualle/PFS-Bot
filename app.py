@@ -3167,121 +3167,111 @@ def chat():
                             content_type="text/event-stream"
                         )
                     else:
-                        # Enhanced multi-layer LLM approach
-                        session_data["conversation_history"] = chat_history
+                        # Vereinfachter Ansatz für die erste Implementierung
+                        # Verwende den bestehenden select_optimal_tool_with_reasoning für die erste Version
+                        tool_config = load_tool_config()
+                        selected_tool, reasoning = select_optimal_tool_with_reasoning(user_message, tools, tool_config)
                         
-                        # Check if this is a continuation of a clarification dialog
-                        if session.get("clarification_in_progress"):
-                            debug_print("Chat", "Continuing clarification dialog")
+                        # "Erfassungsbogen" oder ähnliche Anfragen direkt an die Wissensbasis weiterleiten
+                        wissensbasis_keywords = ["wissensdatenbank", "wissensbasis", "erfassungsbogen", "handbuch", 
+                                               "anleitung", "wie funktioniert", "erklär mir", "was ist", "was sind"]
+                        
+                        is_wissensbasis_query = False
+                        user_message_lower = user_message.lower()
+                        
+                        for keyword in wissensbasis_keywords:
+                            if keyword in user_message_lower:
+                                is_wissensbasis_query = True
+                                break
+                        
+                        if is_wissensbasis_query:
+                            # Lade Wissensbasis und beantworte direkt
+                            wissensbasis_data = download_wissensbasis()
                             
-                            # Process the conversational clarification
-                            response = process_user_query(user_message, session_data)
+                            system_prompt = """
+                            Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen. 
+                            Beantworte die Frage basierend auf der bereitgestellten Wissensbasis.
+                            Sei klar, präzise und sachlich. Wenn du die Antwort nicht in der Wissensbasis findest, 
+                            sage ehrlich, dass du es nicht weißt.
+                            """
                             
-                            # If we're still in clarification mode, stream the clarification response
-                            if session.get("clarification_in_progress"):
-                                return Response(
-                                    generate_conversational_clarification_stream(session.get("clarification_data")),
-                                    content_type="text/event-stream"
-                                )
+                            wissensbasis_messages = [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": f"Wissensbasis: {wissensbasis_data}\n\nFrage: {user_message}"}
+                            ]
                             
-                            # If clarification is complete, format tool choice for selected function
-                            if session.get("selected_function"):
-                                selected_tool = session.get("selected_function")
+                            response = openai.chat.completions.create(
+                                model="gpt-4o",  # Capabilities for knowledge-based queries
+                                messages=wissensbasis_messages,
+                                temperature=0.3
+                            )
+                            
+                            wissensbasis_response = response.choices[0].message.content
+                            return Response(
+                                stream_text_response(wissensbasis_response, user_message, session_data),
+                                content_type="text/event-stream"
+                            )
+                        
+                        # Prüfen, ob eine Human-in-the-Loop Rückfrage ausgelöst wurde
+                        elif selected_tool == "human_in_loop_clarification":
+                            # Wenn eine Rückfrage nötig ist, senden wir ein spezielles Event an den Client
+                            return Response(
+                                generate_clarification_stream(session.get("human_in_loop_data")),
+                                content_type="text/event-stream"
+                            )
+                        
+                        # "Wie viele" Fragen direkt an die entsprechende Funktion leiten
+                        elif "wie viele" in user_message_lower and "carestay" in user_message_lower:
+                            selected_tool = "get_active_care_stays_now"
+                            tool_choice = {"type": "function", "function": {"name": selected_tool}}
+                            return Response(
+                                stream_response(
+                                    messages, 
+                                    tools, 
+                                    tool_choice,
+                                    seller_id, 
+                                    {"seller_id": seller_id}, 
+                                    user_message, 
+                                    session_data
+                                ),
+                                content_type="text/event-stream"
+                            )
+                        
+                        # Andere Kundenanfragen
+                        elif "kunde" in user_message_lower or "kunden" in user_message_lower:
+                            if "wie viele" in user_message_lower:
+                                # Anzahl der aktiven Verträge = Anzahl Kunden
+                                selected_tool = "get_active_contracts"
                                 tool_choice = {"type": "function", "function": {"name": selected_tool}}
                                 return Response(
                                     stream_response(
-                                        messages,
-                                        tools,
+                                        messages, 
+                                        tools, 
                                         tool_choice,
-                                        seller_id,
-                                        session.get("extracted_parameters", {}),
-                                        user_message,
+                                        seller_id, 
+                                        {"seller_id": seller_id}, 
+                                        user_message, 
                                         session_data
                                     ),
                                     content_type="text/event-stream"
                                 )
-                            else:
-                                # This was a response from wissensbasis, stream it directly
-                                return Response(
-                                    stream_text_response(response, user_message, session_data),
-                                    content_type="text/event-stream"
-                                )
+                            # Sonst normaler Ablauf
                         
-                        # First layer: determine if query requires wissensbasis or function calling
-                        approach, confidence, reasoning = determine_query_approach(user_message, chat_history)
-                        
-                        if approach == "wissensbasis":
-                            # Process with wissensbasis
-                            response = process_user_query(user_message, session_data)
-                            return Response(
-                                stream_text_response(response, user_message, session_data),
-                                content_type="text/event-stream"
-                            )
-                        else:
-                            # Second layer: determine if clarification is needed
-                            query_patterns = {}
-                            try:
-                                with open("query_patterns.json", "r", encoding="utf-8") as f:
-                                    content = f.read()
-                                    json_start = content.find('{')
-                                    if json_start >= 0:
-                                        content = content[json_start:]
-                                        query_data = json.loads(content)
-                                        query_patterns = query_data.get("common_queries", {})
-                            except Exception as e:
-                                debug_print("Parameter", f"Fehler beim Laden der query_patterns.json: {e}")
-                            
-                            needs_clarification, selected_function, possible_functions, parameters, clarification_message, reasoning = (
-                                determine_function_need(user_message, query_patterns, chat_history)
-                            )
-                            
-                            if needs_clarification:
-                                # Start a conversational clarification process
-                                debug_print("Clarification", "Starting clarification dialog")
-                                
-                                # Format the possible functions for better readability
-                                function_options = []
-                                for func_name in possible_functions:
-                                    if func_name in query_patterns:
-                                        desc = query_patterns[func_name].get("description", func_name)
-                                        function_options.append({"name": func_name, "description": desc})
-                                
-                                # Store clarification state
-                                clarification_data = {
-                                    "original_question": user_message,
-                                    "clarification_message": clarification_message,
-                                    "possible_functions": function_options
-                                }
-                                
-                                session["clarification_in_progress"] = True
-                                session["clarification_data"] = clarification_data
-                                
-                                return Response(
-                                    generate_conversational_clarification_stream(clarification_data),
-                                    content_type="text/event-stream"
-                                )
-                            else:
-                                # We have a clear function to call
-                                debug_print("Function Call", f"Selected function: {selected_function}")
-                                
-                                # Add standard parameters
-                                if "seller_id" in parameters:
-                                    parameters["seller_id"] = seller_id
-                                
-                                tool_choice = {"type": "function", "function": {"name": selected_function}} if selected_function else "auto"
-                                
-                                return Response(
-                                    stream_response(
-                                        messages,
-                                        tools,
-                                        tool_choice,
-                                        seller_id,
-                                        parameters,
-                                        user_message,
-                                        session_data
-                                    ),
-                                    content_type="text/event-stream"
-                                )
+                        # Korrektes Format für tool_choice erstellen
+                        tool_choice = {"type": "function", "function": {"name": selected_tool}} if selected_tool else "auto"
+                                                
+                        return Response(
+                            stream_response(
+                                messages, 
+                                tools, 
+                                tool_choice,  # Statt dem String das korrekt formatierte Objekt übergeben
+                                seller_id, 
+                                extract_enhanced_date_params(user_message), 
+                                user_message, 
+                                session_data
+                            ),
+                            content_type="text/event-stream"
+                        )
                            
                         
                 

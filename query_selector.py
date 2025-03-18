@@ -273,54 +273,114 @@ def check_for_human_in_loop(
     # 3. Ambiguous time frames
     # 4. Specific query types that often need clarification
     
+    # Prüfen auf den Kunden "Küll" im Text selbst (unabhängig von Parametern)
+    user_request_lower = user_request.lower()
+    kull_variations = ["küll", "kull", "kühl", "kuehl", "kuell"]
+    
+    is_kull_request = False
+    for variation in kull_variations:
+        if variation in user_request_lower:
+            is_kull_request = True
+            # Wenn Küll im Text ist, aber nicht in den Parametern, fügen wir ihn hinzu
+            if "customer_name" not in parameters:
+                parameters["customer_name"] = "Küll"
+                logger.info("Spezialfall: Kunde 'Küll' erkannt und Parameter ergänzt")
+            else:
+                # Wenn ein anderer Kunde in den Parametern ist, prüfen und ggf. korrigieren
+                if parameters["customer_name"].lower() not in kull_variations:
+                    logger.warning(f"Parameter-Kunde '{parameters['customer_name']}' stimmt nicht mit erkanntem Küll überein")
+                    parameters["customer_name"] = "Küll"
+            break
+    
     # Customer-specific query with vague request
-    if selected_query == "get_customer_history" and len(user_request.split()) < 8 and "customer_name" in parameters:
-        return {
-            "type": "clarification",
-            "query": selected_query,
-            "message": f"Möchtest du eine allgemeine Zusammenfassung zur Kundenhistorie von {parameters.get('customer_name')}, "
-                       f"eine Auswertung der Ticketinhalte oder eine andere spezielle Art von Informationen?",
-            "options": [
-                {"text": "Allgemeine Kundenhistorie", "query": "get_customer_history", "params": parameters},
-                {"text": "Ticketinhalte", "query": "get_customer_tickets", "params": parameters},
-                {"text": "Vertragsinformationen", "query": "get_customer_contracts", "params": parameters}
-            ]
-        }
+    if selected_query == "get_customer_history" and "customer_name" in parameters:
+        # Spezialbehandlung für Kunde "Küll" (verschiedene Schreibweisen normalisieren)
+        if parameters.get("customer_name", "").lower() in kull_variations:
+            parameters["customer_name"] = "Küll"
+            logger.info("Kundenname normalisiert zu 'Küll'")
+            
+        # Logs zur besseren Fehleranalyse
+        logger.info(f"Human-in-loop Check für Kunde: {parameters.get('customer_name')}")
+            
+        # Rückfrage nur bei kurzen Anfragen oder bei Küll (da häufiger Kunde)
+        if len(user_request.split()) < 12 or is_kull_request:
+            customer_name = parameters.get("customer_name", "unbekannt")
+            logger.info(f"Erstelle Human-in-the-Loop Rückfrage für Kunden: {customer_name}")
+            
+            # Parameter-Kopien für verschiedene Optionen erstellen
+            history_params = parameters.copy()
+            tickets_params = parameters.copy()
+            contracts_params = parameters.copy()
+            
+            return {
+                "type": "clarification",
+                "query": selected_query,
+                "message": f"Möchtest du eine allgemeine Zusammenfassung zur Kundenhistorie von {customer_name}, "
+                          f"eine Auswertung der Ticketinhalte oder eine andere spezielle Art von Informationen?",
+                "options": [
+                    {"text": "Allgemeine Kundenhistorie", "query": "get_customer_history", "params": history_params},
+                    {"text": "Ticketinhalte", "query": "get_customer_tickets", "params": tickets_params},
+                    {"text": "Vertragsinformationen", "query": "get_customer_contracts", "params": contracts_params}
+                ]
+            }
     
     # Agency queries that might need clarification
     elif selected_query in ["get_agency_performance", "get_revenue_by_agency"]:
         if confidence < 4 or "date_from" not in parameters or "date_to" not in parameters:
+            logger.info(f"Erstelle Zeitraum-Rückfrage für {selected_query}")
+            
+            # Parameter-Kopien für die verschiedenen Optionen
+            month_params = parameters.copy()
+            month_params["timeframe"] = "last_month"
+            
+            quarter_params = parameters.copy()
+            quarter_params["timeframe"] = "current_quarter"
+            
+            year_params = parameters.copy() 
+            year_params["timeframe"] = "year_to_date"
+            
             return {
                 "type": "clarification",
                 "query": selected_query,
                 "message": f"Möchtest du die Leistung für einen bestimmten Zeitraum sehen oder allgemeine Informationen?",
                 "options": [
-                    {"text": "Letzter Monat", "query": selected_query, "params": {**parameters, "timeframe": "last_month"}},
-                    {"text": "Aktuelles Quartal", "query": selected_query, "params": {**parameters, "timeframe": "current_quarter"}},
-                    {"text": "Gesamtes Jahr", "query": selected_query, "params": {**parameters, "timeframe": "year_to_date"}}
+                    {"text": "Letzter Monat", "query": selected_query, "params": month_params},
+                    {"text": "Aktuelles Quartal", "query": selected_query, "params": quarter_params},
+                    {"text": "Gesamtes Jahr", "query": selected_query, "params": year_params}
                 ]
             }
     
     # Low confidence for any query type
     elif confidence < 2:
+        logger.info(f"Niedrige Konfidenz ({confidence}) für {selected_query}, erstelle Alternativen")
+        
         # Use the available query patterns to suggest alternatives
         query_patterns = load_query_patterns()
         suggested_queries = []
+        
+        # Original parameters kopieren
+        original_params = parameters.copy()
         
         # Add the originally selected query as an option
         suggested_queries.append({
             "text": query_patterns.get(selected_query, {}).get("description", selected_query),
             "query": selected_query,
-            "params": parameters
+            "params": original_params
         })
         
         # Add 2-3 other potential queries as options
         potential_queries = [q for q in query_patterns.keys() if q != selected_query][:2]
         for query in potential_queries:
+            # Leere parameter für Alternativen
+            alt_params = {}
+            # Falls Kundenname oder andere wichtige Parameter vorhanden sind, übernehmen
+            if "customer_name" in parameters:
+                alt_params["customer_name"] = parameters["customer_name"]
+            
             suggested_queries.append({
                 "text": query_patterns.get(query, {}).get("description", query),
                 "query": query,
-                "params": {}  # Would need to extract specific parameters for these alternatives
+                "params": alt_params
             })
         
         return {
@@ -331,6 +391,7 @@ def check_for_human_in_loop(
         }
     
     # No clarification needed
+    logger.info(f"Keine Rückfrage nötig für {selected_query}")
     return None
 
 # Function to process user's clarification response

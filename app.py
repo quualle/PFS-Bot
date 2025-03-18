@@ -1207,6 +1207,28 @@ def extract_customer_name(user_message):
     """
     user_message = user_message.lower()
     
+    # Spezielle Behandlung für Kunde "Küll" mit verschiedenen Schreibweisen
+    kull_variations = ["küll", "kull", "kühl", "kuehl", "kuell"]
+    for variation in kull_variations:
+        if variation in user_message:
+            logging.info(f"Spezialfall erkannt: Kunde 'Küll' (Variation '{variation}')")
+            return "Küll"
+    
+    # Spezieller Regex für Küll aufgrund der Häufigkeit dieses Kunden
+    kull_patterns = [
+        r'kunde[n]?[:\s]+(k[uü][eh]?ll)',
+        r'kunden[:\s]+(k[uü][eh]?ll)',
+        r'herr[n]?[:\s]+(k[uü][eh]?ll)',
+        r'zum kunden (k[uü][eh]?ll)',
+        r'über (k[uü][eh]?ll)'
+    ]
+    
+    for pattern in kull_patterns:
+        match = re.search(pattern, user_message)
+        if match:
+            logging.info(f"Kunde 'Küll' erkannt mit Muster: {pattern}")
+            return "Küll"
+    
     # Nach Mustern suchen wie "Kunde XYZ", "Herr XYZ", "Frau XYZ", "über XYZ"
     customer_patterns = [
         r'kunde[n]?[:\s]+([a-zäöüß\s]+)',
@@ -1217,7 +1239,8 @@ def extract_customer_name(user_message):
         r'über[:\s]+([a-zäöüß\s]+)',
         r'von[:\s]+([a-zäöüß\s]+)',
         r'für[:\s]+([a-zäöüß\s]+)',
-        r'bei[:\s]+([a-zäöüß\s]+)'
+        r'bei[:\s]+([a-zäöüß\s]+)',
+        r'zum kunden ([a-zäöüß\s]+)'
     ]
     
     for pattern in customer_patterns:
@@ -1230,13 +1253,16 @@ def extract_customer_name(user_message):
             
             # Prüfen auf übliche Abkürzungen oder unerwünschte Teile
             if len(customer_name) > 2 and not customer_name.startswith(('der ', 'die ', 'das ')):
+                logging.info(f"Erkannter Kundenname: {customer_name}")
                 return customer_name
     
     # Nach alleinstehenden Namen suchen, wenn sie in Anführungszeichen stehen
     quotes_pattern = r'["\']([a-zäöüß\s]{3,})["\']'
     match = re.search(quotes_pattern, user_message)
     if match:
-        return match.group(1).strip()
+        customer_name = match.group(1).strip()
+        logging.info(f"Kundenname in Anführungszeichen erkannt: {customer_name}")
+        return customer_name
     
     return None
 
@@ -1693,13 +1719,38 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
                 # Prüfen, ob eine menschliche Interaktion erforderlich ist
                 if human_in_loop:
                     debug_print("Tool-Auswahl", f"Human-in-the-loop für Query: {query_name}")
+                    logging.info(f"Human-in-the-loop aktiviert für Query: {query_name}, Parameter: {parameters}")
+                    
+                    # Tiefere Debug-Informationen protokollieren
+                    if isinstance(human_in_loop, dict):
+                        logging.debug(f"Human-in-loop Daten: {json.dumps(human_in_loop)}")
+                    else:
+                        logging.warning(f"Human-in-loop hat unerwartetes Format: {type(human_in_loop)}")
+                        
                     # Wir speichern den human_in_loop-Status in der Session
                     session["human_in_loop_data"] = human_in_loop
                     session["human_in_loop_original_request"] = user_message
+                    session.modified = True
+                    
+                    # Sicherstellen, dass wir eine gültige Nachricht haben
+                    message = "Weitere Details benötigt"
+                    try:
+                        if human_in_loop and isinstance(human_in_loop, dict):
+                            message = human_in_loop.get('message', message)
+                            
+                            # Prüfen auf Optionen
+                            options = human_in_loop.get('options', [])
+                            if options:
+                                logging.info(f"Human-in-loop enthält {len(options)} Optionen")
+                                for i, option in enumerate(options):
+                                    logging.debug(f"Option {i}: {option.get('text')} -> {option.get('query')}")
+                    except Exception as e:
+                        logging.error(f"Fehler beim Zugriff auf human_in_loop Daten: {e}")
+                    
                     # Hier geben wir ein spezielles Tool zurück, das die UI anweist, eine Rückfrage zu stellen
-                    return "human_in_loop_clarification", f"Rückfrage erforderlich: {human_in_loop.get('message', '')}"
-                # Hier geben wir ein spezielles Tool zurück, das die UI anweist, eine Rückfrage zu stellen
-                return "human_in_loop_clarification", f"Rückfrage erforderlich: {human_in_loop.get('message', '')}"
+                    return "human_in_loop_clarification", f"Rückfrage erforderlich: {message}"
+                
+                # Normale Verarbeitung, wenn keine human-in-loop Clarification benötigt wird
             
             # Prüfe, ob das gewählte Tool verfügbar ist
             if query_name in available_tool_names:
@@ -2430,37 +2481,86 @@ def handle_clarification():
     Verarbeitet die Antwort auf eine Human-in-the-Loop Rückfrage
     """
     try:
+        # Stellen wir sicher, dass eine Benutzer-Session existiert
         if not session.get("user_id"):
+            logging.warning("Clarification-Anfrage ohne aktive Benutzer-Session")
             return jsonify({"error": "Keine aktive Benutzer-Session gefunden"}), 400
         
         # Für AJAX-Anfragen
         is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        
+        # Debug-Informationen
+        logging.info(f"Verarbeite Clarification-Antwort, AJAX: {is_ajax}")
+        
+        try:
+            # Lese die Option aus dem Formular
+            selected_option_index = int(request.form.get("option_index", "0"))
+            logging.info(f"Ausgewählter Options-Index: {selected_option_index}")
+        except ValueError:
+            error_msg = "Ungültiger Options-Index Format (keine Zahl)"
+            logging.error(f"Fehler beim Parsen des Options-Index: {request.form.get('option_index')}")
+            if is_ajax:
+                return jsonify({"error": error_msg}), 400
+            flash(error_msg, "danger")
+            return redirect(url_for("chat"))
             
-        # Lese die Option aus dem Formular
-        selected_option_index = int(request.form.get("option_index", "0"))
+        # Prüfe, ob die Human-in-Loop-Daten in der Session vorhanden sind
         human_in_loop_data = session.get("human_in_loop_data")
         
-        if not human_in_loop_data or "options" not in human_in_loop_data:
-            error_msg = "Ungültige Rückfrage-Daten"
+        # Logge die vorhandenen Session-Daten für Debugging
+        session_keys = list(session.keys())
+        logging.debug(f"Verfügbare Session-Keys: {session_keys}")
+        
+        if not human_in_loop_data:
+            error_msg = "Keine Rückfrage-Daten in der Session gefunden"
+            logging.error(error_msg)
+            if is_ajax:
+                return jsonify({"error": error_msg}), 400
+            flash(error_msg, "danger")
+            return redirect(url_for("chat"))
+            
+        if "options" not in human_in_loop_data:
+            error_msg = "Ungültige Rückfrage-Daten: Keine Optionen vorhanden"
+            logging.error(f"human_in_loop_data ohne 'options': {human_in_loop_data}")
             if is_ajax:
                 return jsonify({"error": error_msg}), 400
             flash(error_msg, "danger")
             return redirect(url_for("chat"))
             
         options = human_in_loop_data.get("options", [])
+        logging.info(f"Anzahl verfügbarer Optionen: {len(options)}")
+        
+        # Prüfe, ob der Index gültig ist
         if selected_option_index < 0 or selected_option_index >= len(options):
-            error_msg = "Ungültiger Options-Index"
+            error_msg = f"Ungültiger Options-Index: {selected_option_index} (max: {len(options)-1})"
+            logging.error(error_msg)
             if is_ajax:
                 return jsonify({"error": error_msg}), 400
             flash(error_msg, "danger")
             return redirect(url_for("chat"))
             
         # Speichere die ausgewählte Option in der Session für die nächste Verarbeitung
-        session["human_in_loop_clarification_response"] = options[selected_option_index]
+        selected_option = options[selected_option_index]
+        session["human_in_loop_clarification_response"] = selected_option
+        logging.info(f"Ausgewählte Option: {selected_option.get('text')} -> {selected_option.get('query')}")
+        
+        # Verarbeiten von Parametern, speziell für den Kunden Küll
+        params = selected_option.get("params", {})
+        if params and "customer_name" in params:
+            customer_name = params["customer_name"]
+            if customer_name.lower() in ["küll", "kull", "kühl", "kuehl", "kuell"]:
+                logging.info("Normalisiere Kunden-Parameter 'Küll'")
+                params["customer_name"] = "Küll"
+                selected_option["params"] = params
+                session["human_in_loop_clarification_response"] = selected_option
         
         # Speichere den original request für die Kontext-Kontinuität
         if "human_in_loop_original_request" in session:
-            session["pending_query"] = session.get("human_in_loop_original_request")
+            original_request = session.get("human_in_loop_original_request")
+            session["pending_query"] = original_request
+            logging.info(f"Original-Anfrage gespeichert: {original_request}")
+        else:
+            logging.warning("Keine Original-Anfrage in der Session gefunden")
         
         # Entferne die Human-in-the-Loop-Daten aus der Session
         session.pop("human_in_loop_data", None)
@@ -2471,9 +2571,21 @@ def handle_clarification():
         
         # Bei AJAX-Anfragen ein JSON-Ergebnis zurückgeben
         if is_ajax:
+            logging.info("Sende AJAX-Erfolgsantwort")
             return jsonify({"success": True, "message": "Option ausgewählt", "redirect": url_for("chat")})
         
         # Ansonsten wie gehabt weiterleiten
+        logging.info("Weiterleitung zur Chat-Seite")
+        return redirect(url_for("chat"))
+    except Exception as e:
+        # Allgemeine Fehlerbehandlung
+        error_msg = f"Fehler bei der Verarbeitung der Rückfrage: {str(e)}"
+        logging.exception("Unerwarteter Fehler bei der Verarbeitung der Rückfrage")
+        
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": error_msg, "success": False}), 500
+            
+        flash(error_msg, "danger")
         return redirect(url_for("chat"))
         
     except Exception as e:

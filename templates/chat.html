@@ -987,12 +987,6 @@
                                                         this.style.backgroundColor = '#00476b';
                                                     });
                                                     
-                                                    // Button zum Container hinzufügen
-                                                    optionsContainer.appendChild(optionButton);
-                                                } else {
-                                                    console.error("Fehler: Options-Container nicht gefunden!");
-                                                }
-                                                    
                                                     // Event-Listener für Option-Button
                                                     optionButton.addEventListener('click', function() {
                                                         const optionIndex = this.getAttribute('data-option-index');
@@ -1034,8 +1028,11 @@
                                                         }, 300);
                                                     });
                                                     
-                                                    // Fix: Verwende optionsContainer statt clarificationContainer
+                                                    // Button zum Container hinzufügen
                                                     optionsContainer.appendChild(optionButton);
+                                                } else {
+                                                    console.error("Fehler: Options-Container nicht gefunden!");
+                                                }
                                                 }
                                             }
                                         } catch (e) {

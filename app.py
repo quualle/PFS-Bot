@@ -1861,6 +1861,15 @@ def process_user_query(user_message, session_data):
     """
     Verbesserter mehrstufiger Prozess zur intelligenten Verarbeitung von Benutzeranfragen
     """
+    # Prüfen, ob es eine ausstehende Anfrage von einer Rückfrage gibt
+    if "pending_query" in session:
+        original_query = session.pop("pending_query", None)
+        if original_query:
+            debug_print("Anfrage", f"Verwende ausstehende Anfrage nach Rückfrage: '{original_query}'")
+            # Wir behalten die originale Anfrage für die Anzeige im Chat bei
+            temp_message = user_message
+            user_message = original_query
+            
     # Lade Tools und Konfigurationen
     tools = create_function_definitions()
     tool_config = load_tool_config()
@@ -2449,12 +2458,20 @@ def handle_clarification():
         # Speichere die ausgewählte Option in der Session für die nächste Verarbeitung
         session["human_in_loop_clarification_response"] = options[selected_option_index]
         
+        # Speichere den original request für die Kontext-Kontinuität
+        if "human_in_loop_original_request" in session:
+            session["pending_query"] = session.get("human_in_loop_original_request")
+        
         # Entferne die Human-in-the-Loop-Daten aus der Session
         session.pop("human_in_loop_data", None)
+        session.pop("human_in_loop_original_request", None)
+        
+        # Stelle sicher, dass der Chatverlauf erhalten bleibt
+        session.modified = True
         
         # Bei AJAX-Anfragen ein JSON-Ergebnis zurückgeben
         if is_ajax:
-            return jsonify({"success": True, "message": "Option ausgewählt"})
+            return jsonify({"success": True, "message": "Option ausgewählt", "redirect": url_for("chat")})
         
         # Ansonsten wie gehabt weiterleiten
         return redirect(url_for("chat"))

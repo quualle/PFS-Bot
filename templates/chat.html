@@ -576,12 +576,14 @@
                                             },
                                             body: new URLSearchParams(new FormData(this))
                                         })
-                                        .then(response => {
-                                            if (response.ok) {
-                                                // Bei Erfolg die gesamte Seite neu laden
-                                                window.location.href = "{{ url_for('chat') }}";
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                // Bei Erfolg die Seite neu laden
+                                                console.log("Erfolgreiche Verarbeitung, lade Seite neu...");
+                                                window.location.href = data.redirect || "{{ url_for('chat') }}";
                                             } else {
-                                                throw new Error('Fehler bei der Verarbeitung der Auswahl');
+                                                throw new Error(data.error || 'Fehler bei der Verarbeitung der Auswahl');
                                             }
                                         })
                                         .catch(error => {

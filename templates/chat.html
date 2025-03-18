@@ -571,7 +571,7 @@
                         <div class="stat-label">Gestellte Fragen</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">{{ stats.avg_response_time|round|int }}s</div>
+                        <div class="stat-value">{% if stats.avg_response_time is defined %}{{ stats.avg_response_time|round|int }}s{% else %}--{% endif %}</div>
                         <div class="stat-label">Durchschnittl. Antwortzeit</div>
                     </div>
                 </div>

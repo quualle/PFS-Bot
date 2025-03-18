@@ -10,9 +10,13 @@ const api = axios.create({
   withCredentials: true  // Include cookies in requests for session-based auth
 });
 
-// Add request interceptor for error handling
+// Add request interceptor for error handling and CSRF token
 api.interceptors.request.use(config => {
-  // You can add CSRF token here if needed
+  // Get CSRF token from meta tag if available
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  if (csrfToken) {
+    config.headers['X-CSRF-TOKEN'] = csrfToken;
+  }
   return config;
 });
 

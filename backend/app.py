@@ -11,7 +11,7 @@ import tempfile
 import requests
 from datetime import datetime, timedelta
 import dateparser
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response, g
 from flask_wtf import CSRFProtect
 from flask_session import Session
 from dotenv import load_dotenv
@@ -1395,10 +1395,20 @@ def serve(path):
         # If not authenticated and accessing the root route, redirect to Google login
         return redirect('/google_login')
     
+    # Get CSRF token for the response
+    csrf_token = ''
+    if not getattr(g, 'csrf_valid', False):  # Check if token needs refreshing
+        csrf_token = csrf.generate_csrf()
+    
     # Normal serving of static files
     if path != "" and os.path.exists(os.path.join(app.template_folder, path)):
-        return render_template(path)
-    return render_template('index.html')
+        response = render_template(path)
+    else:
+        response = render_template('index.html')
+    
+    # Update the response to inject the CSRF token
+    response = response.replace('content=""', f'content="{csrf_token}"', 1)
+    return response
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -540,12 +540,68 @@
                         <div class="clarification-message">{{ human_in_loop.message }}</div>
                         <div class="clarification-options">
                             {% for option in human_in_loop.options %}
-                            <form method="post" action="{{ url_for('handle_clarification') }}" style="margin: 0; padding: 0;">
+                            <form method="post" action="{{ url_for('handle_clarification') }}" style="margin: 0; padding: 0;" class="clarification-form">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <input type="hidden" name="option_index" value="{{ loop.index0 }}">
                                 <button type="submit" class="option-button">{{ option.text }}</button>
                             </form>
                             {% endfor %}
+                            
+                            <script>
+                            // Fange alle Formulare ab und verarbeite sie via AJAX
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const forms = document.querySelectorAll('.clarification-form');
+                                forms.forEach(form => {
+                                    form.addEventListener('submit', function(e) {
+                                        e.preventDefault();
+                                        
+                                        // Visuelles Feedback
+                                        const button = this.querySelector('button');
+                                        button.textContent = 'Wird verarbeitet...';
+                                        button.style.backgroundColor = '#005e8a';
+                                        
+                                        // Alle Buttons deaktivieren
+                                        document.querySelectorAll('.clarification-form button').forEach(btn => {
+                                            btn.disabled = true;
+                                            btn.style.opacity = '0.7';
+                                            btn.style.cursor = 'default';
+                                        });
+                                        
+                                        // Formular via AJAX senden
+                                        fetch(this.action, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/x-www-form-urlencoded',
+                                                'X-Requested-With': 'XMLHttpRequest'
+                                            },
+                                            body: new URLSearchParams(new FormData(this))
+                                        })
+                                        .then(response => {
+                                            if (response.ok) {
+                                                // Bei Erfolg die gesamte Seite neu laden
+                                                window.location.href = "{{ url_for('chat') }}";
+                                            } else {
+                                                throw new Error('Fehler bei der Verarbeitung der Auswahl');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Fehler:', error);
+                                            button.textContent = 'Fehler! Bitte erneut versuchen.';
+                                            button.style.backgroundColor = '#d32f2f';
+                                            
+                                            // Buttons nach Timeout wieder aktivieren
+                                            setTimeout(() => {
+                                                document.querySelectorAll('.clarification-form button').forEach(btn => {
+                                                    btn.disabled = false;
+                                                    btn.style.opacity = '1';
+                                                    btn.style.cursor = 'pointer';
+                                                });
+                                            }, 2000);
+                                        });
+                                    });
+                                });
+                            });
+                            </script>
                         </div>
                     </div>
                 </div>

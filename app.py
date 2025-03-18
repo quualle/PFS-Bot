@@ -2421,29 +2421,50 @@ def handle_clarification():
     Verarbeitet die Antwort auf eine Human-in-the-Loop Rückfrage
     """
     try:
-        if not session.get("user_id") or not session.get("human_in_loop_data"):
-            return jsonify({"error": "Keine aktive Rückfrage-Session gefunden"}), 400
+        if not session.get("user_id"):
+            return jsonify({"error": "Keine aktive Benutzer-Session gefunden"}), 400
+        
+        # Für AJAX-Anfragen
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
             
         # Lese die Option aus dem Formular
         selected_option_index = int(request.form.get("option_index", "0"))
         human_in_loop_data = session.get("human_in_loop_data")
         
         if not human_in_loop_data or "options" not in human_in_loop_data:
-            return jsonify({"error": "Ungültige Rückfrage-Daten"}), 400
+            error_msg = "Ungültige Rückfrage-Daten"
+            if is_ajax:
+                return jsonify({"error": error_msg}), 400
+            flash(error_msg, "danger")
+            return redirect(url_for("chat"))
             
         options = human_in_loop_data.get("options", [])
         if selected_option_index < 0 or selected_option_index >= len(options):
-            return jsonify({"error": "Ungültiger Options-Index"}), 400
+            error_msg = "Ungültiger Options-Index"
+            if is_ajax:
+                return jsonify({"error": error_msg}), 400
+            flash(error_msg, "danger")
+            return redirect(url_for("chat"))
             
         # Speichere die ausgewählte Option in der Session für die nächste Verarbeitung
         session["human_in_loop_clarification_response"] = options[selected_option_index]
         
-        # Leite zurück zur Hauptseite, die jetzt die ausgewählte Option verarbeiten wird
+        # Entferne die Human-in-the-Loop-Daten aus der Session
+        session.pop("human_in_loop_data", None)
+        
+        # Bei AJAX-Anfragen ein JSON-Ergebnis zurückgeben
+        if is_ajax:
+            return jsonify({"success": True, "message": "Option ausgewählt"})
+        
+        # Ansonsten wie gehabt weiterleiten
         return redirect(url_for("chat"))
         
     except Exception as e:
         logging.error(f"Fehler bei der Verarbeitung der Rückfrage: {e}")
-        return jsonify({"error": str(e)}), 500
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": str(e)}), 500
+        flash(f"Ein Fehler ist aufgetreten: {str(e)}", "danger")
+        return redirect(url_for("chat"))
 
 @app.route("/", methods=["GET", "POST"])
 def chat():

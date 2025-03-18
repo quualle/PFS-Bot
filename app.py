@@ -1908,24 +1908,329 @@ def load_tool_config():
             }
         }
 
+def determine_query_approach(user_message, conversation_history=None):
+    """
+    First-layer LLM decision to determine if a query requires:
+    1. Knowledge base (wissensbasis) for qualitative company/process information
+    2. Function calling for customer/quantitative data access
+    
+    Returns:
+        tuple: (approach, confidence, reasoning)
+            approach: "wissensbasis" or "function_calling"
+            confidence: float between 0-1 indicating confidence
+            reasoning: string explaining the decision
+    """
+    # Create decision prompt
+    prompt = f"""
+    Analyze this user query and determine the most appropriate approach to answer it.
+    
+    User query: "{user_message}"
+    
+    You have two possible approaches:
+    
+    1. Wissensbasis (Knowledge Base) - Use this for:
+       - Questions about how our company works
+       - How-to guides and process questions
+       - Information about our CRM system
+       - General qualitative knowledge about our operations
+       - Questions that don't require specific customer data or numbers
+    
+    2. Function Calling (Database Queries) - Use this for:
+       - Questions about specific customers or customer data
+       - Numerical/statistical reports (revenue, performance)
+       - Contract information for specific customers
+       - Care stays, lead data, or ticketing information
+       - Any queries requiring real-time data from our database
+    
+    Analyze the query carefully. Determine which approach would provide the best answer.
+    
+    Return a JSON object with these fields:
+    - "approach": Either "wissensbasis" or "function_calling"
+    - "confidence": A number between 0 and 1 indicating your confidence
+    - "reasoning": A brief explanation of your decision
+    """
+    
+    messages = [
+        {"role": "system", "content": "You are a query routing assistant for a senior care services company. Respond in JSON format."},
+        {"role": "user", "content": prompt}
+    ]
+    
+    # Add relevant conversation history if available
+    if conversation_history:
+        context_message = "Previous conversation context:\n"
+        for i, message in enumerate(conversation_history[-3:]):  # Last 3 messages
+            role = message.get("role", "")
+            content = message.get("content", "")
+            context_message += f"{role}: {content}\n"
+        
+        messages.insert(1, {"role": "system", "content": context_message})
+    
+    # Call LLM
+    try:
+        response = call_llm(messages, "o3-mini")  # Using a smaller, faster model for this decision
+        result = json.loads(response)
+        
+        approach = result.get("approach", "function_calling")  # Default to function_calling if parsing fails
+        confidence = float(result.get("confidence", 0.5))
+        reasoning = result.get("reasoning", "No reasoning provided")
+        
+        debug_print("Approach Decision", f"Determined approach: {approach} with confidence {confidence}")
+        debug_print("Reasoning", reasoning)
+        
+        return approach, confidence, reasoning
+    except Exception as e:
+        logging.error(f"Error in determine_query_approach: {e}")
+        # Default to function_calling as fallback
+        return "function_calling", 0.3, f"Error in approach determination: {str(e)}"
+
+def determine_function_need(user_message, query_patterns, conversation_history=None):
+    """
+    Second-layer LLM decision to determine if clarification is needed for function selection
+    and what the best function would be.
+    
+    Returns:
+        tuple: (needs_clarification, selected_function, possible_functions, parameters, clarification_message, reasoning)
+    """
+    # Create descriptions of available functions
+    function_descriptions = []
+    for name, details in query_patterns.items():
+        function_descriptions.append({
+            "name": name,
+            "description": details.get("description", ""),
+            "required_parameters": details.get("required_parameters", []),
+            "optional_parameters": details.get("optional_parameters", [])
+        })
+    
+    # Create prompt
+    prompt = f"""
+    Analyze this user query to determine if we have a clear function match or need clarification.
+    
+    User query: "{user_message}"
+    
+    Available functions:
+    {json.dumps(function_descriptions, indent=2)}
+    
+    Your task:
+    1. Determine if you can confidently select one of these functions to answer the query
+    2. If yes, identify which function and what parameters can be extracted
+    3. If no, identify 2-3 possible functions that might be appropriate and explain why clarification is needed
+    
+    Return JSON with these fields:
+    - "needs_clarification": true or false
+    - "selected_function": function name (if confident) or null (if clarification needed)
+    - "possible_functions": array of function names (if clarification needed)
+    - "extracted_parameters": object with parameter names and values that can be extracted
+    - "clarification_message": suggested clarification message to user (if needed)
+    - "reasoning": your thought process
+    """
+    
+    messages = [
+        {"role": "system", "content": "You are a query analysis assistant for a senior care database. Respond only with valid JSON."},
+        {"role": "user", "content": prompt}
+    ]
+    
+    # Add conversation history if available
+    if conversation_history:
+        context_message = "Previous conversation context:\n"
+        for i, message in enumerate(conversation_history[-3:]):
+            role = message.get("role", "")
+            content = message.get("content", "")
+            context_message += f"{role}: {content}\n"
+        
+        messages.insert(1, {"role": "system", "content": context_message})
+    
+    # Call LLM
+    try:
+        response = call_llm(messages)
+        result = json.loads(response)
+        
+        needs_clarification = result.get("needs_clarification", True)
+        selected_function = result.get("selected_function")
+        possible_functions = result.get("possible_functions", [])
+        parameters = result.get("extracted_parameters", {})
+        clarification_message = result.get("clarification_message", "")
+        reasoning = result.get("reasoning", "")
+        
+        debug_print("Function Decision", 
+                   f"Needs clarification: {needs_clarification}, " 
+                   f"Selected function: {selected_function}")
+        
+        return needs_clarification, selected_function, possible_functions, parameters, clarification_message, reasoning
+    except Exception as e:
+        logging.error(f"Error in determine_function_need: {e}")
+        return True, None, [], {}, "I'm not sure which query to use. Could you provide more details?", f"Error: {str(e)}"
+
+def handle_conversational_clarification(user_message, previous_clarification_data=None):
+    """
+    Processes a user's response to a clarification request in a conversational manner.
+    
+    Args:
+        user_message: The user's response to the clarification request
+        previous_clarification_data: Data from the previous clarification request
+        
+    Returns:
+        tuple: (is_resolved, function_name, parameters, new_clarification_data)
+            is_resolved: Whether the clarification has been resolved
+            function_name: The selected function name (if resolved)
+            parameters: Parameters for the function (if resolved)
+            new_clarification_data: New clarification data (if not resolved)
+    """
+    if not previous_clarification_data:
+        return False, None, {}, None
+    
+    possible_functions = previous_clarification_data.get("possible_functions", [])
+    
+    # Create prompt
+    prompt = f"""
+    The user's original question required clarification. You asked for clarification and received a response.
+    
+    Original question: "{previous_clarification_data.get('original_question', '')}"
+    
+    Your clarification request: "{previous_clarification_data.get('clarification_message', '')}"
+    
+    User's response: "{user_message}"
+    
+    Possible functions:
+    {json.dumps(possible_functions, indent=2)}
+    
+    Given the user's response, determine:
+    1. If we now have enough information to select a specific function
+    2. Which function should be used (if any)
+    3. What parameters can be extracted from the original question AND the clarification response
+    4. If we still need more clarification, what should we ask next
+    
+    Return JSON with these fields:
+    - "is_resolved": true or false (do we have enough information now?)
+    - "selected_function": function name (if resolved) or null
+    - "parameters": object with parameter names and values that can be extracted
+    - "needs_further_clarification": true or false
+    - "next_clarification_message": what to ask if still need clarification
+    - "reasoning": your thought process
+    """
+    
+    messages = [
+        {"role": "system", "content": "You are a clarification assistant for a senior care database. Respond only with valid JSON."},
+        {"role": "user", "content": prompt}
+    ]
+    
+    # Call LLM
+    try:
+        response = call_llm(messages)
+        result = json.loads(response)
+        
+        is_resolved = result.get("is_resolved", False)
+        selected_function = result.get("selected_function")
+        parameters = result.get("parameters", {})
+        needs_further_clarification = result.get("needs_further_clarification", True)
+        next_clarification = result.get("next_clarification_message", "")
+        reasoning = result.get("reasoning", "")
+        
+        debug_print("Clarification Processing", 
+                   f"Resolved: {is_resolved}, Function: {selected_function}, " 
+                   f"Needs more: {needs_further_clarification}")
+        
+        if is_resolved:
+            return True, selected_function, parameters, None
+        else:
+            # Create new clarification data
+            new_clarification_data = {
+                "original_question": previous_clarification_data.get("original_question", ""),
+                "clarification_message": next_clarification,
+                "possible_functions": possible_functions,
+                "previous_response": user_message
+            }
+            return False, None, {}, new_clarification_data
+            
+    except Exception as e:
+        logging.error(f"Error in handle_conversational_clarification: {e}")
+        return False, None, {}, None
+
+def call_llm(messages, model="gpt-4o-mini"):
+    """
+    Unified function to call OpenAI LLM with error handling
+    """
+    try:
+        response = openai.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.4  # Lower temperature for more deterministic responses
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logging.error(f"Error calling LLM: {e}")
+        raise
+
 def process_user_query(user_message, session_data):
     """
-    Verbesserter mehrstufiger Prozess zur intelligenten Verarbeitung von Benutzeranfragen
+    Enhanced multi-layered process for intelligent user query processing with optimized decision flow
     """
-    # Prüfen, ob es eine ausstehende Anfrage von einer Rückfrage gibt
-    if "pending_query" in session:
-        original_query = session.pop("pending_query", None)
-        if original_query:
-            debug_print("Anfrage", f"Verwende ausstehende Anfrage nach Rückfrage: '{original_query}'")
-            # Wir behalten die originale Anfrage für die Anzeige im Chat bei
-            temp_message = user_message
-            user_message = original_query
-            
-    # Lade Tools und Konfigurationen
-    tools = create_function_definitions()
-    tool_config = load_tool_config()
+    conversation_history = session_data.get("conversation_history", [])
     
-    debug_print("Anfrage", f"Verarbeite Anfrage: '{user_message}'")
+    # Check if there's an ongoing clarification dialog
+    if session.get("clarification_in_progress"):
+        clarification_data = session.get("clarification_data", {})
+        debug_print("Clarification", "Processing response to clarification")
+        
+        # Process the clarification response
+        is_resolved, function_name, parameters, new_clarification_data = handle_conversational_clarification(
+            user_message, clarification_data
+        )
+        
+        if is_resolved:
+            # Clarification resolved, continue with function execution
+            debug_print("Clarification", f"Resolved: using function {function_name}")
+            session.pop("clarification_in_progress", None)
+            session.pop("clarification_data", None)
+            
+            # Add standard parameters
+            if "seller_id" in parameters and "seller_id" in session_data:
+                parameters["seller_id"] = session_data.get("seller_id")
+            
+            # Execute function
+            debug_print("Tool", f"Führe Tool aus: {function_name} mit Parametern: {parameters}")
+            tool_result = handle_function_call(function_name, parameters)
+            
+            # SCHRITT 4: Spezialbehandlung für bestimmte Abfragen
+            formatted_result = None
+            try:
+                if function_name == "get_customer_history":
+                    formatted_result = format_customer_details(json.loads(tool_result))
+                    debug_print("Antwort", "Kunde-Historie formatiert")
+            except Exception as format_error:
+                debug_print("Antwort", f"Fehler bei der Formatierung: {format_error}")
+            
+            # SCHRITT 5: Antwort generieren
+            try:
+                # Wenn bereits eine formatierte Antwort vorliegt, nutze diese
+                if formatted_result:
+                    return formatted_result
+                
+                # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
+                system_prompt = create_enhanced_system_prompt(function_name)
+                
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                    {"role": "function", "name": function_name, "content": tool_result}
+                ]
+                
+                response = openai.chat.completions.create(
+                    model="o3-mini",
+                    messages=messages,
+                    temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
+                )
+                
+                final_response = response.choices[0].message.content
+                debug_print("Antwort", f"Antwort generiert (gekürzt): {final_response[:100]}...")
+                return final_response
+            except Exception as e:
+                # Fallback antwort
+                debug_print("Antwort", f"Fehler bei der Antwortgenerierung: {e}")
+                return generate_fallback_response(function_name, tool_result)
+        else:
+            # Need more clarification
+            session["clarification_data"] = new_clarification_data
+            return new_clarification_data["clarification_message"]
     
     # Aktuelles Datum für zeitliche Anfragen
     current_date = datetime.now()
@@ -1934,163 +2239,231 @@ def process_user_query(user_message, session_data):
     # Füge das aktuelle Datum zu Session-Daten hinzu
     session_data["current_date"] = current_date_str
     
-    # SCHRITT 1: Tool auswählen mit Reasoning
-    selected_tool, reasoning = select_optimal_tool_with_reasoning(user_message, tools, tool_config)
-    debug_print("Anfrage", f"Ausgewähltes Tool: {selected_tool}, Begründung: {reasoning}")
+    debug_print("Anfrage", f"Verarbeite Anfrage: '{user_message}'")
     
-    # SCHRITT 2: Parameter extrahieren mit verbesserter Erkennung
-    tool_info = {}
-    try:
-        with open("query_patterns.json", "r", encoding="utf-8") as f:
-            query_patterns = json.load(f)
-            tool_info = query_patterns.get("common_queries", {})
-    except Exception as e:
-        debug_print("Parameter", f"Fehler beim Laden der query_patterns.json: {e}")
-        tool_info = {}
+    # STEP 1: Determine if this query requires wissensbasis or function calling
+    approach, confidence, reasoning = determine_query_approach(user_message, conversation_history)
     
-    # Verwende die erweiterte Parameterextraktion
-    extracted_params = extract_enhanced_parameters(user_message, selected_tool, tool_info)
-    
-    # Standard-Parameter aus Session hinzufügen
-    if "seller_id" in session_data and session_data["seller_id"]:
-        extracted_params["seller_id"] = session_data["seller_id"]
-    
-    # Frage nach Monatszeiträumen benötigen spezielle Behandlung
-    if selected_tool in ["get_monthly_performance", "get_care_stays_by_date_range"] and "monat" in user_message.lower():
-        date_params = extract_enhanced_date_params(user_message)
-        if date_params and "start_date" in date_params and "end_date" in date_params:
-            extracted_params.update(date_params)
-            if selected_tool == "get_care_stays_by_date_range":
-                extracted_params["filter_type"] = "active"  # Default: Alle aktiven im Zeitraum
-    
-    # Standardwerte aus der Tool-Definition hinzufügen
-    if selected_tool in tool_info:
-        defaults = tool_info[selected_tool].get("default_values", {})
-        for param, value in defaults.items():
-            if param not in extracted_params:
-                extracted_params[param] = value
-    
-    debug_print("Parameter", f"Extrahierte Parameter: {extracted_params}")
-    
-    # Prüfen auf fehlende notwendige Parameter
-    if selected_tool in tool_info:
-        required_params = tool_info[selected_tool].get("required_parameters", [])
-        missing_params = [p for p in required_params if p not in extracted_params]
-        if missing_params:
-            debug_print("Parameter", f"Fehlende Parameter: {missing_params}")
-            # Falls seller_id das einzige fehlende Parameter ist, nutze den Standardwert
-            if missing_params == ["seller_id"] and "seller_id" not in extracted_params:
-                debug_print("Parameter", "Verwende Standard-seller_id für Datenbankanfrage")
-                extracted_params["seller_id"] = "62d00b56a384fd908f7f5a6c"  # Standardwert
-            # Spezialbehandlung für Zeitraumparameter
-            elif missing_params == ["start_date", "end_date"] or "start_date" in missing_params or "end_date" in missing_params:
-                # Aktueller Monat als Standardzeitraum
-                month_start = datetime(current_date.year, current_date.month, 1)
-                if current_date.month == 12:
-                    month_end = datetime(current_date.year, 12, 31)
-                else:
-                    next_month = datetime(current_date.year, current_date.month + 1, 1)
-                    month_end = next_month - timedelta(days=1)
-                
-                extracted_params["start_date"] = month_start.strftime("%Y-%m-%d")
-                extracted_params["end_date"] = month_end.strftime("%Y-%m-%d")
-                debug_print("Parameter", f"Verwende aktuellen Monat als Standardzeitraum: {extracted_params['start_date']} bis {extracted_params['end_date']}")
-            else:
-                # Versuch mit LLM, die fehlenden Parameter zu extrahieren
-                llm_params = extract_parameters_with_llm(user_message, selected_tool, missing_params)
-                extracted_params.update(llm_params)
-    
-    # SCHRITT 3: Tool ausführen
-    try:
-        debug_print("Tool", f"Führe Tool aus: {selected_tool} mit Parametern: {extracted_params}")
-        tool_result = handle_function_call(selected_tool, extracted_params)
+    # STEP 2: Process based on the determined approach
+    if approach == "wissensbasis":
+        debug_print("Approach", "Using wissensbasis for this query")
         
-        # Versuche das Ergebnis zu parsen, um bessere Logs zu generieren
+        # Only load wissensbasis when needed
+        wissensbasis_data = download_wissensbasis()
+        
+        # Process with wissensbasis
         try:
-            parsed_result = json.loads(tool_result)
-            status = parsed_result.get("status", "unknown")
-            data_count = len(parsed_result.get("data", [])) if "data" in parsed_result else 0
-            debug_print("Tool", f"Tool-Ausführung erfolgreich: Status={status}, Datensätze={data_count}")
-
-            # Add feedback for LLM query selector
-            if 'USE_LLM_QUERY_SELECTOR' in globals() and USE_LLM_QUERY_SELECTOR:
-                try:
-                    # Mark this query selection as successful if results were returned without error
-                    update_selection_feedback(user_message, selected_tool, success=True)
-                except Exception as e:
-                    logging.error(f"Error updating selection feedback: {e}")
-        except:
-            debug_print("Tool", "Tool-Ausführung erfolgreich, aber Ergebnis konnte nicht geparst werden")
-    except Exception as e:
-        debug_print("Tool", f"Fehler bei der Tool-Ausführung: {e}")
-        return (f"Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. "
-                f"Bitte versuchen Sie es erneut oder formulieren Sie Ihre Anfrage anders.")
-    
-    # SCHRITT 4: Spezialbehandlung für bestimmte Abfragen
-    formatted_result = None
-    try:
-        if selected_tool == "get_customer_history":
-            formatted_result = format_customer_details(json.loads(tool_result))
-            debug_print("Antwort", "Kunde-Historie formatiert")
-    except Exception as format_error:
-        debug_print("Antwort", f"Fehler bei der Formatierung: {format_error}")
-    
-    # SCHRITT 5: Antwort generieren
-    try:
-        # Wenn bereits eine formatierte Antwort vorliegt, nutze diese
-        if formatted_result:
-            return formatted_result
+            # Create wissensbasis prompt
+            system_prompt = """
+            Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen. 
+            Beantworte die Frage basierend auf der bereitgestellten Wissensbasis.
+            Sei klar, präzise und sachlich. Wenn du die Antwort nicht in der Wissensbasis findest, 
+            sage ehrlich, dass du es nicht weißt.
+            """
+            
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Wissensbasis: {wissensbasis_data}\n\nFrage: {user_message}"}
+            ]
+            
+            response = openai.chat.completions.create(
+                model="gpt-4o",  # Using a more capable model for knowledge-based queries
+                messages=messages,
+                temperature=0.3
+            )
+            
+            final_response = response.choices[0].message.content
+            debug_print("Antwort", f"Wissensbasis-Antwort generiert (gekürzt): {final_response[:100]}...")
+            return final_response
+        except Exception as e:
+            debug_print("Antwort", f"Fehler bei der Wissensbasis-Antwortgenerierung: {e}")
+            return "Es ist ein Fehler bei der Verarbeitung Ihrer Anfrage mit der Wissensbasis aufgetreten. Bitte versuchen Sie es später erneut."
+    else:
+        debug_print("Approach", "Using function calling for this query")
         
-        # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
-        system_prompt = create_enhanced_system_prompt(selected_tool)
+        # Load query patterns
+        query_patterns = {}
+        try:
+            with open("query_patterns.json", "r", encoding="utf-8") as f:
+                content = f.read()
+                json_start = content.find('{')
+                if json_start >= 0:
+                    content = content[json_start:]
+                    query_data = json.loads(content)
+                    query_patterns = query_data.get("common_queries", {})
+        except Exception as e:
+            debug_print("Parameter", f"Fehler beim Laden der query_patterns.json: {e}")
         
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-            {"role": "function", "name": selected_tool, "content": tool_result}
-        ]
-        
-        response = openai.chat.completions.create(
-            model="o3-mini",
-            messages=messages,
-            temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
+        # STEP 3: Determine if we need clarification for function selection
+        needs_clarification, selected_function, possible_functions, parameters, clarification_message, reasoning = (
+            determine_function_need(user_message, query_patterns, conversation_history)
         )
         
-        final_response = response.choices[0].message.content
-        debug_print("Antwort", f"Antwort generiert (gekürzt): {final_response[:100]}...")
-        return final_response
-    except Exception as e:
-        debug_print("Antwort", f"Fehler bei der Antwortgenerierung: {e}")
-        # Verbesserte Fallback-Antwort
-        try:
-            result_data = json.loads(tool_result)
+        if needs_clarification:
+            # Start a conversational clarification process
+            debug_print("Clarification", "Starting clarification dialog")
             
-            if "data" in result_data and result_data["data"]:
-                data_count = len(result_data["data"])
+            # Format the possible functions for better readability
+            function_options = []
+            for func_name in possible_functions:
+                if func_name in query_patterns:
+                    desc = query_patterns[func_name].get("description", func_name)
+                    function_options.append({"name": func_name, "description": desc})
+            
+            # Store clarification state
+            clarification_data = {
+                "original_question": user_message,
+                "clarification_message": clarification_message,
+                "possible_functions": function_options
+            }
+            
+            session["clarification_in_progress"] = True
+            session["clarification_data"] = clarification_data
+            
+            # Format clarification message with options if available
+            if function_options:
+                option_text = ""
+                for i, option in enumerate(function_options):
+                    option_text += f"\n{chr(97+i)}) {option['description']}"
                 
-                if data_count == 0:
-                    return "Leider wurden keine Daten zu Ihrer Anfrage gefunden."
+                clarification_message += f"\nIch kann dir folgende Informationen anbieten:{option_text}\n\nWas davon interessiert dich?"
+            
+            return clarification_message
+        else:
+            # We have a clear function to call
+            debug_print("Function Call", f"Selected function: {selected_function}")
+            
+            # Add standard parameters
+            if "seller_id" in parameters and "seller_id" in session_data:
+                parameters["seller_id"] = session_data.get("seller_id")
+            
+            # Fill in missing parameters using existing methods if needed
+            if selected_function in query_patterns:
+                # Add date parameters for time-based queries
+                if selected_function in ["get_monthly_performance", "get_care_stays_by_date_range"] and "monat" in user_message.lower():
+                    date_params = extract_enhanced_date_params(user_message)
+                    if date_params and "start_date" in date_params and "end_date" in date_params:
+                        parameters.update(date_params)
+                        if selected_function == "get_care_stays_by_date_range":
+                            parameters["filter_type"] = "active"
                 
-                # Intelligentere Fallback-Antwort basierend auf dem Tool-Typ
-                if "active" in selected_tool:
-                    return f"Sie haben aktuell {data_count} aktive Betreuungen."
-                elif "terminat" in selected_tool:
-                    return f"Es wurden {data_count} Kündigungen gefunden."
-                elif "lead" in selected_tool:
-                    return f"Es wurden {data_count} Leads gefunden."
-                elif "contract" in selected_tool:
-                    return f"Es wurden {data_count} Verträge gefunden."
-                else:
-                    # Allgemeine Antwort mit den ersten 3 Datensätzen
-                    if data_count <= 3:
-                        return f"Es wurden {data_count} Datensätze gefunden. Details: {format_simple_results(result_data['data'])}"
+                # Add default values
+                defaults = query_patterns[selected_function].get("default_values", {})
+                for param, value in defaults.items():
+                    if param not in parameters:
+                        parameters[param] = value
+                
+                # Handle missing required parameters
+                required_params = query_patterns[selected_function].get("required_parameters", [])
+                missing_params = [p for p in required_params if p not in parameters]
+                
+                if missing_params:
+                    # Standard handling for common missing parameters
+                    if missing_params == ["seller_id"] and "seller_id" not in parameters:
+                        parameters["seller_id"] = "62d00b56a384fd908f7f5a6c"  # Default value
+                    elif missing_params == ["start_date", "end_date"] or "start_date" in missing_params or "end_date" in missing_params:
+                        # Current month as default timeframe
+                        month_start = datetime(current_date.year, current_date.month, 1)
+                        if current_date.month == 12:
+                            month_end = datetime(current_date.year, 12, 31)
+                        else:
+                            next_month = datetime(current_date.year, current_date.month + 1, 1)
+                            month_end = next_month - timedelta(days=1)
+                        
+                        parameters["start_date"] = month_start.strftime("%Y-%m-%d")
+                        parameters["end_date"] = month_end.strftime("%Y-%m-%d")
                     else:
-                        return f"Es wurden {data_count} Datensätze gefunden. Hier sind die ersten 3: {format_simple_results(result_data['data'][:3])}"
-            else:
+                        # Try to extract missing parameters with LLM
+                        llm_params = extract_parameters_with_llm(user_message, selected_function, missing_params)
+                        parameters.update(llm_params)
+            
+            # Execute function
+            debug_print("Tool", f"Führe Tool aus: {selected_function} mit Parametern: {parameters}")
+            try:
+                tool_result = handle_function_call(selected_function, parameters)
+                
+                # Try to parse result for better logs
+                try:
+                    parsed_result = json.loads(tool_result)
+                    status = parsed_result.get("status", "unknown")
+                    data_count = len(parsed_result.get("data", [])) if "data" in parsed_result else 0
+                    debug_print("Tool", f"Tool-Ausführung erfolgreich: Status={status}, Datensätze={data_count}")
+                except:
+                    debug_print("Tool", "Tool-Ausführung erfolgreich, aber Ergebnis konnte nicht geparst werden")
+            except Exception as e:
+                debug_print("Tool", f"Fehler bei der Tool-Ausführung: {e}")
+                return (f"Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. "
+                        f"Bitte versuchen Sie es erneut oder formulieren Sie Ihre Anfrage anders.")
+            
+            # SCHRITT 4: Spezialbehandlung für bestimmte Abfragen
+            formatted_result = None
+            try:
+                if selected_function == "get_customer_history":
+                    formatted_result = format_customer_details(json.loads(tool_result))
+                    debug_print("Antwort", "Kunde-Historie formatiert")
+            except Exception as format_error:
+                debug_print("Antwort", f"Fehler bei der Formatierung: {format_error}")
+            
+            # SCHRITT 5: Antwort generieren
+            try:
+                # Wenn bereits eine formatierte Antwort vorliegt, nutze diese
+                if formatted_result:
+                    return formatted_result
+                
+                # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
+                system_prompt = create_enhanced_system_prompt(selected_function)
+                
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                    {"role": "function", "name": selected_function, "content": tool_result}
+                ]
+                
+                response = openai.chat.completions.create(
+                    model="o3-mini",
+                    messages=messages,
+                    temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
+                )
+                
+                final_response = response.choices[0].message.content
+                debug_print("Antwort", f"Antwort generiert (gekürzt): {final_response[:100]}...")
+                return final_response
+            except Exception as e:
+                debug_print("Antwort", f"Fehler bei der Antwortgenerierung: {e}")
+                # Fallback to simpler response
+                return generate_fallback_response(selected_function, tool_result)
+
+def generate_fallback_response(selected_tool, tool_result):
+    """Helper function to generate a fallback response when LLM generation fails"""
+    try:
+        result_data = json.loads(tool_result)
+        
+        if "data" in result_data and result_data["data"]:
+            data_count = len(result_data["data"])
+            
+            if data_count == 0:
                 return "Leider wurden keine Daten zu Ihrer Anfrage gefunden."
-        except Exception as fallback_error:
-            debug_print("Antwort", f"Fehler bei der Fallback-Antwortgenerierung: {fallback_error}")
-            return "Es ist ein technisches Problem aufgetreten. Bitte versuchen Sie es später erneut oder formulieren Sie Ihre Anfrage anders."
+            
+            # Intelligentere Fallback-Antwort basierend auf dem Tool-Typ
+            if "active" in selected_tool:
+                return f"Sie haben aktuell {data_count} aktive Betreuungen."
+            elif "terminat" in selected_tool:
+                return f"Es wurden {data_count} Kündigungen gefunden."
+            elif "lead" in selected_tool:
+                return f"Es wurden {data_count} Leads gefunden."
+            elif "contract" in selected_tool:
+                return f"Es wurden {data_count} Verträge gefunden."
+            else:
+                # Allgemeine Antwort mit den ersten 3 Datensätzen
+                if data_count <= 3:
+                    return f"Es wurden {data_count} Datensätze gefunden. Details: {format_simple_results(result_data['data'])}"
+                else:
+                    return f"Es wurden {data_count} Datensätze gefunden. Hier sind die ersten 3: {format_simple_results(result_data['data'][:3])}"
+        else:
+            return "Leider wurden keine Daten zu Ihrer Anfrage gefunden."
+    except Exception as fallback_error:
+        debug_print("Antwort", f"Fehler bei der Fallback-Antwortgenerierung: {fallback_error}")
+        return "Es ist ein technisches Problem aufgetreten. Bitte versuchen Sie es später erneut oder formulieren Sie Ihre Anfrage anders."
 
 def create_enhanced_system_prompt(selected_tool):
     """Erstellt einen verbesserten System-Prompt basierend auf der Art der Abfrage"""
@@ -2272,9 +2645,58 @@ def create_function_definitions():
     
     return tools
 
+def stream_text_response(response_text, user_message, session_data):
+    """
+    Generiert einen Stream für direkte Textantworten (z.B. Wissensbasis-Antworten)
+    """
+    try:
+        # Debug-Events für die Verbindungsdiagnose
+        yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream-Start (Text Response)'})}\n\n"
+        
+        # Stream-Start
+        yield f"data: {json.dumps({'type': 'start'})}\n\n"
+        
+        # Teile die Antwort in Chunks auf für ein natürlicheres Streaming-Gefühl
+        chunk_size = 15  # Anzahl der Wörter pro Chunk
+        words = response_text.split()
+        
+        for i in range(0, len(words), chunk_size):
+            chunk = " ".join(words[i:i+chunk_size])
+            yield f"data: {json.dumps({'type': 'text', 'content': chunk + ' '})}\n\n"
+            time.sleep(0.05)  # Kleine Verzögerung für natürlichere Ausgabe
+        
+        # Stream beenden
+        yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': response_text})}\n\n"
+        yield f"data: {json.dumps({'type': 'end'})}\n\n"
+    except Exception as e:
+        logging.exception("Fehler im Text-Stream")
+        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler: {str(e)}'})}\n\n"
+        yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': 'Es ist ein Fehler aufgetreten.'})}\n\n"
+        yield f"data: {json.dumps({'type': 'end'})}\n\n"
+
+def generate_conversational_clarification_stream(clarification_data):
+    """
+    Generiert einen Stream für konversationelle Rückfragen ohne Buttons
+    """
+    try:
+        yield f"data: {json.dumps({'type': 'clarification_start'})}\n\n"
+        
+        # Sende die Rückfrage als normalen Text
+        message = clarification_data.get("clarification_message", "Bitte präzisiere deine Anfrage")
+        yield f"data: {json.dumps({'type': 'text', 'content': message})}\n\n"
+        
+        # Wir verwenden keine Button-Optionen mehr, sondern erwarten eine natürliche Antwort
+        yield f"data: {json.dumps({'type': 'complete', 'user': clarification_data.get('original_question', ''), 'bot': message})}\n\n"
+        yield f"data: {json.dumps({'type': 'conversational_clarification_mode'})}\n\n"
+        
+        yield f"data: {json.dumps({'type': 'clarification_end'})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Rückfrage: {str(e)}'})}\n\n"
+
+# Keep the old function for backward compatibility
 def generate_clarification_stream(human_in_loop_data):
     """
-    Generiert einen Stream für Human-in-the-Loop Rückfragen
+    Generiert einen Stream für Human-in-the-Loop Rückfragen mit Buttons (Legacy)
     """
     try:
         yield f"data: {json.dumps({'type': 'clarification_start'})}\n\n"
@@ -2478,7 +2900,8 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
 @app.route("/clarify", methods=["POST"])
 def handle_clarification():
     """
-    Verarbeitet die Antwort auf eine Human-in-the-Loop Rückfrage
+    Verarbeitet die Antwort auf eine Rückfrage - unterstützt sowohl Legacy Button-Modus als auch
+    neue konversationelle Rückfragen
     """
     try:
         # Stellen wir sicher, dass eine Benutzer-Session existiert
@@ -2492,6 +2915,28 @@ def handle_clarification():
         # Debug-Informationen
         logging.info(f"Verarbeite Clarification-Antwort, AJAX: {is_ajax}")
         
+        # Prüfen, ob wir im konversationellen oder Button-Modus sind
+        conversational_mode = session.get("clarification_in_progress", False)
+        
+        if conversational_mode:
+            # Konversationeller Modus: Antwort als natürlichen Text behandeln
+            user_message = request.form.get("message", "").strip()
+            
+            if not user_message:
+                error_msg = "Keine Antwort auf die Rückfrage angegeben"
+                logging.error(error_msg)
+                if is_ajax:
+                    return jsonify({"error": error_msg}), 400
+                flash(error_msg, "warning")
+                return redirect(url_for("chat"))
+            
+            # Benutzerantwort wird in der normalen Chat-Route verarbeitet
+            # Wir senden eine Erfolgsmeldung zurück, da die Verarbeitung im Chat-Handler erfolgt
+            if is_ajax:
+                return jsonify({"success": True, "message": "Antwort wird verarbeitet"})
+            return redirect(url_for("chat"))
+        
+        # Legacy Button-Modus
         try:
             # Lese die Option aus dem Formular
             selected_option_index = int(request.form.get("option_index", "0"))
@@ -2722,34 +3167,121 @@ def chat():
                             content_type="text/event-stream"
                         )
                     else:
-                        # Neues Streaming mit verbessertem Tool-Auswahlprozess
-                        # Neues Streaming mit verbessertem Tool-Auswahlprozess
-                        tool_config = load_tool_config()
-                        selected_tool, reasoning = select_optimal_tool_with_reasoning(user_message, tools, tool_config)
+                        # Enhanced multi-layer LLM approach
+                        session_data["conversation_history"] = chat_history
                         
-                        # Prüfen, ob eine Human-in-the-Loop Rückfrage ausgelöst wurde
-                        if selected_tool == "human_in_loop_clarification":
-                            # Wenn eine Rückfrage nötig ist, senden wir ein spezielles Event an den Client
+                        # Check if this is a continuation of a clarification dialog
+                        if session.get("clarification_in_progress"):
+                            debug_print("Chat", "Continuing clarification dialog")
+                            
+                            # Process the conversational clarification
+                            response = process_user_query(user_message, session_data)
+                            
+                            # If we're still in clarification mode, stream the clarification response
+                            if session.get("clarification_in_progress"):
+                                return Response(
+                                    generate_conversational_clarification_stream(session.get("clarification_data")),
+                                    content_type="text/event-stream"
+                                )
+                            
+                            # If clarification is complete, format tool choice for selected function
+                            if session.get("selected_function"):
+                                selected_tool = session.get("selected_function")
+                                tool_choice = {"type": "function", "function": {"name": selected_tool}}
+                                return Response(
+                                    stream_response(
+                                        messages,
+                                        tools,
+                                        tool_choice,
+                                        seller_id,
+                                        session.get("extracted_parameters", {}),
+                                        user_message,
+                                        session_data
+                                    ),
+                                    content_type="text/event-stream"
+                                )
+                            else:
+                                # This was a response from wissensbasis, stream it directly
+                                return Response(
+                                    stream_text_response(response, user_message, session_data),
+                                    content_type="text/event-stream"
+                                )
+                        
+                        # First layer: determine if query requires wissensbasis or function calling
+                        approach, confidence, reasoning = determine_query_approach(user_message, chat_history)
+                        
+                        if approach == "wissensbasis":
+                            # Process with wissensbasis
+                            response = process_user_query(user_message, session_data)
                             return Response(
-                                generate_clarification_stream(session.get("human_in_loop_data")),
+                                stream_text_response(response, user_message, session_data),
                                 content_type="text/event-stream"
                             )
-                                                
-                        # Korrektes Format für tool_choice erstellen
-                        tool_choice = {"type": "function", "function": {"name": selected_tool}} if selected_tool else "auto"
-                                                
-                        return Response(
-                            stream_response(
-                                messages, 
-                                tools, 
-                                tool_choice,  # Statt dem String das korrekt formatierte Objekt übergeben
-                                seller_id, 
-                                extract_enhanced_date_params(user_message), 
-                                user_message, 
-                                session_data
-                            ),
-                            content_type="text/event-stream"
-                        )
+                        else:
+                            # Second layer: determine if clarification is needed
+                            query_patterns = {}
+                            try:
+                                with open("query_patterns.json", "r", encoding="utf-8") as f:
+                                    content = f.read()
+                                    json_start = content.find('{')
+                                    if json_start >= 0:
+                                        content = content[json_start:]
+                                        query_data = json.loads(content)
+                                        query_patterns = query_data.get("common_queries", {})
+                            except Exception as e:
+                                debug_print("Parameter", f"Fehler beim Laden der query_patterns.json: {e}")
+                            
+                            needs_clarification, selected_function, possible_functions, parameters, clarification_message, reasoning = (
+                                determine_function_need(user_message, query_patterns, chat_history)
+                            )
+                            
+                            if needs_clarification:
+                                # Start a conversational clarification process
+                                debug_print("Clarification", "Starting clarification dialog")
+                                
+                                # Format the possible functions for better readability
+                                function_options = []
+                                for func_name in possible_functions:
+                                    if func_name in query_patterns:
+                                        desc = query_patterns[func_name].get("description", func_name)
+                                        function_options.append({"name": func_name, "description": desc})
+                                
+                                # Store clarification state
+                                clarification_data = {
+                                    "original_question": user_message,
+                                    "clarification_message": clarification_message,
+                                    "possible_functions": function_options
+                                }
+                                
+                                session["clarification_in_progress"] = True
+                                session["clarification_data"] = clarification_data
+                                
+                                return Response(
+                                    generate_conversational_clarification_stream(clarification_data),
+                                    content_type="text/event-stream"
+                                )
+                            else:
+                                # We have a clear function to call
+                                debug_print("Function Call", f"Selected function: {selected_function}")
+                                
+                                # Add standard parameters
+                                if "seller_id" in parameters:
+                                    parameters["seller_id"] = seller_id
+                                
+                                tool_choice = {"type": "function", "function": {"name": selected_function}} if selected_function else "auto"
+                                
+                                return Response(
+                                    stream_response(
+                                        messages,
+                                        tools,
+                                        tool_choice,
+                                        seller_id,
+                                        parameters,
+                                        user_message,
+                                        session_data
+                                    ),
+                                    content_type="text/event-stream"
+                                )
                            
                         
                 

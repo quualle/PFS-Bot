@@ -959,12 +959,16 @@
                                                 }
                                             }
                                             else if (json.type === 'clarification_option') {
+                                                // Bugfix: Wir suchen nach dem richtigen Container
                                                 const optionsContainer = botDiv.querySelector('.clarification-options');
                                                 if (optionsContainer) {
+                                                    // Button erstellen
                                                     const optionButton = document.createElement('button');
                                                     optionButton.className = 'option-button';
                                                     optionButton.textContent = json.text;
                                                     optionButton.setAttribute('data-option-index', json.index);
+                                                    
+                                                    // Button-Styling
                                                     optionButton.style.padding = '10px 15px';
                                                     optionButton.style.backgroundColor = '#00476b';
                                                     optionButton.style.color = 'white';
@@ -983,9 +987,27 @@
                                                         this.style.backgroundColor = '#00476b';
                                                     });
                                                     
+                                                    // Button zum Container hinzufügen
+                                                    optionsContainer.appendChild(optionButton);
+                                                } else {
+                                                    console.error("Fehler: Options-Container nicht gefunden!");
+                                                }
+                                                    
                                                     // Event-Listener für Option-Button
                                                     optionButton.addEventListener('click', function() {
                                                         const optionIndex = this.getAttribute('data-option-index');
+                                                        
+                                                        // Visual feedback for the user
+                                                        this.style.backgroundColor = '#005e8a';
+                                                        this.textContent = 'Wird verarbeitet...';
+                                                        
+                                                        // Disable all option buttons
+                                                        const allButtons = botDiv.querySelectorAll('.option-button');
+                                                        allButtons.forEach(btn => {
+                                                            btn.disabled = true;
+                                                            btn.style.opacity = '0.7';
+                                                            btn.style.cursor = 'default';
+                                                        });
                                                         
                                                         // Formular erstellen und absenden
                                                         const form = document.createElement('form');
@@ -1005,7 +1027,11 @@
                                                         form.appendChild(csrfInput);
                                                         form.appendChild(optionInput);
                                                         document.body.appendChild(form);
-                                                        form.submit();
+                                                        
+                                                        // Add a short delay before submitting to show feedback
+                                                        setTimeout(() => {
+                                                            form.submit();
+                                                        }, 300);
                                                     });
                                                     
                                                     clarificationContainer.appendChild(optionButton);

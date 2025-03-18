@@ -113,7 +113,7 @@ Instructions:
 Important considerations:
 - Time-based queries (like get_care_stays_by_date_range) need clear date ranges
 - Performance queries (like get_monthly_performance) need specific time periods
-- For questions about active care stays, prefer get_active_care_stays_now
+- For questions about active care stays OR customer count (kunden), prefer get_active_care_stays_now
 - For questions about revenue or earnings, prefer get_revenue_by_agency or get_monthly_performance
 - For questions about specific customers, prefer get_customer_history
 - For terminations or contract ends, prefer get_contract_terminations and always give back 'ernsthafte' terminations and 'agenturwechsel' separately and as a sum

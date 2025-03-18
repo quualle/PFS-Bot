@@ -913,31 +913,75 @@
                                                 simpleText = '';
                                                 botResponseSpan.innerHTML = '';
                                                 
-                                                // Container für Rückfrage-Optionen erstellen
-                                                const clarificationContainer = document.createElement('div');
-                                                clarificationContainer.className = 'clarification-container';
-                                                clarificationContainer.style.marginTop = '10px';
-                                                botDiv.appendChild(clarificationContainer);
+                                                // Container für Rückfrage erstellen mit klarem Design
+                                                const clarificationBox = document.createElement('div');
+                                                clarificationBox.className = 'clarification-box';
+                                                clarificationBox.style.backgroundColor = 'rgba(52, 73, 94, 0.8)';
+                                                clarificationBox.style.border = '1px solid #4a6b8c';
+                                                clarificationBox.style.borderRadius = '10px';
+                                                clarificationBox.style.padding = '15px';
+                                                clarificationBox.style.marginTop = '15px';
+                                                clarificationBox.style.marginBottom = '5px';
+                                                clarificationBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+                                                botDiv.appendChild(clarificationBox);
+                                                
+                                                // Titel für die Rückfrage
+                                                const title = document.createElement('div');
+                                                title.className = 'clarification-title';
+                                                title.style.fontWeight = 'bold';
+                                                title.style.marginBottom = '10px';
+                                                title.style.fontSize = '16px';
+                                                title.style.color = '#00ffff';
+                                                title.textContent = 'Präzisierung erforderlich';
+                                                clarificationBox.appendChild(title);
+                                                
+                                                // Container für die Nachricht
+                                                const messageContainer = document.createElement('div');
+                                                messageContainer.className = 'clarification-message';
+                                                messageContainer.style.marginBottom = '15px';
+                                                messageContainer.style.lineHeight = '1.4';
+                                                clarificationBox.appendChild(messageContainer);
+                                                
+                                                // Container für Buttons
+                                                const optionsContainer = document.createElement('div');
+                                                optionsContainer.className = 'clarification-options';
+                                                optionsContainer.style.display = 'flex';
+                                                optionsContainer.style.flexDirection = 'column';
+                                                optionsContainer.style.gap = '8px';
+                                                optionsContainer.style.marginTop = '10px';
+                                                clarificationBox.appendChild(optionsContainer);
                                             }
                                             else if (json.type === 'clarification_message' && json.content) {
-                                                simpleText = json.content;
-                                                botResponseSpan.innerHTML = `<strong>${json.content}</strong>`;
-                                                console.log("CLARIFICATION MESSAGE:", json.content);
+                                                const messageContainer = botDiv.querySelector('.clarification-message');
+                                                if (messageContainer) {
+                                                    messageContainer.textContent = json.content;
+                                                    console.log("CLARIFICATION MESSAGE:", json.content);
+                                                }
                                             }
                                             else if (json.type === 'clarification_option') {
-                                                const clarificationContainer = botDiv.querySelector('.clarification-container');
-                                                if (clarificationContainer) {
+                                                const optionsContainer = botDiv.querySelector('.clarification-options');
+                                                if (optionsContainer) {
                                                     const optionButton = document.createElement('button');
                                                     optionButton.className = 'option-button';
                                                     optionButton.textContent = json.text;
                                                     optionButton.setAttribute('data-option-index', json.index);
-                                                    optionButton.style.margin = '5px';
-                                                    optionButton.style.padding = '8px 15px';
-                                                    optionButton.style.backgroundColor = '#2c3e50';
+                                                    optionButton.style.padding = '10px 15px';
+                                                    optionButton.style.backgroundColor = '#00476b';
                                                     optionButton.style.color = 'white';
-                                                    optionButton.style.border = '1px solid #34495e';
+                                                    optionButton.style.border = '1px solid #0077b3';
                                                     optionButton.style.borderRadius = '5px';
                                                     optionButton.style.cursor = 'pointer';
+                                                    optionButton.style.width = '100%';
+                                                    optionButton.style.textAlign = 'left';
+                                                    optionButton.style.transition = 'background-color 0.2s ease';
+                                                    
+                                                    // Hover-Effekt
+                                                    optionButton.addEventListener('mouseover', function() {
+                                                        this.style.backgroundColor = '#0077b3';
+                                                    });
+                                                    optionButton.addEventListener('mouseout', function() {
+                                                        this.style.backgroundColor = '#00476b';
+                                                    });
                                                     
                                                     // Event-Listener für Option-Button
                                                     optionButton.addEventListener('click', function() {

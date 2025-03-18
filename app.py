@@ -1670,12 +1670,36 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
             # Extrahiere die verfügbaren Tool-Namen
             available_tool_names = [tool["function"]["name"] for tool in tools]
             
-            # Nutze die select_query_with_llm Methode zur semantischen Auswahl
-            query_name, parameters = select_query_with_llm(
-                user_message, 
-                conversation_history=None,  # TODO: Könnte session.get('chat_history') sein
-                user_id=None  # Wird später im Code mit seller_id ergänzt
-            )
+            # Human-in-the-loop Behandlung
+            if "human_in_loop_clarification_response" in session:
+                # Verarbeite Antwort auf eine vorherige Rückfrage
+                debug_print("Tool-Auswahl", "Verarbeite Human-in-the-loop Rückmeldung")
+                clarification_option = session.pop("human_in_loop_clarification_response")
+                original_request = session.pop("human_in_loop_original_request", user_message)
+                
+                # Verarbeite die Benutzerantwort zur Rückfrage
+                query_name, parameters = query_selector.process_clarification_response(
+                    clarification_option, original_request
+                )
+            else:
+                # Normale Verarbeitung ohne vorherige Rückfrage
+                # Nutze die select_query_with_llm Methode zur semantischen Auswahl
+                query_name, parameters, human_in_loop = select_query_with_llm(
+                    user_message, 
+                    conversation_history=None,  # TODO: Könnte session.get('chat_history') sein
+                    user_id=None  # Wird später im Code mit seller_id ergänzt
+                )
+                
+                # Prüfen, ob eine menschliche Interaktion erforderlich ist
+                if human_in_loop:
+                    debug_print("Tool-Auswahl", f"Human-in-the-loop für Query: {query_name}")
+                    # Wir speichern den human_in_loop-Status in der Session
+                    session["human_in_loop_data"] = human_in_loop
+                    session["human_in_loop_original_request"] = user_message
+                    # Hier geben wir ein spezielles Tool zurück, das die UI anweist, eine Rückfrage zu stellen
+                    return "human_in_loop_clarification", f"Rückfrage erforderlich: {human_in_loop.get('message', '')}"
+                # Hier geben wir ein spezielles Tool zurück, das die UI anweist, eine Rückfrage zu stellen
+                return "human_in_loop_clarification", f"Rückfrage erforderlich: {human_in_loop.get('message', '')}"
             
             # Prüfe, ob das gewählte Tool verfügbar ist
             if query_name in available_tool_names:
@@ -2188,6 +2212,26 @@ def create_function_definitions():
     
     return tools
 
+def generate_clarification_stream(human_in_loop_data):
+    """
+    Generiert einen Stream für Human-in-the-Loop Rückfragen
+    """
+    try:
+        yield f"data: {json.dumps({'type': 'clarification_start'})}\n\n"
+        
+        # Sende die Rückfrage
+        message = human_in_loop_data.get("message", "Bitte präzisiere deine Anfrage")
+        yield f"data: {json.dumps({'type': 'clarification_message', 'content': message})}\n\n"
+        
+        # Sende die Optionen
+        options = human_in_loop_data.get("options", [])
+        for i, option in enumerate(options):
+            yield f"data: {json.dumps({'type': 'clarification_option', 'index': i, 'text': option.get('text', '')})}\n\n"
+        
+        yield f"data: {json.dumps({'type': 'clarification_end'})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Rückfrage: {str(e)}'})}\n\n"
+
 def stream_response(messages, tools, tool_choice, seller_id, extracted_args, user_message, session_data):
     """Stream the OpenAI response and handle function calls within the stream
     
@@ -2371,6 +2415,36 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
 
 
 
+@app.route("/clarify", methods=["POST"])
+def handle_clarification():
+    """
+    Verarbeitet die Antwort auf eine Human-in-the-Loop Rückfrage
+    """
+    try:
+        if not session.get("user_id") or not session.get("human_in_loop_data"):
+            return jsonify({"error": "Keine aktive Rückfrage-Session gefunden"}), 400
+            
+        # Lese die Option aus dem Formular
+        selected_option_index = int(request.form.get("option_index", "0"))
+        human_in_loop_data = session.get("human_in_loop_data")
+        
+        if not human_in_loop_data or "options" not in human_in_loop_data:
+            return jsonify({"error": "Ungültige Rückfrage-Daten"}), 400
+            
+        options = human_in_loop_data.get("options", [])
+        if selected_option_index < 0 or selected_option_index >= len(options):
+            return jsonify({"error": "Ungültiger Options-Index"}), 400
+            
+        # Speichere die ausgewählte Option in der Session für die nächste Verarbeitung
+        session["human_in_loop_clarification_response"] = options[selected_option_index]
+        
+        # Leite zurück zur Hauptseite, die jetzt die ausgewählte Option verarbeiten wird
+        return redirect(url_for("chat"))
+        
+    except Exception as e:
+        logging.error(f"Fehler bei der Verarbeitung der Rückfrage: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/", methods=["GET", "POST"])
 def chat():
     try:
@@ -2501,7 +2575,15 @@ def chat():
                         # Neues Streaming mit verbessertem Tool-Auswahlprozess
                         # Neues Streaming mit verbessertem Tool-Auswahlprozess
                         tool_config = load_tool_config()
-                        selected_tool = select_optimal_tool_with_reasoning(user_message, tools, tool_config)[0]
+                        selected_tool, reasoning = select_optimal_tool_with_reasoning(user_message, tools, tool_config)
+                        
+                        # Prüfen, ob eine Human-in-the-Loop Rückfrage ausgelöst wurde
+                        if selected_tool == "human_in_loop_clarification":
+                            # Wenn eine Rückfrage nötig ist, senden wir ein spezielles Event an den Client
+                            return Response(
+                                generate_clarification_stream(session.get("human_in_loop_data")),
+                                content_type="text/event-stream"
+                            )
                                                 
                         # Korrektes Format für tool_choice erstellen
                         tool_choice = {"type": "function", "function": {"name": selected_tool}} if selected_tool else "auto"
@@ -2634,7 +2716,15 @@ def chat():
                 )
 
         stats = calculate_chat_stats()
-        return render_template("chat.html", chat_history=display_chat_history, stats=stats)
+        
+        # Prüfen, ob eine Human-in-Loop Rückfrage angezeigt werden soll
+        human_in_loop_data = session.get("human_in_loop_data")
+        
+        # Wenn human_in_loop_data existiert, geben wir die Rückfrage-Optionen mit an das Template
+        return render_template("chat.html", 
+                              chat_history=display_chat_history, 
+                              stats=stats,
+                              human_in_loop=human_in_loop_data)
 
     except Exception as e:
         logging.exception("Fehler in chat-Funktion.")

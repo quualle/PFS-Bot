@@ -901,11 +901,71 @@
                                             const json = JSON.parse(line.substring(6));
                                             console.log("EVENT TYPE:", json.type);
                                             
-                                            // Fokus nur auf Text-Events
+                                            // Verschiedene Event-Typen verarbeiten
                                             if (json.type === 'text' && json.content) {
                                                 simpleText += json.content;
                                                 botResponseSpan.innerHTML = simpleText;
                                                 console.log("TEXT UPDATE:", simpleText.length, "characters total");
+                                            } 
+                                            // Human-in-the-Loop Rückfrage
+                                            else if (json.type === 'clarification_start') {
+                                                console.log("Clarification started");
+                                                simpleText = '';
+                                                botResponseSpan.innerHTML = '';
+                                                
+                                                // Container für Rückfrage-Optionen erstellen
+                                                const clarificationContainer = document.createElement('div');
+                                                clarificationContainer.className = 'clarification-container';
+                                                clarificationContainer.style.marginTop = '10px';
+                                                botDiv.appendChild(clarificationContainer);
+                                            }
+                                            else if (json.type === 'clarification_message' && json.content) {
+                                                simpleText = json.content;
+                                                botResponseSpan.innerHTML = `<strong>${json.content}</strong>`;
+                                                console.log("CLARIFICATION MESSAGE:", json.content);
+                                            }
+                                            else if (json.type === 'clarification_option') {
+                                                const clarificationContainer = botDiv.querySelector('.clarification-container');
+                                                if (clarificationContainer) {
+                                                    const optionButton = document.createElement('button');
+                                                    optionButton.className = 'option-button';
+                                                    optionButton.textContent = json.text;
+                                                    optionButton.setAttribute('data-option-index', json.index);
+                                                    optionButton.style.margin = '5px';
+                                                    optionButton.style.padding = '8px 15px';
+                                                    optionButton.style.backgroundColor = '#2c3e50';
+                                                    optionButton.style.color = 'white';
+                                                    optionButton.style.border = '1px solid #34495e';
+                                                    optionButton.style.borderRadius = '5px';
+                                                    optionButton.style.cursor = 'pointer';
+                                                    
+                                                    // Event-Listener für Option-Button
+                                                    optionButton.addEventListener('click', function() {
+                                                        const optionIndex = this.getAttribute('data-option-index');
+                                                        
+                                                        // Formular erstellen und absenden
+                                                        const form = document.createElement('form');
+                                                        form.method = 'post';
+                                                        form.action = "{{ url_for('handle_clarification') }}";
+                                                        
+                                                        const csrfInput = document.createElement('input');
+                                                        csrfInput.type = 'hidden';
+                                                        csrfInput.name = 'csrf_token';
+                                                        csrfInput.value = csrfToken;
+                                                        
+                                                        const optionInput = document.createElement('input');
+                                                        optionInput.type = 'hidden';
+                                                        optionInput.name = 'option_index';
+                                                        optionInput.value = optionIndex;
+                                                        
+                                                        form.appendChild(csrfInput);
+                                                        form.appendChild(optionInput);
+                                                        document.body.appendChild(form);
+                                                        form.submit();
+                                                    });
+                                                    
+                                                    clarificationContainer.appendChild(optionButton);
+                                                }
                                             }
                                         } catch (e) {
                                             console.error("PARSE ERROR:", e);

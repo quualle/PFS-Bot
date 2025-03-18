@@ -26,6 +26,9 @@ import tiktoken
 import yaml
 import re
 
+from openai import OpenAI
+client = OpenAI()
+
 try:
     from query_selector import select_query_with_llm, update_selection_feedback
     USE_LLM_QUERY_SELECTOR = True
@@ -625,7 +628,7 @@ def contact_openai(messages, model=None):
         tools = create_function_definitions()
         
         # Add explicit tool_choice parameter to guide the model to use functions
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model=model, 
             messages=messages,
             tools=tools,  # Add the tools parameter

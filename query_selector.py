@@ -119,6 +119,7 @@ Important considerations:
 - For terminations or contract ends, prefer get_contract_terminations and always give back 'ernsthafte' terminations and 'agenturwechsel' separately and as a sum
 - For questions about terminated contracts with distinctions between 'ernsthaft' terminations and 'agenturwechsel', use get_contract_terminations
 - For questions about "Pause". "Betreuungspause" or any other terms which describes a customer still be under contract but currently without carestay, use get_customers_on_pause
+- For questions about tickets, use get_customer_tickets
 
 Format your response as JSON with these fields:
 - selected_query: [query name]
@@ -210,7 +211,7 @@ def select_query_with_llm(
     user_request: str, 
     conversation_history: Optional[List[Dict]] = None,
     user_id: Optional[str] = None
-) -> Tuple[str, Dict]:
+) -> Tuple[str, Dict, Optional[Dict]]:
     """Select the most appropriate query using LLM
     
     Args:
@@ -219,7 +220,8 @@ def select_query_with_llm(
         user_id: Optional user ID for parameter extraction
         
     Returns:
-        Tuple containing (selected_query_name, parameters_dict)
+        Tuple containing (selected_query_name, parameters_dict, human_in_loop_dict)
+        where human_in_loop_dict is None if no clarification is needed, otherwise contains clarification info
     """
     # Create prompt messages
     messages = create_query_selection_prompt(user_request, conversation_history)
@@ -243,7 +245,123 @@ def select_query_with_llm(
     if confidence < 3:
         log_selection_for_feedback(user_request, parsed_response)
     
-    return selected_query, parameters
+    # Check if human-in-the-loop is needed
+    human_in_loop = check_for_human_in_loop(user_request, selected_query, parameters, confidence)
+    
+    return selected_query, parameters, human_in_loop
+
+def check_for_human_in_loop(
+    user_request: str, 
+    selected_query: str, 
+    parameters: Dict,
+    confidence: int
+) -> Optional[Dict]:
+    """Check if human-in-the-loop clarification is needed
+    
+    Args:
+        user_request: The original user request
+        selected_query: The selected query name
+        parameters: The extracted parameters
+        confidence: The confidence level (1-5)
+        
+    Returns:
+        None if no clarification needed, otherwise a dict with clarification info
+    """
+    # Cases that trigger human-in-the-loop clarification:
+    # 1. Low confidence in query selection
+    # 2. Customer-specific queries without sufficient specificity
+    # 3. Ambiguous time frames
+    # 4. Specific query types that often need clarification
+    
+    # Customer-specific query with vague request
+    if selected_query == "get_customer_history" and len(user_request.split()) < 8 and "customer_name" in parameters:
+        return {
+            "type": "clarification",
+            "query": selected_query,
+            "message": f"Möchtest du eine allgemeine Zusammenfassung zur Kundenhistorie von {parameters.get('customer_name')}, "
+                       f"eine Auswertung der Ticketinhalte oder eine andere spezielle Art von Informationen?",
+            "options": [
+                {"text": "Allgemeine Kundenhistorie", "query": "get_customer_history", "params": parameters},
+                {"text": "Ticketinhalte", "query": "get_customer_tickets", "params": parameters},
+                {"text": "Vertragsinformationen", "query": "get_customer_contracts", "params": parameters}
+            ]
+        }
+    
+    # Agency queries that might need clarification
+    elif selected_query in ["get_agency_performance", "get_revenue_by_agency"]:
+        if confidence < 4 or "date_from" not in parameters or "date_to" not in parameters:
+            return {
+                "type": "clarification",
+                "query": selected_query,
+                "message": f"Möchtest du die Leistung für einen bestimmten Zeitraum sehen oder allgemeine Informationen?",
+                "options": [
+                    {"text": "Letzter Monat", "query": selected_query, "params": {**parameters, "timeframe": "last_month"}},
+                    {"text": "Aktuelles Quartal", "query": selected_query, "params": {**parameters, "timeframe": "current_quarter"}},
+                    {"text": "Gesamtes Jahr", "query": selected_query, "params": {**parameters, "timeframe": "year_to_date"}}
+                ]
+            }
+    
+    # Low confidence for any query type
+    elif confidence < 2:
+        # Use the available query patterns to suggest alternatives
+        query_patterns = load_query_patterns()
+        suggested_queries = []
+        
+        # Add the originally selected query as an option
+        suggested_queries.append({
+            "text": query_patterns.get(selected_query, {}).get("description", selected_query),
+            "query": selected_query,
+            "params": parameters
+        })
+        
+        # Add 2-3 other potential queries as options
+        potential_queries = [q for q in query_patterns.keys() if q != selected_query][:2]
+        for query in potential_queries:
+            suggested_queries.append({
+                "text": query_patterns.get(query, {}).get("description", query),
+                "query": query,
+                "params": {}  # Would need to extract specific parameters for these alternatives
+            })
+        
+        return {
+            "type": "clarification",
+            "query": selected_query,
+            "message": "Ich bin mir nicht sicher, welche Informationen du genau suchst. Bitte wähle eine der folgenden Optionen:",
+            "options": suggested_queries
+        }
+    
+    # No clarification needed
+    return None
+
+# Function to process user's clarification response
+def process_clarification_response(
+    clarification_option: Dict, 
+    original_user_request: str
+) -> Tuple[str, Dict]:
+    """Process the user's response to a clarification question
+    
+    Args:
+        clarification_option: The option selected by the user
+        original_user_request: The original user request
+        
+    Returns:
+        Tuple containing (selected_query_name, parameters_dict)
+    """
+    # Log that a human-in-the-loop clarification was used
+    try:
+        clarification_log = {
+            "timestamp": str(datetime.datetime.now()),
+            "original_request": original_user_request,
+            "clarification_option": clarification_option
+        }
+        
+        with open("clarification_log.jsonl", "a") as f:
+            f.write(json.dumps(clarification_log) + "\n")
+    except Exception as e:
+        logger.error(f"Error logging clarification: {e}")
+    
+    # Return the selected query and parameters from the clarification option
+    return clarification_option.get("query"), clarification_option.get("params", {})
 
 # Function to update the feedback with the result
 def update_selection_feedback(user_request: str, selected_query: str, success: bool) -> None:

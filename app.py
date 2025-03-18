@@ -1559,9 +1559,9 @@ def extract_enhanced_date_params(user_message):
 ####################################
 import json
 import logging
-from openai import OpenAI
 
-client = OpenAI()  # Annahme: dein API-Key ist in der Umgebung gesetzt
+
+client = openai()  # Annahme: dein API-Key ist in der Umgebung gesetzt
 
 def load_tool_descriptions():
     """Lädt die Tools-Definitionen aus der query_patterns.json-Datei"""

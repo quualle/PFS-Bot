@@ -42,32 +42,9 @@ def load_tool_config():
             return yaml.safe_load(f)
     except Exception as e:
         logging.error(f"Fehler beim Laden der Tool-Konfiguration: {e}")
-        # Fallback-Konfiguration
+        # Einfache leere Konfiguration ohne hartcodierte Regeln
         return {
-            "tool_categories": {
-                "time_query": {
-                    "patterns": ["care stays", "carestays", "einsätze", "monat", "monatlich", "jahr", "jährlich", 
-                               "januar", "februar", "märz", "april", "mai", "juni", "juli", "august", 
-                               "september", "oktober", "november", "dezember"],
-                    "default_tool": "get_care_stays_by_date_range"
-                },
-                "contract_query": {
-                    "patterns": ["vertrag", "verträge", "contract", "contracts"],
-                    "default_tool": "get_active_contracts"
-                },
-                "lead_query": {
-                    "patterns": ["lead", "leads", "kunde", "kunden"],
-                    "default_tool": "get_recent_leads"
-                },
-                "statistics_query": {
-                    "patterns": ["statistik", "statistics", "performance", "umsatz", "revenue"],
-                    "default_tool": "get_user_statistics"
-                }
-            },
-            "fallback_tool": "get_care_stays_by_date_range",
-            "force_tool_patterns": {
-                "get_care_stays_by_date_range": ["im monat", "im jahr", "in 2025", "im mai", "im april", "im märz"]
-            }
+            "description": "Tool-Konfiguration für LLM-basierte Entscheidungen"
         }
 
 
@@ -1767,49 +1744,18 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     # Fallback auf traditionelles Pattern-Matching oder Chain-of-Thought LLM
     user_message_lower = user_message.lower()
     
-    # SCHICHT 1: Direkte Muster-Erkennung für häufige Anfragen
-    # Prüfe auf explizite Muster, die bestimmte Tools erzwingen
-    for tool_name, patterns in tool_config.get("force_tool_patterns", {}).items():
-        for pattern in patterns:
-            if pattern.lower() in user_message_lower:
-                debug_print("Tool-Auswahl", f"Regelbasierte Auswahl: Erkanntes Muster '{pattern}'")
-                return tool_name, f"Regelbasierte Auswahl: Erkanntes Muster '{pattern}'"
-    
-    # SCHICHT 2: Kategorie-Erkennung
-    detected_categories = []
-    for category, config in tool_config.get("tool_categories", {}).items():
-        for pattern in config.get("patterns", []):
-            if pattern.lower() in user_message_lower:
-                detected_categories.append(category)
-                break
-    
-    # Wenn Kategorien erkannt wurden, beschränke Tool-Auswahl
-    if detected_categories:
-        category_tools = []
-        for category in detected_categories:
-            default_tool = tool_config["tool_categories"][category].get("default_tool")
-            if default_tool:
-                category_tools.append(default_tool)
-        
-        if len(category_tools) == 1:
-            debug_print("Tool-Auswahl", f"Kategorie-basierte Auswahl: {', '.join(detected_categories)}")
-            return category_tools[0], f"Kategorie-basierte Auswahl: Erkannte Kategorie(n) {', '.join(detected_categories)}"
+    # SCHICHT 1 & 2 entfernt - Überlassen wir dem LLM die Entscheidung
+    # Keine hardcodierten Regeln oder Muster mehr
     
     # SCHICHT 3: LLM-basierte Entscheidung mit Chain-of-Thought
     system_prompt = """
     Du bist ein Experte für die Auswahl des optimalen Tools basierend auf Benutzeranfragen.
-    Deine Aufgabe ist es, das am besten geeignete Tool für die Anfrage auszuwählen.
-    
-    WICHTIGE REGELN:
-    - Bei ALLEN Fragen zu Daten (Care Stays, Verträge, Leads, etc.) MUSS ein passendes Tool gewählt werden
-    - Bei Fragen zu bestimmten Zeiträumen (Monaten, Jahren) wähle immer get_care_stays_by_date_range
-    - Bei unklaren Anfragen zu Care Stays wähle immer get_care_stays_by_date_range
-    - Gehe bei Datenbankabfragen immer auf Nummer sicher und wähle ein Tool
+    Deine Aufgabe ist es, das am besten geeignete Tool für die gegebene Anfrage auszuwählen.
     
     Führe eine Chain-of-Thought durch:
     1. Analysiere die Art der Anfrage (Was wird gefragt? Wozu?)
     2. Identifiziere Schlüsselwörter und Absichten (Zeitraum, Benutzer, Statistiken?)
-    3. Wähle das am besten geeignete Tool
+    3. Wähle das am besten geeignete Tool aus den verfügbaren Optionen
     
     Antworte in diesem Format:
     ANALYSE: [Deine Analyse der Anfrage]
@@ -1880,32 +1826,9 @@ def load_tool_config():
             return yaml.safe_load(f)
     except Exception as e:
         logging.error(f"Fehler beim Laden der Tool-Konfiguration: {e}")
-        # Fallback-Konfiguration
+        # Einfache leere Konfiguration ohne hartcodierte Regeln
         return {
-            "tool_categories": {
-                "time_query": {
-                    "patterns": ["care stays", "carestays", "einsätze", "monat", "monatlich", "jahr", "jährlich", 
-                               "januar", "februar", "märz", "april", "mai", "juni", "juli", "august", 
-                               "september", "oktober", "november", "dezember"],
-                    "default_tool": "get_care_stays_by_date_range"
-                },
-                "contract_query": {
-                    "patterns": ["vertrag", "verträge", "contract", "contracts"],
-                    "default_tool": "get_active_contracts"
-                },
-                "lead_query": {
-                    "patterns": ["lead", "leads", "kunde", "kunden"],
-                    "default_tool": "get_recent_leads"
-                },
-                "statistics_query": {
-                    "patterns": ["statistik", "statistics", "performance", "umsatz", "revenue"],
-                    "default_tool": "get_user_statistics"
-                }
-            },
-            "fallback_tool": "get_care_stays_by_date_range",
-            "force_tool_patterns": {
-                "get_care_stays_by_date_range": ["im monat", "im jahr", "in 2025", "im mai", "im april", "im märz"]
-            }
+            "description": "Tool-Konfiguration für LLM-basierte Entscheidungen"
         }
 
 def determine_query_approach(user_message, conversation_history=None):

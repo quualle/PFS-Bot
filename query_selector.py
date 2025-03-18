@@ -112,7 +112,6 @@ Instructions:
 
 Important considerations:
 - Time-based queries (like get_care_stays_by_date_range) need clear date ranges
-- Customer queries (like get_customer_history) require identification information
 - Performance queries (like get_monthly_performance) need specific time periods
 - For questions about active care stays, prefer get_active_care_stays_now
 - For questions about revenue or earnings, prefer get_revenue_by_agency or get_monthly_performance

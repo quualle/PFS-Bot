@@ -1561,7 +1561,7 @@ import json
 import logging
 
 
-client = openai()  # Annahme: dein API-Key ist in der Umgebung gesetzt
+ # Annahme: dein API-Key ist in der Umgebung gesetzt
 
 def load_tool_descriptions():
     """Lädt die Tools-Definitionen aus der query_patterns.json-Datei"""
@@ -1761,7 +1761,7 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
         response = openai.chat.completions.create(
             model="o3-mini",
             messages=messages,
-            max_tokens=250
+            max_tokens=2500
         )
         
         response_text = response.choices[0].message.content.strip()
@@ -1968,8 +1968,7 @@ def process_user_query(user_message, session_data):
         
         response = openai.chat.completions.create(
             model="o3-mini",
-            messages=messages,
-            temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
+            messages=messages  # Niedrigere Temperatur für präzisere Antworten
         )
         
         final_response = response.choices[0].message.content

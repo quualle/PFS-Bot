@@ -2984,9 +2984,8 @@ def handle_clarification():
             flash(error_msg, "danger")
             return redirect(url_for("chat"))
             
-        # Speichere die ausgewählte Option in der Session für die nächste Verarbeitung
+        # Hole ausgewählte Option
         selected_option = options[selected_option_index]
-        session["human_in_loop_clarification_response"] = selected_option
         logging.info(f"Ausgewählte Option: {selected_option.get('text')} -> {selected_option.get('query')}")
         
         # Verarbeiten von Parametern, speziell für den Kunden Küll
@@ -2997,7 +2996,70 @@ def handle_clarification():
                 logging.info("Normalisiere Kunden-Parameter 'Küll'")
                 params["customer_name"] = "Küll"
                 selected_option["params"] = params
-                session["human_in_loop_clarification_response"] = selected_option
+
+        # Extrahiere die benötigten Informationen
+        selected_query = selected_option.get("query")
+        selected_params = selected_option.get("params", {})
+        
+        # Verarbeitung direkt hier für Kundenabfragen
+        if selected_query == "get_customer_history" and "customer_name" in selected_params:
+            try:
+                # Kundenname extrahieren
+                customer_name = selected_params.get("customer_name")
+                
+                # seller_id aus der Session hinzufügen
+                if "seller_id" in session:
+                    selected_params["seller_id"] = session.get("seller_id")
+                
+                logging.info(f"Führe direkt get_customer_history für '{customer_name}' aus")
+                
+                # Funktion direkt aufrufen
+                result = handle_function_call(selected_query, selected_params)
+                result_data = json.loads(result)
+                
+                # Ergebnis formatieren und den Chat-Verlauf aktualisieren
+                if "data" in result_data and len(result_data["data"]) > 0:
+                    formatted_result = format_customer_details(result_data)
+                    
+                    # Original-Anfrage holen
+                    original_request = session.get("human_in_loop_original_request", "")
+                    
+                    # Chat-History aktualisieren
+                    chat_key = f"chat_history_{session.get('user_id')}"
+                    chat_history = session.get(chat_key, [])
+                    
+                    # Benutzeranfrage und Antwort hinzufügen
+                    chat_history.append({"role": "user", "content": original_request})
+                    chat_history.append({"role": "assistant", "content": formatted_result})
+                    session[chat_key] = chat_history
+                    
+                    # Erfolg zurückgeben
+                    if is_ajax:
+                        return jsonify({"success": True, "result": formatted_result})
+                    else:
+                        # Bei normaler Anfrage: Flash-Nachricht und Weiterleitung
+                        flash("Kundeninformationen erfolgreich abgerufen.", "success")
+                        # WICHTIG: Antwort in der Session speichern für die Anzeige
+                        session["last_response"] = formatted_result
+                        session.modified = True
+                        return redirect(url_for("chat"))
+                else:
+                    # Keine Daten gefunden
+                    error_msg = f"Keine Daten für Kunde '{customer_name}' gefunden."
+                    if is_ajax:
+                        return jsonify({"error": error_msg})
+                    flash(error_msg, "warning")
+                    return redirect(url_for("chat"))
+            
+            except Exception as e:
+                logging.error(f"Fehler bei direkter Kundenanfrage: {str(e)}")
+                if is_ajax:
+                    return jsonify({"error": str(e)})
+                flash(f"Fehler bei der Verarbeitung: {str(e)}", "danger")
+                return redirect(url_for("chat"))
+        
+        # Für andere Anfragen: in Session speichern für nächsten Request
+        session["human_in_loop_clarification_response"] = selected_option
         
         # Speichere den original request für die Kontext-Kontinuität
         if "human_in_loop_original_request" in session:
@@ -3439,11 +3501,22 @@ def chat():
         # Prüfen, ob eine Human-in-Loop Rückfrage angezeigt werden soll
         human_in_loop_data = session.get("human_in_loop_data")
         
+        # Prüfen, ob wir eine direkte Antwort haben, die angezeigt werden soll
+        last_response = None
+        if session.get("last_response"):
+            last_response = session.pop("last_response")
+            # Wenn wir eine direkte Antwort haben, fügen wir sie der Chat-History hinzu
+            if last_response and chat_key in session:
+                # Wir haben die Benutzeranfrage schon beim Speichern der Antwort hinzugefügt
+                # Jetzt müssen wir nur sicherstellen, dass die Antwort in der History ist
+                session.modified = True
+        
         # Wenn human_in_loop_data existiert, geben wir die Rückfrage-Optionen mit an das Template
         return render_template("chat.html", 
                               chat_history=display_chat_history, 
                               stats=stats,
-                              human_in_loop=human_in_loop_data)
+                              human_in_loop=human_in_loop_data,
+                              last_response=last_response)
 
     except Exception as e:
         logging.exception("Fehler in chat-Funktion.")

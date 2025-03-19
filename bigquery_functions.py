@@ -514,6 +514,7 @@ def summarize_query_result(result: str, query_name: str) -> str:
             total_leads = result_data[0].get('total_leads', 0) if result_data else 0
             net_leads = result_data[0].get('net_leads', 0) if result_data else 0
             total_contracts = result_data[0].get('total_contracts', 0) if result_data else 0
+            agency_switches = result_data[0].get('agency_switches', 0) if result_data else 0
             conversion_rate = result_data[0].get('conversion_rate', 0) if result_data else 0
             
             # Zeitraum für die Antwort extrahieren (aus den Parametern)
@@ -537,7 +538,7 @@ def summarize_query_result(result: str, query_name: str) -> str:
             if net_leads == 0:
                 summary = f"Du hast{time_range} keine Netto-Leads (nach Abzug von Rückforderungen), daher kann keine Abschlussquote berechnet werden."
             else:
-                summary = f"Deine Abschlussquote{time_range} beträgt {conversion_rate}%. Von {total_leads} gekauften Leads (davon {net_leads} Netto-Leads nach Abzug von Rückforderungen) hast du {total_contracts} Verträge abgeschlossen."
+                summary = f"Deine Abschlussquote{time_range} beträgt {conversion_rate}%. Von {total_leads} gekauften Leads (davon {net_leads} Netto-Leads nach Abzug von Rückforderungen) hast du {total_contracts} Verträge abgeschlossen. Zusätzlich wurden {agency_switches} Agenturwechsel registriert."
             
             return summary
             

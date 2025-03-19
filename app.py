@@ -2818,8 +2818,6 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
         yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': 'Es ist ein Fehler aufgetreten.'})}\n\n"
         yield f"data: {json.dumps({'type': 'end'})}\n\n"    
 
-
-
 @app.route("/clarify", methods=["POST"])
 def handle_clarification():
     """
@@ -3368,28 +3366,6 @@ def chat():
             jsonify({"error": "Interner Serverfehler."}),
             500,
         ) if request.headers.get("X-Requested-With") == "XMLHttpRequest" else "Interner Serverfehler", 500
-
-@app.route('/test_session')
-def test_session():
-    # Test-Wert in die Session setzen
-    test_value = "Testdaten " + datetime.now().strftime("%H:%M:%S")
-    session['test_value'] = test_value
-    session['test_email'] = "test@example.com"
-    session['test_seller_id'] = "test_id_123"
-    
-    # Stellen Sie sicher, dass die Änderungen gespeichert werden
-    session.modified = True
-    
-    output = "<h1>Session-Test</h1>"
-    output += f"<p>Test-Werte gesetzt: {test_value}</p>"
-    
-    # Alle Session-Werte anzeigen
-    output += "<h2>Alle Session-Werte:</h2><ul>"
-    for key, value in session.items():
-        output += f"<li><strong>{key}:</strong> {value}</li>"
-    output += "</ul>"
-    
-    return output
 
 @app.route('/test_bigquery')
 def test_bigquery():
@@ -4221,44 +4197,6 @@ def test_bigquery():
         </html>
         """
         return error_output
-    
-@app.route('/update_chat_history', methods=['POST'])
-def update_chat_history():
-    """Update chat history in the session from streaming responses"""
-    try:
-        data = request.json
-        user_message = data.get('user_message')
-        bot_response = data.get('bot_response')
-        
-        if not user_message or not bot_response:
-            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
-            
-        user_id = session.get("user_id")
-        user_name = session.get("user_name")
-        
-        if not user_id or not user_name:
-            return jsonify({'success': False, 'error': 'No active session'}), 400
-            
-        chat_key = f"chat_history_{user_id}"
-        
-        # Get current chat history or initialize it
-        chat_history = session.get(chat_key, [])
-        
-        # Add the new messages
-        chat_history.append({"user": user_message, "bot": bot_response})
-        
-        # Update the session
-        session[chat_key] = chat_history
-        session.modified = True
-        
-        # Store in the persistent storage
-        store_chatlog(user_name, chat_history)
-        
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        logging.exception("Error updating chat history")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 def create_system_prompt(table_schema):
     # Bestehendes System-Prompt generieren
@@ -4329,65 +4267,6 @@ def update_stream_chat_history():
         logging.exception("Error updating chat history")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/test_date_extraction')
-def test_date_extraction():
-    """Test the date extraction directly"""
-    test_message = request.args.get('message', 'wie viele carestays habe ich im mai 2025')
-    
-    # Call the extraction function
-    extracted_args = extract_date_params(test_message)
-    
-    # Format output as HTML
-    output = f"""
-    <h1>Test Date Extraction</h1>
-    <p>Message: {test_message}</p>
-    <h2>Extracted Date Parameters:</h2>
-    <pre>{json.dumps(extracted_args, indent=2)}</pre>
-    
-    <h2>Test Function Call:</h2>
-    """
-    
-    # If we have date parameters, test a function call
-    if 'start_date' in extracted_args and 'end_date' in extracted_args:
-        args = {
-            'seller_id': session.get('seller_id', 'Pflegeteam Heer'),
-            'start_date': extracted_args['start_date'],
-            'end_date': extracted_args['end_date'],
-            'limit': 100
-        }
-        
-        result = handle_function_call('get_care_stays_by_date_range', args)
-        output += f"<p>Function: get_care_stays_by_date_range</p>"
-        output += f"<p>Args: {args}</p>"
-        output += f"<pre>{result}</pre>"
-    
-    return output
-
-@app.route('/test_function_call')
-def test_function_call():
-    """Test function calling directly"""
-    function_name = request.args.get('function', 'get_care_stays_by_date_range')
-    
-    # Set up basic parameters - note limit is now an integer
-    args = {
-        'seller_id': session.get('seller_id', 'Pflegeteam Heer'),
-        'start_date': '2025-05-01',
-        'end_date': '2025-05-31',
-        'limit': 100  # Changed from string to integer
-    }
-    
-    # Call the function directly
-    result = handle_function_call(function_name, args)
-    
-    # Return as formatted HTML
-    return f"""
-    <h1>Test Function Call</h1>
-    <p>Function: {function_name}</p>
-    <p>Args: {args}</p>
-    <h2>Result:</h2>
-    <pre>{result}</pre>
-    """
-
 @app.route('/check_login')
 def check_login():
     # Alle relevanten Session-Daten anzeigen
@@ -4418,32 +4297,6 @@ def check_login():
     
     return output
 
-@app.route('/debug_function_call')
-def debug_function_call():
-    """Test function calling directly"""
-    function_name = request.args.get('function', 'get_care_stays_by_date_range')
-    
-    # Set up basic parameters
-    args = {
-        'seller_id': session.get('seller_id', 'your_default_seller_id'),
-        'start_date': '2025-05-01',
-        'end_date': '2025-05-31',
-        'limit': '100'
-    }
-    
-    # Call the function directly
-    result = handle_function_call(function_name, args)
-    
-    # Return as formatted HTML
-    return f"""
-    <h1>Debug Function Call</h1>
-    <p>Function: {function_name}</p>
-    <p>Args: {args}</p>
-    <h2>Result:</h2>
-    <pre>{result}</pre>
-    """
-
-
 @app.route('/reset_session')
 def reset_session():
     # Alle Session-Daten löschen, außer user_id
@@ -4452,53 +4305,6 @@ def reset_session():
     session['user_id'] = user_id
     session.modified = True
     return redirect('/check_login')
-
-@app.route('/check_seller_id')
-def check_seller_id():
-    """Zeigt Informationen über die aktuelle Benutzer-Session an."""
-    session_info = {
-        'user_id': session.get('user_id'),
-        'user_name': session.get('user_name'),
-        'email': session.get('email'),
-        'seller_id': session.get('seller_id'),
-        'is_admin': session.get('admin_logged_in', False)
-    }
-    
-    # Formatieren als HTML für einfaches Lesen
-    output = "<h1>Benutzer-Informationen</h1>"
-    output += "<pre>" + json.dumps(session_info, indent=2, ensure_ascii=False) + "</pre>"
-    
-    # Wenn seller_id vorhanden ist, zeige einige Beispieldaten aus BigQuery
-    seller_id = session.get('seller_id')
-    if seller_id:
-        output += "<h2>BigQuery-Test</h2>"
-        try:
-            # Versuche, KPIs zu berechnen
-            kpis = calculate_kpis_for_seller(seller_id)
-            output += "<h3>KPIs:</h3>"
-            output += "<pre>" + json.dumps(kpis, indent=2, ensure_ascii=False) + "</pre>"
-            
-            # Prüfe, ob Leads abgerufen werden können
-            leads = get_leads_for_seller(seller_id)
-            output += f"<p>Anzahl gefundener Leads: {len(leads)}</p>"
-            
-            # Prüfe, ob Verträge abgerufen werden können
-            contracts = get_contracts_for_seller(seller_id)
-            output += f"<p>Anzahl gefundener Verträge: {len(contracts)}</p>"
-        except Exception as e:
-            output += f"<p style='color: red;'>Fehler beim Abrufen von BigQuery-Daten: {str(e)}</p>"
-    
-    return output
-
-
-
-
-
-
-
-
-
-
 
 ###########################################
 # Flask-Routen
@@ -4803,16 +4609,6 @@ def edit():
     except Exception as e:
         logging.exception("Fehler beim Laden der Bearbeitungsseite.")
         return "Interner Serverfehler", 500
-
-@app.route('/debug', methods=['GET', 'POST'])
-def debug_page():
-    if request.method == 'POST':
-        for category in DEBUG_CATEGORIES.keys():
-            DEBUG_CATEGORIES[category] = request.form.get(category) == 'on'
-        flash("Debug-Einstellungen aktualisiert.", 'success')
-        return redirect(url_for('admin'))
-    return render_template('debug.html', debug_categories=DEBUG_CATEGORIES)
-
 
 @app.route('/get_unterthemen', methods=['POST'])
 @login_required

@@ -12,6 +12,20 @@ import tempfile
 import requests  # Added import for requests
 from datetime import datetime, timedelta
 import dateparser
+import ntplib  # For NTP time synchronization
+
+# Function to get accurate time from NTP server
+def get_accurate_time():
+    """Get accurate time from NTP server or fallback to system time"""
+    try:
+        ntp_client = ntplib.NTPClient()
+        response = ntp_client.request('pool.ntp.org', timeout=1)
+        accurate_time = datetime.fromtimestamp(response.tx_time)
+        logging.info(f"Time synchronized with NTP server: {accurate_time}")
+        return accurate_time
+    except Exception as e:
+        logging.warning(f"Could not synchronize time with NTP server: {e}. Using system time instead.")
+        return datetime.now()
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from flask_wtf import CSRFProtect
@@ -313,7 +327,7 @@ def store_chatlog(user_name, chat_history):
     if not user_name:
         user_name = "Unbekannt"
 
-    timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp_str = get_accurate_time().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{user_name}_{timestamp_str}.txt"
     filepath = os.path.join(CHATLOG_FOLDER, filename)
 
@@ -327,7 +341,7 @@ def store_chatlog(user_name, chat_history):
 
 def store_feedback(feedback_type, comment, chat_history):
     name_in_session = session.get('user_name', 'Unbekannt')
-    timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp_str = get_accurate_time().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{name_in_session}_{feedback_type}_{timestamp_str}.txt"
     filepath = os.path.join(FEEDBACK_FOLDER, filename)
 
@@ -351,7 +365,7 @@ def calculate_chat_stats():
     month_count = 0
     day_count = 0
 
-    now = datetime.now()
+    now = get_accurate_time()
     current_year = now.year
     current_month = now.month
     current_day = now.day
@@ -531,7 +545,7 @@ def aktualisiere_themen(themen_dict):
 def log_notfall_event(user_id, notfall_art, user_message):
     log_path = "notfall_logs.json"
     log_entry = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": get_accurate_time().isoformat(),
         "user_id": user_id,
         "notfall_art": notfall_art,
         "message": user_message
@@ -1028,7 +1042,7 @@ def extract_date_params(user_message):
     }
     
     user_message_lower = user_message.lower()
-    current_date = datetime.datetime.now()  # Using full namespace
+    current_date = get_accurate_time()  # Using accurate time
     current_year = current_date.year
     
     # Extract year if present
@@ -1354,7 +1368,7 @@ def extract_enhanced_date_params(user_message):
     }
     
     user_message_lower = user_message.lower()
-    current_date = datetime.now()
+    current_date = get_accurate_time()
     current_year = current_date.year
     
     # 1. Erkennung von expliziten Jahren (z.B. "2025")
@@ -1471,7 +1485,7 @@ def extract_enhanced_date_params(user_message):
     }
     
     user_message_lower = user_message.lower()
-    current_date = datetime.now()
+    current_date = get_accurate_time()
     current_year = current_date.year
     
     # 1. Erkennung von expliziten Jahren (z.B. "2025")
@@ -2156,7 +2170,7 @@ def process_user_query(user_message, session_data):
             return new_clarification_data["clarification_message"]
     
     # Aktuelles Datum für zeitliche Anfragen
-    current_date = datetime.now()
+    current_date = get_accurate_time()
     current_date_str = current_date.strftime("%Y-%m-%d")
     
     # Füge das aktuelle Datum zu Session-Daten hinzu
@@ -2406,7 +2420,7 @@ def create_enhanced_system_prompt(selected_tool):
     - "Kündigung": Ein Vertrag, der nicht mehr aktiv ist, bei dem mind. ein Care Stay durchgeführt wurde
     - "Pause": Ein aktiver Vertrag ohne aktuell laufenden Care Stay, aber mit mind. einem früheren Care Stay
     
-    Heutiges Datum: """ + datetime.now().strftime("%d.%m.%Y")
+    Heutiges Datum: """ + get_accurate_time().strftime("%d.%m.%Y")
     
     # Spezialisierte Prompts je nach Tool-Typ
     tool_specific_prompts = {
@@ -3372,7 +3386,7 @@ def chat():
 @app.route('/test_session')
 def test_session():
     # Test-Wert in die Session setzen
-    test_value = "Testdaten " + datetime.now().strftime("%H:%M:%S")
+    test_value = "Testdaten " + get_accurate_time().strftime("%H:%M:%S")
     session['test_value'] = test_value
     session['test_email'] = "test@example.com"
     session['test_seller_id'] = "test_id_123"
@@ -5212,4 +5226,11 @@ def process_file_manual():
 # App Start
 ###########################################
 if __name__ == "__main__":
+    # Synchronize time with NTP server at startup
+    try:
+        accurate_time = get_accurate_time()
+        logging.info(f"Server starting with accurate time: {accurate_time}")
+    except Exception as e:
+        logging.warning(f"Failed to get accurate time at startup: {e}")
+    
     app.run(debug=True)#

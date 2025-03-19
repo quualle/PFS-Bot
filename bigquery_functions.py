@@ -47,6 +47,17 @@ def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> s
         for param in query_pattern.get('optional_parameters', []):
             if param not in function_args and param in query_pattern.get('default_values', {}):
                 function_args[param] = query_pattern['default_values'][param]
+                
+        # Spezieller Fall für Datums-Parameter: Fülle fehlende start_date und end_date
+        if 'start_date' in query_pattern.get('required_parameters', []) and 'start_date' not in function_args:
+            # Wenn kein Start-Datum angegeben, einen Standardwert setzen
+            function_args['start_date'] = "DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)"
+            logger.info(f"Kein Start-Datum angegeben, verwende Standard: {function_args['start_date']}")
+            
+        if 'end_date' in query_pattern.get('required_parameters', []) and 'end_date' not in function_args:
+            # Wenn kein End-Datum angegeben, das aktuelle Datum verwenden
+            function_args['end_date'] = "CURRENT_DATE()"
+            logger.info(f"Kein End-Datum angegeben, verwende aktuelles Datum: {function_args['end_date']}")
         
         # Konvertiere Parameter zu den richtigen Typen
         # NEW CODE ADDED HERE

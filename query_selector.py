@@ -60,6 +60,10 @@ def create_query_selection_prompt(
             content = message.get("content", "")
             history_context += f"{role}: {content}\n"
     
+    # Get current date and time for accurate date processing
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    current_time_context = f"Current system date: {current_date}\n"
+    
     # Provide domain context
     domain_context = """
 Dies ist ein System zur Datenabfrage für ein Pflegevermittlungsunternehmen.
@@ -101,6 +105,8 @@ You are a query selection assistant for a senior care database system. Your task
 
 {domain_context}
 
+{current_time_context}
+
 {history_context}
 
 User request: "{user_request}"
@@ -116,6 +122,13 @@ Instructions:
 3. Select the most appropriate query from the available options
 4. Explain your reasoning for this selection
 5. Identify any parameters that need to be extracted from the request
+
+Date Parameter Handling:
+- ALWAYS use the CURRENT SYSTEM DATE as the end_date when the user says "since X" or "from X" without specifying an end date
+- For phrases like "in the last X days/weeks/months", calculate the start_date from the current system date and set end_date to the current system date
+- For specific time periods like "in January", determine both start_date and end_date based on the mentioned period
+- For questions about "this month/quarter/year", use the beginning of the current month/quarter/year as start_date and current system date as end_date
+- Today's date should be determined dynamically from the system, not hardcoded
 
 Important considerations:
 - Zeit-basierte Abfragen (wie get_care_stays_by_date_range) benötigen klar definierte Zeiträume
@@ -147,6 +160,33 @@ Format your response as JSON with these fields:
         {"role": "system", "content": "You are a query selection assistant for a database system. Respond only with valid JSON."},
         {"role": "user", "content": prompt_content}
     ]
+
+def post_process_llm_parameters(user_request: str, parameters: Dict) -> Dict:
+    """
+    Post-processes parameters extracted by the LLM to make sure date handling is correct,
+    especially for queries with "since" or relative time references.
+    
+    Args:
+        user_request: The original user request
+        parameters: The parameters extracted by the LLM
+        
+    Returns:
+        The updated parameters dict
+    """
+    user_request_lower = user_request.lower()
+    today = datetime.datetime.now().date()
+    
+    # Handle "since" expressions specifically
+    if ('start_date' in parameters and 'end_date' not in parameters and 
+        any(term in user_request_lower for term in ['seit', 'since', 'from', 'ab dem'])):
+        # If user asked about something "since X date" but no end_date was specified,
+        # set end_date to today
+        parameters['end_date'] = today.strftime('%Y-%m-%d')
+        logger.info(f"'Seit' erkannt ohne Enddatum, setze end_date auf heute: {parameters['end_date']}")
+    
+    # Handle other date scenarios if needed
+    
+    return parameters
 
 def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo") -> str:
     """Send messages to LLM and get response
@@ -249,6 +289,9 @@ def select_query_with_llm(
     selected_query = parsed_response.get("selected_query")
     parameters = parsed_response.get("parameters", {})
     confidence = parsed_response.get("confidence", 0)
+    
+    # Post-process parameters to handle date expressions correctly
+    parameters = post_process_llm_parameters(user_request, parameters)
     
     # If user_id is provided and seller_id is needed, use it
     if user_id and "seller_id" in parameters and parameters["seller_id"] == "user_id":

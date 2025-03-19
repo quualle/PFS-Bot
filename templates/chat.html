@@ -830,6 +830,8 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
+                // Remove typing class when typing is complete
+                userDiv.classList.remove('typing');
                     // Create bot message container
                 const botDiv = document.createElement('div');
                 botDiv.className = 'message bot';

@@ -218,7 +218,26 @@ def summarize_query_result(result: str, query_name: str) -> str:
             return "Es wurden keine Daten gefunden, die deiner Anfrage entsprechen."
         
         # Verschiedene Zusammenfassungen je nach Abfragetyp
-        if query_name == 'get_active_care_stays':
+        if query_name == 'get_active_care_stays_now':
+            summary = f"Du hast aktuell {count} Kunden mit aktiven Care Stays. "
+            
+            if count <= 3:  # Detaillierte Zusammenfassung für wenige Ergebnisse
+                details = []
+                for item in result_data:
+                    customer_name = f"{item.get('first_name', '')} {item.get('last_name', '')}".strip()
+                    details.append(
+                        f"Care Stay für {customer_name} von {format_date(item.get('bill_start', 'N/A'))} " +
+                        f"bis {format_date(item.get('bill_end', 'N/A'))} bei Agentur {item.get('agency_name', 'N/A')}"
+                    )
+                summary += "Details: " + "; ".join(details)
+            else:
+                # Zusammenfassende Statistiken für viele Ergebnisse
+                agencies = set(item.get('agency_name', 'Unbekannt') for item in result_data if item.get('agency_name'))
+                summary += f"Diese verteilen sich auf {len(agencies)} verschiedene Agenturen."
+            
+            return summary
+            
+        elif query_name == 'get_active_care_stays':
             summary = f"Es wurden {count} aktive Care Stays gefunden. "
             
             if count <= 3:  # Detaillierte Zusammenfassung für wenige Ergebnisse
@@ -465,6 +484,199 @@ def summarize_query_result(result: str, query_name: str) -> str:
             
             return summary
             
+        elif query_name == 'get_customers_on_pause':
+            if count == 0:
+                return "Aktuell sind keine Kunden in Betreuungspause."
+            
+            # Wenn total_paused_customers im ersten Element verfügbar ist
+            total_paused = result_data[0].get('total_paused_customers', count) if result_data else count
+            
+            summary = f"Du hast aktuell {total_paused} Kunden in Betreuungspause. "
+            
+            if count <= 5:  # Detaillierte Info für wenige Ergebnisse
+                details = []
+                for item in result_data:
+                    customer_name = f"{item.get('first_name', '')} {item.get('last_name', '')}".strip()
+                    days_on_pause = item.get('days_on_pause', 'unbekannt')
+                    agency = item.get('agency_name', 'unbekannter Agentur')
+                    details.append(f"{customer_name} ({days_on_pause} Tage, {agency})")
+                
+                if details:
+                    summary += "Details: " + "; ".join(details)
+            
+            return summary
+            
+        elif query_name == 'get_leads_count':
+            if count == 0 or not result_data:
+                return "Im angegebenen Zeitraum wurden keine Leads gefunden."
+            
+            # Die Anzahl der Leads aus dem Ergebnis extrahieren
+            leads_count = result_data[0].get('leads_count', 0) if result_data else 0
+            
+            # Zeitraum für die Antwort extrahieren (aus den Parametern)
+            time_range = ""
+            if 'start_date' in data.get('parameters', {}) and 'end_date' in data.get('parameters', {}):
+                start_date = data.get('parameters', {}).get('start_date')
+                end_date = data.get('parameters', {}).get('end_date')
+                
+                if start_date and end_date:
+                    try:
+                        # Formatiere die Datumsangaben
+                        start_formatted = format_date(start_date) 
+                        end_formatted = format_date(end_date)
+                        time_range = f" im Zeitraum {start_formatted} bis {end_formatted}"
+                    except:
+                        # Bei Fehler in der Datumsformatierung
+                        time_range = " im angegebenen Zeitraum"
+            else:
+                time_range = " im angegebenen Zeitraum"
+            
+            summary = f"Du hast{time_range} insgesamt {leads_count} Leads gekauft/erhalten."
+            
+            return summary
+            
+        elif query_name == 'get_leads':
+            if count == 0:
+                return "Im angegebenen Zeitraum wurden keine Leads gefunden."
+            
+            # Gesamtzahl der Leads aus dem ersten Ergebnis extrahieren
+            total_leads = result_data[0].get('total_leads_in_selected_period', count) if result_data else count
+            
+            # Zeitraum bestimmen (wenn verfügbar)
+            first_created = min(item.get('created_at', '') for item in result_data if item.get('created_at'))
+            last_created = max(item.get('created_at', '') for item in result_data if item.get('created_at'))
+            
+            # Format für Zeitraumanzeige
+            time_range = ""
+            if first_created and last_created:
+                first_date = format_date(first_created)
+                last_date = format_date(last_created)
+                if first_date != last_date:
+                    time_range = f" im Zeitraum {first_date} bis {last_date}"
+                else:
+                    time_range = f" am {first_date}"
+            
+            summary = f"Hier ist eine detaillierte Liste deiner{time_range} gekauften/erhaltenen Leads (insgesamt {total_leads}):"
+            
+            if count <= 10:  # Detaillierte Information bei wenigen Leads (max. 10)
+                details = []
+                for i, item in enumerate(result_data):
+                    lead_name = f"{item.get('first_name', '')} {item.get('last_name', '')}".strip()
+                    lead_date = format_date(item.get('created_at', ''))
+                    email = item.get('email', 'keine E-Mail')
+                    details.append(f"{i+1}. {lead_name} ({lead_date}, {email})")
+                
+                if details:
+                    summary += "\n\n" + "\n".join(details)
+            else:
+                # Bei mehr als 10 Leads nur die ersten 10 anzeigen
+                details = []
+                for i, item in enumerate(result_data[:10]):
+                    lead_name = f"{item.get('first_name', '')} {item.get('last_name', '')}".strip()
+                    lead_date = format_date(item.get('created_at', ''))
+                    email = item.get('email', 'keine E-Mail')
+                    details.append(f"{i+1}. {lead_name} ({lead_date}, {email})")
+                
+                if details:
+                    summary += "\n\n" + "\n".join(details)
+                    summary += f"\n\n...und {count - 10} weitere Leads."
+            
+            return summary
+            
+        elif query_name == 'get_contract_count':
+            if not result_data or len(result_data) < 2:
+                return "Für den angegebenen Zeitraum konnten keine Daten zu neuen Verträgen gefunden werden."
+            
+            # Wir erwarten zwei Ergebniszeilen: aktive Verträge und alle Verträge
+            active_contracts = None
+            all_contracts = None
+            
+            for row in result_data:
+                if row.get('query_type') == 'neue Verträge noch aktiv':
+                    active_contracts = row
+                elif row.get('query_type') == 'Alle neuen Verträge':
+                    all_contracts = row
+            
+            if not all_contracts:
+                return "Es konnten keine Daten zu neuen Verträgen gefunden werden."
+            
+            # Gesamtzahl der neuen Verträge
+            total_contracts = all_contracts.get('total_contracts', 0)
+            
+            # Anzahl der noch aktiven Verträge
+            active_count = active_contracts.get('total_active_contracts', 0) if active_contracts else 0
+            
+            # Zeitraum für die Antwort extrahieren (aus den Parametern)
+            time_range = ""
+            if 'start_date' in data.get('parameters', {}) and 'end_date' in data.get('parameters', {}):
+                start_date = data.get('parameters', {}).get('start_date')
+                end_date = data.get('parameters', {}).get('end_date')
+                
+                if start_date and end_date:
+                    try:
+                        # Formatiere die Datumsangaben
+                        start_formatted = format_date(start_date) 
+                        end_formatted = format_date(end_date)
+                        time_range = f" im Zeitraum {start_formatted} bis {end_formatted}"
+                    except:
+                        # Bei Fehler in der Datumsformatierung
+                        time_range = " im angegebenen Zeitraum"
+            else:
+                time_range = " im angegebenen Zeitraum"
+            
+            # Antwort zusammenstellen
+            summary = f"Du hast{time_range} {total_contracts} neue Verträge abgeschlossen und davon sind {active_count} noch aktiv."
+            
+            return summary
+            
+        elif query_name == 'get_contract_details':
+            if count == 0:
+                return "Für den angegebenen Zeitraum wurden keine Vertragsdetails gefunden."
+            
+            # Wir holen uns die Gesamtzahl der Neuabschlüsse aus dem ersten Datensatz
+            total_contracts = result_data[0].get('Neuabschlüsse_gesamt', 0) if result_data else 0
+            agency_switches = result_data[0].get('Agenturwechsel', 0) if result_data else 0
+            
+            # Zeitraum für die Antwort extrahieren (aus den Parametern)
+            time_range = ""
+            if 'start_date' in data.get('parameters', {}) and 'end_date' in data.get('parameters', {}):
+                start_date = data.get('parameters', {}).get('start_date')
+                end_date = data.get('parameters', {}).get('end_date')
+                
+                if start_date and end_date:
+                    try:
+                        # Formatiere die Datumsangaben
+                        start_formatted = format_date(start_date) 
+                        end_formatted = format_date(end_date)
+                        time_range = f" im Zeitraum {start_formatted} bis {end_formatted}"
+                    except:
+                        # Bei Fehler in der Datumsformatierung
+                        time_range = " im angegebenen Zeitraum"
+            else:
+                time_range = " im angegebenen Zeitraum"
+            
+            # Basisinformation
+            summary = f"Hier ist eine detaillierte Liste deiner{time_range} abgeschlossenen Verträge ({total_contracts} insgesamt, davon {agency_switches} Agenturwechsel):\n\n"
+            
+            # Für jeden Vertrag Details formatieren
+            contract_details = []
+            for i, contract in enumerate(result_data[:10]):  # Maximal 10 Verträge anzeigen
+                name = f"{contract.get('first_name', '')} {contract.get('last_name', '')}".strip()
+                date = format_date(contract.get('contract_created_at', ''))
+                provision = contract.get('prov_seller', 0)
+                
+                contract_details.append(f"{i+1}. {name} (Abschluss: {date}, Provision: {provision}€)")
+            
+            # Detaillierte Ausgabe nur für die ersten 10 Verträge
+            if contract_details:
+                summary += "\n".join(contract_details)
+                
+                # Hinweis, wenn es mehr als 10 Verträge gibt
+                if count > 10:
+                    summary += f"\n\n...und {count - 10} weitere Verträge."
+            
+            return summary
+        
         # Generische Zusammenfassung für unbekannte Abfragetypen
         return f"Die Abfrage hat {count} Ergebnisse zurückgegeben."
     

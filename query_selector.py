@@ -86,6 +86,12 @@ Beispielentscheidungen:
 - "Zeige Kunde Müller" → get_customer_history (spezifischer Kunde)
 - "Wieviel Umsatz im letzten Quartal?" → get_monthly_performance (Umsatzstatistik mit Zeitraum)
 - "Welche Kündigungen gab es im Mai?" → get_contract_terminations (Kündigungsstatistik mit Zeitraum)
+- "Wie viele Kunden habe ich aktuell?" → get_active_care_stays_now (aktuelle Kundenzahl)
+- "Wie viele Kunden sind in Pause?" → get_customers_on_pause (Kunden ohne aktiven Care Stay)
+- "Wie viele neue Kunden habe ich abgeschlossen?" → get_contract_count (neue Vertragsabschlüsse)
+- "Welche neuen Verträge habe ich abgeschlossen?" → get_contract_details (detaillierte Vertragsdetails)
+- "Wie viele Leads habe ich gekauft?" → get_leads_count (Anzahl der Leads)
+- "Welche Leads habe ich gekauft?" → get_leads (detaillierte Lead-Details)
 """
     
     # Create the prompt content
@@ -111,15 +117,21 @@ Instructions:
 5. Identify any parameters that need to be extracted from the request
 
 Important considerations:
-- Time-based queries (like get_care_stays_by_date_range) need clear date ranges
-- Performance queries (like get_monthly_performance) need specific time periods
-- For questions about active care stays OR customer count (kunden), prefer get_active_care_stays_now
-- For questions about revenue or earnings, prefer get_revenue_by_agency or get_monthly_performance
-- For questions about specific customers, prefer get_customer_history
-- For terminations or contract ends, prefer get_contract_terminations and always give back 'ernsthafte' terminations and 'agenturwechsel' separately and as a sum
-- For questions about terminated contracts with distinctions between 'ernsthaft' terminations and 'agenturwechsel', use get_contract_terminations
-- For questions about "Pause". "Betreuungspause" or any other terms which describes a customer still be under contract but currently without carestay, use get_customers_on_pause
-- For questions about tickets, use get_customer_tickets
+- Zeit-basierte Abfragen (wie get_care_stays_by_date_range) benötigen klar definierte Zeiträume
+- Performance-Abfragen (wie get_monthly_performance) benötigen spezifische Zeiträume
+- Für Fragen nach aktiven Kunden oder der aktuellen Kundenzahl IMMER get_active_care_stays_now verwenden
+- Für Fragen nach Kunden in Pause/Betreuungspause NUR get_customers_on_pause verwenden
+- Für Fragen nach Umsatz oder Einnahmen get_revenue_by_agency oder get_monthly_performance bevorzugen
+- Für Fragen nach spezifischen Kunden get_customer_history bevorzugen
+- Für Fragen nach Kündigungen oder Vertragsenden get_contract_terminations verwenden und immer 'ernsthaft' und 'agenturwechsel' separat und summiert zurückgeben
+- Für Fragen nach gekündigten Verträgen mit Unterscheidung zwischen 'ernsthaften' Kündigungen und 'Agenturwechsel' get_contract_terminations verwenden
+- Für Fragen nach Tickets get_customer_tickets verwenden
+- Für Fragen nach Betreuungskräften/Pflegekräften bei einem bestimmten Kunden get_care_givers_for_customer verwenden
+- Für Fragen nach der ANZAHL von Leads und gekauften Kontakten get_leads_count verwenden
+- Für Fragen nach WELCHE Leads gekauft wurden oder bei Anfragen nach Details zu Leads get_leads verwenden
+- Für Fragen nach Abschlussquoten IMMER get_leads_converted_to_customers mit Zeitraumfilter verwenden
+- Für Fragen nach der ANZAHL neu abgeschlossener Kunden oder Verträge IMMER get_contract_count verwenden
+- Für Fragen nach WELCHE Verträge abgeschlossen wurden oder bei Anfragen nach Details zu neuen Verträgen get_contract_details verwenden
 
 Format your response as JSON with these fields:
 - selected_query: [query name]

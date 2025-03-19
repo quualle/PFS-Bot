@@ -92,6 +92,7 @@ Beispielentscheidungen:
 - "Welche neuen Verträge habe ich abgeschlossen?" → get_contract_details (detaillierte Vertragsdetails)
 - "Wie viele Leads habe ich gekauft?" → get_leads_count (Anzahl der Leads)
 - "Welche Leads habe ich gekauft?" → get_leads (detaillierte Lead-Details)
+- "Was ist meine Abschlussquote?" → get_cvr_lead_contract (Conversion Rate Leads zu Verträgen)
 """
     
     # Create the prompt content
@@ -129,7 +130,7 @@ Important considerations:
 - Für Fragen nach Betreuungskräften/Pflegekräften bei einem bestimmten Kunden get_care_givers_for_customer verwenden
 - Für Fragen nach der ANZAHL von Leads und gekauften Kontakten get_leads_count verwenden
 - Für Fragen nach WELCHE Leads gekauft wurden oder bei Anfragen nach Details zu Leads get_leads verwenden
-- Für Fragen nach Abschlussquoten IMMER get_leads_converted_to_customers mit Zeitraumfilter verwenden
+- Für Fragen nach Abschlussquoten oder Conversion Rate IMMER get_cvr_lead_contract mit Zeitraumfilter verwenden
 - Für Fragen nach der ANZAHL neu abgeschlossener Kunden oder Verträge IMMER get_contract_count verwenden
 - Für Fragen nach WELCHE Verträge abgeschlossen wurden oder bei Anfragen nach Details zu neuen Verträgen get_contract_details verwenden
 

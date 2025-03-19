@@ -506,6 +506,41 @@ def summarize_query_result(result: str, query_name: str) -> str:
             
             return summary
             
+        elif query_name == 'get_cvr_lead_contract':
+            if count == 0 or not result_data:
+                return "Im angegebenen Zeitraum konnten keine Daten zur Berechnung der Abschlussquote gefunden werden."
+            
+            # Daten aus dem Ergebnis extrahieren
+            total_leads = result_data[0].get('total_leads', 0) if result_data else 0
+            net_leads = result_data[0].get('net_leads', 0) if result_data else 0
+            total_contracts = result_data[0].get('total_contracts', 0) if result_data else 0
+            conversion_rate = result_data[0].get('conversion_rate', 0) if result_data else 0
+            
+            # Zeitraum für die Antwort extrahieren (aus den Parametern)
+            time_range = ""
+            if 'start_date' in data.get('parameters', {}) and 'end_date' in data.get('parameters', {}):
+                start_date = data.get('parameters', {}).get('start_date')
+                end_date = data.get('parameters', {}).get('end_date')
+                
+                if start_date and end_date:
+                    try:
+                        # Formatiere die Datumsangaben
+                        start_formatted = format_date(start_date) 
+                        end_formatted = format_date(end_date)
+                        time_range = f" im Zeitraum {start_formatted} bis {end_formatted}"
+                    except:
+                        # Bei Fehler in der Datumsformatierung
+                        time_range = " im angegebenen Zeitraum"
+            else:
+                time_range = " im angegebenen Zeitraum"
+            
+            if net_leads == 0:
+                summary = f"Du hast{time_range} keine Netto-Leads (nach Abzug von Rückforderungen), daher kann keine Abschlussquote berechnet werden."
+            else:
+                summary = f"Deine Abschlussquote{time_range} beträgt {conversion_rate}%. Von {total_leads} gekauften Leads (davon {net_leads} Netto-Leads nach Abzug von Rückforderungen) hast du {total_contracts} Verträge abgeschlossen."
+            
+            return summary
+            
         elif query_name == 'get_leads_count':
             if count == 0 or not result_data:
                 return "Im angegebenen Zeitraum wurden keine Leads gefunden."

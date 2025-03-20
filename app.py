@@ -27,7 +27,7 @@ import yaml
 import re
 
 try:
-    from query_selector import select_query_with_llm, update_selection_feedback, process_clarification_response
+    from query_selector import select_query_with_llm, update_selection_feedback, process_clarification_response, process_text_clarification_response
     USE_LLM_QUERY_SELECTOR = True
     logging.info("LLM-based query selector loaded successfully")
 except ImportError as e:
@@ -2094,10 +2094,36 @@ def process_user_query(user_message, session_data):
         clarification_data = session.get("clarification_data", {})
         debug_print("Clarification", "Processing response to clarification")
         
-        # Process the clarification response
-        is_resolved, function_name, parameters, new_clarification_data = handle_conversational_clarification(
-            user_message, clarification_data
-        )
+        # Check if this is a text-based clarification
+        if clarification_data.get("clarification_type") == "text_clarification":
+            debug_print("Clarification", "Processing text-based clarification")
+            
+            # Use our new text-based processing function from query_selector
+            original_question = clarification_data.get("original_question", "")
+            clarification_context = clarification_data.get("clarification_context", {})
+            
+            # Import the new function if needed
+            from query_selector import process_text_clarification_response
+            
+            # Process the user's text response
+            function_name, parameters = process_text_clarification_response(
+                clarification_context,
+                user_message,
+                original_question
+            )
+            
+            # Clean up clarification state
+            session.pop("clarification_in_progress", None)
+            session.pop("clarification_data", None)
+            
+            # Mark as resolved with the function and parameters from text processing
+            is_resolved = True
+            new_clarification_data = None
+        else:
+            # Legacy button-based or conversational clarification
+            is_resolved, function_name, parameters, new_clarification_data = handle_conversational_clarification(
+                user_message, clarification_data
+            )
         
         if is_resolved:
             # Clarification resolved, continue with function execution
@@ -2224,32 +2250,49 @@ def process_user_query(user_message, session_data):
         
         if needs_clarification:
             # Start a conversational clarification process
-            debug_print("Clarification", "Starting clarification dialog")
+            debug_print("Clarification", "Starting text-based clarification dialog")
             
-            # Format the possible functions for better readability
+            # Prepare options list for context
             function_options = []
+            query_mapping = {}
+            
             for func_name in possible_functions:
                 if func_name in query_patterns:
                     desc = query_patterns[func_name].get("description", func_name)
                     function_options.append({"name": func_name, "description": desc})
+                    # Build mapping for text matching later
+                    query_mapping[desc.lower()] = func_name
             
-            # Store clarification state
+            # Prepare context for text-based clarification
+            clarification_context = {
+                "clarification_type": "query_selection",
+                "original_parameters": parameters.copy(),
+                "query_mapping": query_mapping
+            }
+            
+            # Store clarification state for conversational context
             clarification_data = {
                 "original_question": user_message,
                 "clarification_message": clarification_message,
-                "possible_functions": function_options
+                "clarification_context": clarification_context,
+                "clarification_type": "text_clarification"  # Mark as text-based
             }
             
             session["clarification_in_progress"] = True
             session["clarification_data"] = clarification_data
             
-            # Format clarification message with options if available
-            if function_options:
-                option_text = ""
-                for i, option in enumerate(function_options):
-                    option_text += f"\n{chr(97+i)}) {option['description']}"
+            # Format clarification message in a conversation-friendly way
+            options_text = []
+            for option in function_options:
+                options_text.append(f"'{option['description']}'")
                 
-                clarification_message += f"\nIch kann dir folgende Informationen anbieten:{option_text}\n\nWas davon interessiert dich?"
+            # Create a natural language list: 'A', 'B' and 'C'
+            if len(options_text) > 1:
+                formatted_options = ", ".join(options_text[:-1]) + " oder " + options_text[-1]
+            else:
+                formatted_options = options_text[0]
+                
+            clarification_message += f" Möchtest du {formatted_options}?"
             
             return clarification_message
         else:
@@ -2616,24 +2659,22 @@ def generate_conversational_clarification_stream(clarification_data):
     except Exception as e:
         yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Rückfrage: {str(e)}'})}\n\n"
 
-# Keep the old function for backward compatibility
 def generate_clarification_stream(human_in_loop_data):
     """
-    Generiert einen Stream für Human-in-the-Loop Rückfragen mit Buttons (Legacy)
+    Generiert einen Stream für text-basierte Rückfragen (ohne Buttons)
     """
     try:
-        yield f"data: {json.dumps({'type': 'clarification_start'})}\n\n"
+        yield f"data: {json.dumps({'type': 'text_clarification_start'})}\n\n"
         
-        # Sende die Rückfrage
+        # Send the clarification question as regular text - no need for buttons
         message = human_in_loop_data.get("message", "Bitte präzisiere deine Anfrage")
-        yield f"data: {json.dumps({'type': 'clarification_message', 'content': message})}\n\n"
         
-        # Sende die Optionen
-        options = human_in_loop_data.get("options", [])
-        for i, option in enumerate(options):
-            yield f"data: {json.dumps({'type': 'clarification_option', 'index': i, 'text': option.get('text', '')})}\n\n"
+        # Split the options out of the message if present
+        # This ensures the client can directly display the message text
+        yield f"data: {json.dumps({'type': 'text', 'content': message})}\n\n"
         
-        yield f"data: {json.dumps({'type': 'clarification_end'})}\n\n"
+        # Signal that this is the end of this message - client will render it as normal text
+        yield f"data: {json.dumps({'type': 'text_clarification_end'})}\n\n"
     except Exception as e:
         yield f"data: {json.dumps({'type': 'error', 'content': f'Fehler bei Rückfrage: {str(e)}'})}\n\n"
 
@@ -3208,13 +3249,26 @@ def chat():
                                 content_type="text/event-stream"
                             )
                         
-                        # Prüfen, ob eine Human-in-the-Loop Rückfrage ausgelöst wurde
+                        # Prüfen, ob eine Rückfrage ausgelöst wurde
                         elif selected_tool == "human_in_loop_clarification":
-                            # Wenn eine Rückfrage nötig ist, senden wir ein spezielles Event an den Client
-                            return Response(
-                                generate_clarification_stream(session.get("human_in_loop_data")),
-                                content_type="text/event-stream"
-                            )
+                            # Neue text-basierte Rückfrage ohne Buttons
+                            human_in_loop_data = session.get("human_in_loop_data")
+                            
+                            # Process the data differently based on type
+                            if human_in_loop_data and human_in_loop_data.get("type") == "text_clarification":
+                                # Process as a text clarification - just stream the message
+                                debug_print("Clarification", "Streaming text-based clarification")
+                                return Response(
+                                    generate_clarification_stream(human_in_loop_data),
+                                    content_type="text/event-stream"
+                                )
+                            else:
+                                # Process as a legacy clarification for backward compatibility
+                                debug_print("Clarification", "Streaming legacy clarification")
+                                return Response(
+                                    generate_clarification_stream(human_in_loop_data),
+                                    content_type="text/event-stream"
+                                )
                         
                         
                         

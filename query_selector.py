@@ -312,7 +312,7 @@ def check_for_human_in_loop(
     parameters: Dict,
     confidence: int
 ) -> Optional[Dict]:
-    """Check if human-in-the-loop clarification is needed
+    """Check if clarification is needed and return a text question instead of button options
     
     Args:
         user_request: The original user request
@@ -321,9 +321,9 @@ def check_for_human_in_loop(
         confidence: The confidence level (1-5)
         
     Returns:
-        None if no clarification needed, otherwise a dict with clarification info
+        None if no clarification needed, otherwise a dict with clarification message
     """
-    # Cases that trigger human-in-the-loop clarification:
+    # Cases that trigger clarification:
     # 1. Low confidence in query selection
     # 2. Customer-specific queries without sufficient specificity
     # 3. Ambiguous time frames
@@ -356,106 +356,249 @@ def check_for_human_in_loop(
             logger.info("Kundenname normalisiert zu 'Küll'")
             
         # Logs zur besseren Fehleranalyse
-        logger.info(f"Human-in-loop Check für Kunde: {parameters.get('customer_name')}")
+        logger.info(f"Text-basierte Rückfrage für Kunde: {parameters.get('customer_name')}")
             
         # Rückfrage nur bei kurzen Anfragen oder bei Küll (da häufiger Kunde)
         if len(user_request.split()) < 12 or is_kull_request:
             customer_name = parameters.get("customer_name", "unbekannt")
-            logger.info(f"Erstelle Human-in-the-Loop Rückfrage für Kunden: {customer_name}")
+            logger.info(f"Erstelle text-basierte Rückfrage für Kunden: {customer_name}")
             
-            # Parameter-Kopien für verschiedene Optionen erstellen
-            history_params = parameters.copy()
-            tickets_params = parameters.copy()
-            contracts_params = parameters.copy()
+            # Wir speichern hier die möglichen Queries für die spätere Verarbeitung
+            available_queries = {
+                "historiedaten": "get_customer_history",
+                "historie": "get_customer_history",
+                "kundenhistorie": "get_customer_history",
+                "kundendaten": "get_customer_history",
+                "ticket": "get_customer_tickets",
+                "tickets": "get_customer_tickets",
+                "ticketinhalte": "get_customer_tickets",
+                "vertrag": "get_customer_contracts",
+                "verträge": "get_customer_contracts",
+                "vertragsinformationen": "get_customer_contracts"
+            }
             
             return {
-                "type": "clarification",
+                "type": "text_clarification",
                 "query": selected_query,
-                "message": f"Möchtest du eine allgemeine Zusammenfassung zur Kundenhistorie von {customer_name}, "
-                          f"eine Auswertung der Ticketinhalte oder eine andere spezielle Art von Informationen?",
-                "options": [
-                    {"text": "Allgemeine Kundenhistorie", "query": "get_customer_history", "params": history_params},
-                    {"text": "Ticketinhalte", "query": "get_customer_tickets", "params": tickets_params},
-                    {"text": "Vertragsinformationen", "query": "get_customer_contracts", "params": contracts_params}
-                ]
+                "message": f"Ich kann dir verschiedene Informationen zu {customer_name} geben. Möchtest du allgemeine Kundenhistorie, Ticketinhalte oder Vertragsinformationen?",
+                "context": {
+                    "customer_name": customer_name,
+                    "clarification_type": "customer_info",
+                    "available_queries": available_queries
+                }
             }
     
     # Agency queries that might need clarification
     elif selected_query in ["get_agency_performance", "get_revenue_by_agency"]:
         if confidence < 4 or "date_from" not in parameters or "date_to" not in parameters:
-            logger.info(f"Erstelle Zeitraum-Rückfrage für {selected_query}")
+            logger.info(f"Erstelle text-basierte Zeitraum-Rückfrage für {selected_query}")
             
-            # Parameter-Kopien für die verschiedenen Optionen
-            month_params = parameters.copy()
-            month_params["timeframe"] = "last_month"
-            
-            quarter_params = parameters.copy()
-            quarter_params["timeframe"] = "current_quarter"
-            
-            year_params = parameters.copy() 
-            year_params["timeframe"] = "year_to_date"
+            # Wir speichern hier die möglichen Zeiträume für die spätere Verarbeitung
+            available_timeframes = {
+                "letzter monat": "last_month",
+                "letzten monat": "last_month",
+                "diesen monat": "current_month",
+                "aktueller monat": "current_month",
+                "aktuelles quartal": "current_quarter",
+                "dieses quartal": "current_quarter",
+                "dieses jahr": "year_to_date",
+                "jahr": "year_to_date",
+                "gesamtes jahr": "year_to_date"
+            }
             
             return {
-                "type": "clarification",
+                "type": "text_clarification",
                 "query": selected_query,
-                "message": f"Möchtest du die Leistung für einen bestimmten Zeitraum sehen oder allgemeine Informationen?",
-                "options": [
-                    {"text": "Letzter Monat", "query": selected_query, "params": month_params},
-                    {"text": "Aktuelles Quartal", "query": selected_query, "params": quarter_params},
-                    {"text": "Gesamtes Jahr", "query": selected_query, "params": year_params}
-                ]
+                "message": f"Für welchen Zeitraum möchtest du die Informationen sehen? Zum Beispiel 'letzter Monat', 'aktuelles Quartal' oder 'dieses Jahr'?",
+                "context": {
+                    "clarification_type": "timeframe",
+                    "original_query": selected_query,
+                    "available_timeframes": available_timeframes
+                }
             }
     
     # Low confidence for any query type
     elif confidence < 2:
-        logger.info(f"Niedrige Konfidenz ({confidence}) für {selected_query}, erstelle Alternativen")
+        logger.info(f"Niedrige Konfidenz ({confidence}) für {selected_query}, erstelle text-basierte Alternativen")
         
         # Use the available query patterns to suggest alternatives
         query_patterns = load_query_patterns()
-        suggested_queries = []
         
-        # Original parameters kopieren
-        original_params = parameters.copy()
+        # Hole die 3 wahrscheinlichsten Abfragen als Vorschläge
+        potential_queries = [selected_query] + [q for q in query_patterns.keys() if q != selected_query][:2]
+        query_descriptions = []
         
-        # Add the originally selected query as an option
-        suggested_queries.append({
-            "text": query_patterns.get(selected_query, {}).get("description", selected_query),
-            "query": selected_query,
-            "params": original_params
-        })
-        
-        # Add 2-3 other potential queries as options
-        potential_queries = [q for q in query_patterns.keys() if q != selected_query][:2]
         for query in potential_queries:
-            # Leere parameter für Alternativen
-            alt_params = {}
-            # Falls Kundenname oder andere wichtige Parameter vorhanden sind, übernehmen
-            if "customer_name" in parameters:
-                alt_params["customer_name"] = parameters["customer_name"]
-            
-            suggested_queries.append({
-                "text": query_patterns.get(query, {}).get("description", query),
-                "query": query,
-                "params": alt_params
-            })
+            description = query_patterns.get(query, {}).get("description", query)
+            query_descriptions.append(f"'{description}'")
+        
+        # Erstelle eine textbasierte Rückfrage
+        options_text = ", ".join(query_descriptions[:-1]) + " oder " + query_descriptions[-1]
+        
+        # Dictionary zur Zuordnung von Beschreibung zu Query erstellen
+        query_mapping = {}
+        for query in potential_queries:
+            description = query_patterns.get(query, {}).get("description", query).lower()
+            query_mapping[description.lower()] = query
         
         return {
-            "type": "clarification",
+            "type": "text_clarification",
             "query": selected_query,
-            "message": "Ich bin mir nicht sicher, welche Informationen du genau suchst. Bitte wähle eine der folgenden Optionen:",
-            "options": suggested_queries
+            "message": f"Ich bin mir nicht sicher, welche Informationen du genau suchst. Möchtest du {options_text}?",
+            "context": {
+                "clarification_type": "query_selection",
+                "original_parameters": parameters.copy(),
+                "query_mapping": query_mapping
+            }
         }
     
     # No clarification needed
     logger.info(f"Keine Rückfrage nötig für {selected_query}")
     return None
 
-# Function to process user's clarification response
+# Function to process user's text clarification response
+def process_text_clarification_response(
+    clarification_context: Dict,
+    user_response: str,
+    original_user_request: str
+) -> Tuple[str, Dict]:
+    """Process the user's text response to a clarification question
+    
+    Args:
+        clarification_context: The context from the original clarification
+        user_response: The user's text response to the clarification
+        original_user_request: The original user request
+        
+    Returns:
+        Tuple containing (selected_query_name, parameters_dict)
+    """
+    logger.info(f"Processing text clarification response: '{user_response}'")
+    
+    # Lowercase for better matching
+    user_response_lower = user_response.lower()
+    
+    # Get the clarification type from context
+    clarification_type = clarification_context.get("clarification_type")
+    
+    # Initialize default values
+    selected_query = None
+    parameters = {}
+    
+    if clarification_type == "customer_info":
+        # Handle customer information clarification
+        customer_name = clarification_context.get("customer_name")
+        available_queries = clarification_context.get("available_queries", {})
+        
+        # Try to match response with available queries
+        selected_query = None
+        for keyword, query in available_queries.items():
+            if keyword in user_response_lower:
+                selected_query = query
+                break
+        
+        # Default to customer history if no match
+        if not selected_query:
+            # If response is vague, default to history
+            if any(word in user_response_lower for word in ["ja", "alles", "allgemein", "all", "info"]):
+                selected_query = "get_customer_history"
+            else:
+                # Parse intent with simple keyword matching
+                if any(word in user_response_lower for word in ["ticket", "support", "probleme"]):
+                    selected_query = "get_customer_tickets"
+                elif any(word in user_response_lower for word in ["vertrag", "vertrage", "verträge"]):
+                    selected_query = "get_customer_contracts"
+                else:
+                    selected_query = "get_customer_history"  # Default
+        
+        # Set parameters
+        parameters = {"customer_name": customer_name}
+        
+    elif clarification_type == "timeframe":
+        # Handle timeframe clarification
+        original_query = clarification_context.get("original_query")
+        available_timeframes = clarification_context.get("available_timeframes", {})
+        
+        # Try to match response with available timeframes
+        selected_timeframe = None
+        for keyword, timeframe in available_timeframes.items():
+            if keyword in user_response_lower:
+                selected_timeframe = timeframe
+                break
+        
+        # Default to current month if no match
+        if not selected_timeframe:
+            if "letzte" in user_response_lower or "vergangene" in user_response_lower:
+                selected_timeframe = "last_month"
+            elif "quartal" in user_response_lower:
+                selected_timeframe = "current_quarter"
+            elif "jahr" in user_response_lower:
+                selected_timeframe = "year_to_date"
+            else:
+                selected_timeframe = "current_month"  # Default
+        
+        # Set query and parameters
+        selected_query = original_query
+        parameters = {"timeframe": selected_timeframe}
+        
+    elif clarification_type == "query_selection":
+        # Handle query selection clarification
+        query_mapping = clarification_context.get("query_mapping", {})
+        original_parameters = clarification_context.get("original_parameters", {})
+        
+        # Try to match response with query descriptions
+        for description, query in query_mapping.items():
+            if description in user_response_lower:
+                selected_query = query
+                break
+        
+        # If no match found, use the first option as default
+        if not selected_query and query_mapping:
+            selected_query = list(query_mapping.values())[0]
+        
+        # Set parameters (use original parameters)
+        parameters = original_parameters
+    
+    else:
+        # Fallback for unknown clarification type
+        logger.warning(f"Unknown clarification type: {clarification_type}")
+        # Use a generic approach based on keywords in the response
+        if "kunde" in user_response_lower or "kunden" in user_response_lower:
+            selected_query = "get_customer_history"
+        elif "vertrag" in user_response_lower or "verträge" in user_response_lower:
+            selected_query = "get_customer_contracts"
+        elif "ticket" in user_response_lower:
+            selected_query = "get_customer_tickets"
+        elif "leistung" in user_response_lower or "performance" in user_response_lower:
+            selected_query = "get_agency_performance"
+        else:
+            # Default to a general query
+            selected_query = "get_agency_performance"
+    
+    # Log the clarification process
+    try:
+        clarification_log = {
+            "timestamp": str(datetime.datetime.now()),
+            "original_request": original_user_request,
+            "user_response": user_response,
+            "selected_query": selected_query,
+            "parameters": parameters
+        }
+        
+        with open("text_clarification_log.jsonl", "a") as f:
+            f.write(json.dumps(clarification_log) + "\n")
+    except Exception as e:
+        logger.error(f"Error logging text clarification: {e}")
+    
+    logger.info(f"Selected query from text clarification: {selected_query} with parameters: {parameters}")
+    return selected_query, parameters
+
+
+# Legacy function to process button-based clarification response (for backward compatibility)
 def process_clarification_response(
     clarification_option: Dict, 
     original_user_request: str
 ) -> Tuple[str, Dict]:
-    """Process the user's response to a clarification question
+    """Process the user's response to a button-based clarification question
     
     Args:
         clarification_option: The option selected by the user

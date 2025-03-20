@@ -1071,9 +1071,109 @@
                                                         document.body.appendChild(form);
                                                         
                                                         // Kleine Verzögerung
-                                                        setTimeout(() => {
-                                                            form.submit();
-                                                        }, 300);
+                                                        // Instead of form submission, use fetch API to handle without page refresh
+                                                        fetch(form.action, {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/x-www-form-urlencoded',
+                                                                'X-Requested-With': 'XMLHttpRequest'
+                                                            },
+                                                            body: new URLSearchParams(new FormData(form))
+                                                        })
+                                                        .then(response => response.json())
+                                                        .then(data => {
+                                                            if (data.success) {
+                                                                // Option 1: If we have a direct response, show it immediately
+                                                                if (data.response) {
+                                                                    // Create a new bot message with the response
+                                                                    const botResponse = document.createElement('div');
+                                                                    botResponse.className = 'message bot';
+                                                                    botResponse.innerHTML = `
+                                                                        <strong>XORA:</strong>
+                                                                        <span>${data.response}</span>
+                                                                        <div class="feedback-icons">
+                                                                            <span class="thumb-up" data-type="positive">👍</span>
+                                                                            <span class="thumb-down" data-type="negative">👎</span>
+                                                                        </div>
+                                                                    `;
+                                                                    chatHistory.appendChild(botResponse);
+                                                                    
+                                                                    // Scroll to the new message
+                                                                    forceScrollToBottom();
+                                                                    
+                                                                    // Attach feedback handlers to the new message
+                                                                    attachFeedbackHandlers();
+                                                                }
+                                                                // Option 2: If we need to follow up with another request to get the actual answer
+                                                                else if (data.need_followup) {
+                                                                    console.log("Selected option:", data.selected_option);
+                                                                    
+                                                                    // Add a processing message
+                                                                    const processingMsg = document.createElement('div');
+                                                                    processingMsg.className = 'message bot';
+                                                                    processingMsg.innerHTML = `
+                                                                        <strong>XORA:</strong>
+                                                                        <span>Verarbeite Anfrage...</span>
+                                                                    `;
+                                                                    chatHistory.appendChild(processingMsg);
+                                                                    forceScrollToBottom();
+                                                                    
+                                                                    // Now fetch the actual response using our new endpoint
+                                                                    fetch("{{ url_for('get_clarification_response') }}", {
+                                                                        method: 'GET',
+                                                                        headers: {
+                                                                            'X-Requested-With': 'XMLHttpRequest',
+                                                                            'Accept': 'application/json'
+                                                                        }
+                                                                    })
+                                                                    .then(response => response.json())
+                                                                    .then(followupData => {
+                                                                        // Remove the processing message
+                                                                        processingMsg.remove();
+                                                                        
+                                                                        // Create the actual response message
+                                                                        const botResponse = document.createElement('div');
+                                                                        botResponse.className = 'message bot';
+                                                                        botResponse.innerHTML = `
+                                                                            <strong>XORA:</strong>
+                                                                            <span>${followupData.response || "Ihre Anfrage wurde verarbeitet."}</span>
+                                                                            <div class="feedback-icons">
+                                                                                <span class="thumb-up" data-type="positive">👍</span>
+                                                                                <span class="thumb-down" data-type="negative">👎</span>
+                                                                            </div>
+                                                                        `;
+                                                                        chatHistory.appendChild(botResponse);
+                                                                        forceScrollToBottom();
+                                                                        attachFeedbackHandlers();
+                                                                    })
+                                                                    .catch(error => {
+                                                                        console.error("Followup error:", error);
+                                                                        processingMsg.innerHTML = `
+                                                                            <strong>XORA:</strong>
+                                                                            <span>Fehler bei der Verarbeitung. Bitte versuchen Sie es erneut.</span>
+                                                                        `;
+                                                                    });
+                                                                }
+                                                            } else {
+                                                                throw new Error(data.error || 'Error processing selection');
+                                                            }
+                                                        })
+                                                        .catch(error => {
+                                                            console.error('Error:', error);
+                                                            // Visual error feedback
+                                                            this.textContent = 'Fehler! Bitte erneut versuchen.';
+                                                            this.style.backgroundColor = '#d32f2f';
+                                                            
+                                                            // Re-enable buttons after timeout
+                                                            setTimeout(() => {
+                                                                const allButtons = document.querySelectorAll('.option-button');
+                                                                allButtons.forEach(btn => {
+                                                                    btn.disabled = false;
+                                                                    btn.style.opacity = '1';
+                                                                    btn.style.cursor = 'pointer';
+                                                                });
+                                                            }, 2000);
+                                                        });
                                                     });
                                                     
                                                     // Button hinzufügen

@@ -2956,7 +2956,11 @@ def handle_clarification():
                     
                     # Erfolg zurückgeben
                     if is_ajax:
-                        return jsonify({"success": True, "result": formatted_result})
+                        return jsonify({
+                            "success": True, 
+                            "response": formatted_result,
+                            "message": "Kundeninformationen erfolgreich abgerufen."
+                        })
                     else:
                         # Bei normaler Anfrage: Flash-Nachricht und Weiterleitung
                         flash("Kundeninformationen erfolgreich abgerufen.", "success")
@@ -2997,10 +3001,19 @@ def handle_clarification():
         # Stelle sicher, dass der Chatverlauf erhalten bleibt
         session.modified = True
         
-        # Bei AJAX-Anfragen ein JSON-Ergebnis zurückgeben
+        # Bei AJAX-Anfragen mehr Informationen zurückgeben für clientseitige Verarbeitung
         if is_ajax:
-            logging.info("Sende AJAX-Erfolgsantwort")
-            return jsonify({"success": True, "message": "Option ausgewählt", "redirect": url_for("chat")})
+            logging.info("Sende AJAX-Erfolgsantwort mit Option")
+            # Hier nehmen wir an, dass im nächsten Request eine Antwort erstellt wird
+            # Daher senden wir ein Signal an die Client-Seite, dass es eine Anfrage gab,
+            # die beim nächsten Request beantwortet wird (im GET handler der chat route)
+            return jsonify({
+                "success": True, 
+                "message": "Option ausgewählt",
+                "selected_option": selected_option.get("text", ""),
+                "query": selected_query,
+                "need_followup": True
+            })
         
         # Ansonsten wie gehabt weiterleiten
         logging.info("Weiterleitung zur Chat-Seite")
@@ -4418,6 +4431,85 @@ def login_required(f):
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
+
+###########################################
+# AJAX Endpoint für Human-in-the-Loop
+###########################################
+@app.route('/get_clarification_response', methods=['GET'])
+def get_clarification_response():
+    """
+    AJAX endpoint to get a response after a human-in-loop clarification button was clicked.
+    This allows the client to update the UI without a page refresh.
+    """
+    try:
+        # Ensure user is authenticated
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"error": "Nicht angemeldet"}), 403
+            
+        # Check if we have a pending clarification response
+        if "human_in_loop_clarification_response" in session:
+            clarification_response = session.pop("human_in_loop_clarification_response")
+            pending_query = session.get("pending_query", "")
+            session.pop("pending_query", None)
+            
+            # Process the clarification response
+            logging.info(f"Processing clarification response via AJAX: {clarification_response.get('text', '')}")
+            
+            # Extract the selected query and parameters
+            selected_query = clarification_response.get("query")
+            selected_params = clarification_response.get("params", {})
+            
+            # Add standard parameters
+            if "seller_id" in selected_params and "seller_id" in session:
+                selected_params["seller_id"] = session.get("seller_id")
+            
+            # Execute function call
+            tool_result = handle_function_call(selected_query, selected_params)
+            
+            # Create enhanced system prompt for LLM response generation
+            system_prompt = create_enhanced_system_prompt(selected_query)
+            
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": pending_query},
+                {"role": "function", "name": selected_query, "content": tool_result}
+            ]
+            
+            # Generate response with LLM
+            response = openai.chat.completions.create(
+                model="o3-mini",
+                messages=messages,
+                temperature=0.4
+            )
+            
+            final_response = response.choices[0].message.content
+            
+            # Update chat history
+            chat_key = f"chat_history_{session.get('user_id')}"
+            chat_history = session.get(chat_key, [])
+            chat_history.append({"role": "user", "content": pending_query})
+            chat_history.append({"role": "assistant", "content": final_response})
+            session[chat_key] = chat_history
+            session.modified = True
+            
+            # Return the response as JSON
+            return jsonify({
+                "success": True,
+                "response": final_response
+            })
+        else:
+            # No pending clarification response
+            return jsonify({
+                "success": False,
+                "error": "Keine ausstehende Antwort auf Rückfrage gefunden"
+            })
+    except Exception as e:
+        logging.exception(f"Error processing clarification response: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Fehler bei der Verarbeitung: {str(e)}"
+        }), 500
 
 ###########################################
 # Clear Chat

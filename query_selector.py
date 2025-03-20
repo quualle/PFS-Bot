@@ -97,6 +97,8 @@ Beispielentscheidungen:
 - "Wie viele Leads habe ich gekauft?" → get_leads_count (Anzahl der Leads)
 - "Welche Leads habe ich gekauft?" → get_leads (detaillierte Lead-Details)
 - "Was ist meine Abschlussquote?" → get_cvr_lead_contract (Conversion Rate Leads zu Verträgen)
+- "Wie viele neu abgeschlossene Kunden oder Verträge habe ich?" → get_contract_count (neue Vertragsabschlüsse)
+- "Welche Verträge habe ich abgeschlossen?" → get_contract_details (detaillierte Vertragsdetails)
 """
     
     # Create the prompt content
@@ -323,43 +325,15 @@ def check_for_human_in_loop(
     Returns:
         None if no clarification needed, otherwise a dict with clarification message
     """
-    # Cases that trigger clarification:
-    # 1. Low confidence in query selection
-    # 2. Customer-specific queries without sufficient specificity
-    # 3. Ambiguous time frames
-    # 4. Specific query types that often need clarification
+    # Die Entscheidung wird nun vollständig dem LLM überlassen
+    # Eine Rückfrage wird nur noch gestellt, wenn die Konfidenz niedrig ist
     
-    # Prüfen auf den Kunden "Küll" im Text selbst (unabhängig von Parametern)
-    user_request_lower = user_request.lower()
-    kull_variations = ["küll", "kull", "kühl", "kuehl", "kuell"]
-    
-    is_kull_request = False
-    for variation in kull_variations:
-        if variation in user_request_lower:
-            is_kull_request = True
-            # Wenn Küll im Text ist, aber nicht in den Parametern, fügen wir ihn hinzu
-            if "customer_name" not in parameters:
-                parameters["customer_name"] = "Küll"
-                logger.info("Spezialfall: Kunde 'Küll' erkannt und Parameter ergänzt")
-            else:
-                # Wenn ein anderer Kunde in den Parametern ist, prüfen und ggf. korrigieren
-                if parameters["customer_name"].lower() not in kull_variations:
-                    logger.warning(f"Parameter-Kunde '{parameters['customer_name']}' stimmt nicht mit erkanntem Küll überein")
-                    parameters["customer_name"] = "Küll"
-            break
-    
-    # Customer-specific query with vague request
-    if selected_query == "get_customer_history" and "customer_name" in parameters:
-        # Spezialbehandlung für Kunde "Küll" (verschiedene Schreibweisen normalisieren)
-        if parameters.get("customer_name", "").lower() in kull_variations:
-            parameters["customer_name"] = "Küll"
-            logger.info("Kundenname normalisiert zu 'Küll'")
-            
-        # Logs zur besseren Fehleranalyse
-        logger.info(f"Text-basierte Rückfrage für Kunde: {parameters.get('customer_name')}")
-            
-        # Rückfrage nur bei kurzen Anfragen oder bei Küll (da häufiger Kunde)
-        if len(user_request.split()) < 12 or is_kull_request:
+    # Low confidence triggers clarification
+    if confidence < 3:
+        logger.info(f"Niedrige Konfidenz ({confidence}) für {selected_query}, erstelle text-basierte Rückfrage")
+        
+        # Falls es sich um eine Kundenanfrage handelt
+        if selected_query == "get_customer_history" and "customer_name" in parameters:
             customer_name = parameters.get("customer_name", "unbekannt")
             logger.info(f"Erstelle text-basierte Rückfrage für Kunden: {customer_name}")
             
@@ -387,10 +361,9 @@ def check_for_human_in_loop(
                     "available_queries": available_queries
                 }
             }
-    
-    # Agency queries that might need clarification
-    elif selected_query in ["get_agency_performance", "get_revenue_by_agency"]:
-        if confidence < 4 or "date_from" not in parameters or "date_to" not in parameters:
+        
+        # Agency queries that might need clarification
+        elif selected_query in ["get_agency_performance", "get_revenue_by_agency"]:
             logger.info(f"Erstelle text-basierte Zeitraum-Rückfrage für {selected_query}")
             
             # Wir speichern hier die möglichen Zeiträume für die spätere Verarbeitung
@@ -416,41 +389,39 @@ def check_for_human_in_loop(
                     "available_timeframes": available_timeframes
                 }
             }
-    
-    # Low confidence for any query type
-    elif confidence < 2:
-        logger.info(f"Niedrige Konfidenz ({confidence}) für {selected_query}, erstelle text-basierte Alternativen")
         
-        # Use the available query patterns to suggest alternatives
-        query_patterns = load_query_patterns()
-        
-        # Hole die 3 wahrscheinlichsten Abfragen als Vorschläge
-        potential_queries = [selected_query] + [q for q in query_patterns.keys() if q != selected_query][:2]
-        query_descriptions = []
-        
-        for query in potential_queries:
-            description = query_patterns.get(query, {}).get("description", query)
-            query_descriptions.append(f"'{description}'")
-        
-        # Erstelle eine textbasierte Rückfrage
-        options_text = ", ".join(query_descriptions[:-1]) + " oder " + query_descriptions[-1]
-        
-        # Dictionary zur Zuordnung von Beschreibung zu Query erstellen
-        query_mapping = {}
-        for query in potential_queries:
-            description = query_patterns.get(query, {}).get("description", query).lower()
-            query_mapping[description.lower()] = query
-        
-        return {
-            "type": "text_clarification",
-            "query": selected_query,
-            "message": f"Ich bin mir nicht sicher, welche Informationen du genau suchst. Möchtest du {options_text}?",
-            "context": {
-                "clarification_type": "query_selection",
-                "original_parameters": parameters.copy(),
-                "query_mapping": query_mapping
+        # General low confidence handling
+        else:
+            # Use the available query patterns to suggest alternatives
+            query_patterns = load_query_patterns()
+            
+            # Hole die 3 wahrscheinlichsten Abfragen als Vorschläge
+            potential_queries = [selected_query] + [q for q in query_patterns.keys() if q != selected_query][:2]
+            query_descriptions = []
+            
+            for query in potential_queries:
+                description = query_patterns.get(query, {}).get("description", query)
+                query_descriptions.append(f"'{description}'")
+            
+            # Erstelle eine textbasierte Rückfrage
+            options_text = ", ".join(query_descriptions[:-1]) + " oder " + query_descriptions[-1]
+            
+            # Dictionary zur Zuordnung von Beschreibung zu Query erstellen
+            query_mapping = {}
+            for query in potential_queries:
+                description = query_patterns.get(query, {}).get("description", query).lower()
+                query_mapping[description.lower()] = query
+            
+            return {
+                "type": "text_clarification",
+                "query": selected_query,
+                "message": f"Ich bin mir nicht sicher, welche Informationen du genau suchst. Möchtest du {options_text}?",
+                "context": {
+                    "clarification_type": "query_selection",
+                    "original_parameters": parameters.copy(),
+                    "query_mapping": query_mapping
+                }
             }
-        }
     
     # No clarification needed
     logger.info(f"Keine Rückfrage nötig für {selected_query}")

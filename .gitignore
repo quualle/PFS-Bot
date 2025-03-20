@@ -1,88 +1,21 @@
-# Python-spezifische Dateien
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-.env
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
+# Ignore everything
+*
+*/
 
-# Backups und temporäre Dateien
-*.bak
-*.tmp
-*.temp
-*.swp
-*~
-backups_*/
-*.cleaned
-*.cleaned.bak
-*.extract_customer_name
-*.patch
-*.log
+# But not these files
+!*.py
+!*.html
+!*.json
 
-# IDE-spezifische Dateien
-.idea/
-.vscode/
-*.sublime-workspace
-*.sublime-project
+# Allow directories to be tracked so we can recurse into them
+!*/
+
+# Ignore specific files even if they match the above extensions
 .DS_Store
-.cache/
-.ipython/
-.local/
-.virtualenvs/
-.bashrc
-.gitconfig
-.profile
-.pythonstartup.py
-.vimrc
-
-# Anwendungsspezifische Dateien
-uploads/
-flask_session/
-node_modules/
-
-# Spezifische Dateien, die wir behalten wollen
-!.gitignore
-!app.py
-!notfall_logs.json
-!requirements.txt
-!themen.txt
-!query_selector.py
-!query_patterns.json
-!bigquery_functions.py
-!sql_query_helper.py
-!prepare_sql_name.py
-!table_schema.json
-!tool_config.yaml
-
-# Verzeichnisse, die wir behalten wollen
-!templates/
-!templates/**
-!static/
-!static/styles.css
-!feedback/
-!feedback/**
-!chatlogs/
-!chatlogs/**
-!frontend/
-!frontend/**
-!backend/
-!backend/**
-!updates/
-!updates/**
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*~
+.vscode/
+.idea/

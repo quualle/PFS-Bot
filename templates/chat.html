@@ -1304,7 +1304,19 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        window.location.reload();
+                        // Clear the chat history display instead of reloading
+                        const chatHistory = document.getElementById('chatHistory');
+                        chatHistory.innerHTML = '';
+                        
+                        // Add a neutral welcome message
+                        const botDiv = document.createElement('div');
+                        botDiv.classList.add('message', 'bot');
+                        botDiv.innerHTML = `
+                            <strong>XORA:</strong>
+                            <span>Hallo ${userName}, wie kann ich dir behilflich sein?</span>
+                        `;
+                        chatHistory.appendChild(botDiv);
+                        forceScrollToBottom();
                     } else {
                         console.error('Fehler beim Löschen des Chatverlaufs');
                     }

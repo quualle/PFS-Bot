@@ -2,12 +2,10 @@
 *
 */
 
-# Allow Python and HTML files everywhere
+# But not these files
 !*.py
 !*.html
-
-# Allow JSON files ONLY in the root directory
-/*.json
+!*.json
 
 # Allow directories to be tracked so we can recurse into them
 !*/

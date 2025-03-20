@@ -1126,7 +1126,14 @@
                                                                             'Accept': 'application/json'
                                                                         }
                                                                     })
-                                                                    .then(response => response.json())
+                                                                    .then(response => {
+                                                                        if (!response.ok) {
+                                                                            return response.json().then(data => {
+                                                                                throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
+                                                                            });
+                                                                        }
+                                                                        return response.json();
+                                                                    })
                                                                     .then(followupData => {
                                                                         // Remove the processing message
                                                                         processingMsg.remove();
@@ -1148,10 +1155,29 @@
                                                                     })
                                                                     .catch(error => {
                                                                         console.error("Followup error:", error);
+                                                                        // Parse the error response if possible
+                                                                        let errorMessage = "Fehler bei der Verarbeitung. Bitte versuchen Sie es erneut.";
+                                                                        
+                                                                        if (error.message && error.message.includes("No data found")) {
+                                                                            errorMessage = "Es wurden keine Daten zu Ihrer Anfrage gefunden.";
+                                                                        } else if (error.message && error.message.includes("customer")) {
+                                                                            errorMessage = "Es wurden keine Kundendaten gefunden.";
+                                                                        }
+                                                                        
+                                                                        // Update the processing message with error
                                                                         processingMsg.innerHTML = `
                                                                             <strong>XORA:</strong>
-                                                                            <span>Fehler bei der Verarbeitung. Bitte versuchen Sie es erneut.</span>
+                                                                            <span>${errorMessage}</span>
                                                                         `;
+                                                                        
+                                                                        // Try fallback to chat endpoint 
+                                                                        console.log("Trying fallback to chat endpoint");
+                                                                        
+                                                                        // This will refresh the page as a last resort if after 2 seconds
+                                                                        // we still can't get a response via AJAX
+                                                                        setTimeout(() => {
+                                                                            window.location.href = "{{ url_for('chat') }}";
+                                                                        }, 2000);
                                                                     });
                                                                 }
                                                             } else {

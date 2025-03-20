@@ -4465,7 +4465,25 @@ def get_clarification_response():
                 selected_params["seller_id"] = session.get("seller_id")
             
             # Execute function call
-            tool_result = handle_function_call(selected_query, selected_params)
+            try:
+                tool_result = handle_function_call(selected_query, selected_params)
+                
+                # Check for empty results
+                result_data = json.loads(tool_result)
+                if "data" in result_data and len(result_data["data"]) == 0:
+                    # No data found, return a proper error
+                    logging.warning(f"No data found for query {selected_query} with params {selected_params}")
+                    return jsonify({
+                        "success": False,
+                        "error": f"Keine Daten für diese Anfrage gefunden."
+                    }), 404
+                    
+            except Exception as e:
+                logging.error(f"Error executing function call: {str(e)}")
+                return jsonify({
+                    "success": False,
+                    "error": f"Fehler bei der Ausführung: {str(e)}"
+                }), 500
             
             # Create enhanced system prompt for LLM response generation
             system_prompt = create_enhanced_system_prompt(selected_query)
@@ -4477,9 +4495,15 @@ def get_clarification_response():
             ]
             
             # Generate response with LLM
+            # o3-mini doesn't support function role, so we'll convert the function message to a user message
+            adjusted_messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"User question: {pending_query}\n\nQuery result: {tool_result}"}
+            ]
+            
             response = openai.chat.completions.create(
                 model="o3-mini",
-                messages=messages,
+                messages=adjusted_messages,
                 temperature=0.4
             )
             

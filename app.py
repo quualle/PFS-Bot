@@ -25,6 +25,7 @@ import openai
 import tiktoken
 import yaml
 import re
+from sql_query_helper import apply_query_enhancements
 
 try:
     from query_selector import select_query_with_llm, update_selection_feedback, process_clarification_response, process_text_clarification_response
@@ -1208,16 +1209,17 @@ def extract_customer_name(user_message):
     
     # Nach Mustern suchen wie "Kunde XYZ", "Herr XYZ", "Frau XYZ", "über XYZ"
     customer_patterns = [
-        r'kunde[n]?[:\s]+([a-zäöüß\s]+)',
-        r'kunden[:\s]+([a-zäöüß\s]+)',
-        r'herr[n]?[:\s]+([a-zäöüß\s]+)',
-        r'frau[:\s]+([a-zäöüß\s]+)',
-        r'familie[:\s]+([a-zäöüß\s]+)',
-        r'über[:\s]+([a-zäöüß\s]+)',
-        r'von[:\s]+([a-zäöüß\s]+)',
-        r'für[:\s]+([a-zäöüß\s]+)',
-        r'bei[:\s]+([a-zäöüß\s]+)',
-        r'zum kunden ([a-zäöüß\s]+)'
+        r'kunde[n]?[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'kunden[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'herr[n]?[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'frau[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'familie[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'über[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'von[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'für[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'bei[:\s]+([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'zum kunden ([a-zäöüß0-9\s\(\)\[\]\-]+)',
+        r'namens ([a-zäöüß0-9\s\(\)\[\]\-]+)'
     ]
     
     for pattern in customer_patterns:
@@ -1234,7 +1236,7 @@ def extract_customer_name(user_message):
                 return customer_name
     
     # Nach alleinstehenden Namen suchen, wenn sie in Anführungszeichen stehen
-    quotes_pattern = r'["\']([a-zäöüß\s]{3,})["\']'
+    quotes_pattern = r'["\']([a-zäöüß0-9\s\(\)\[\]\-]{3,})["\']'
     match = re.search(quotes_pattern, user_message)
     if match:
         customer_name = match.group(1).strip()

@@ -5,6 +5,7 @@ import datetime
 from typing import Dict, List, Any, Optional, Union
 from flask import session
 from google.cloud import bigquery
+from sql_query_helper import apply_query_enhancements
 
 # Logging einrichten
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,9 @@ def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> s
         # Hole das Abfragemuster
         query_pattern = query_patterns['common_queries'][function_name]
         
+        # Wende SQL-Verbesserungen an
+        query_pattern, function_args = apply_query_enhancements(function_name, query_pattern, function_args)
+        
         # Füge seller_id aus der Session hinzu, wenn nicht vorhanden
         if 'seller_id' in query_pattern.get('required_parameters', []) and 'seller_id' not in function_args:
             function_args['seller_id'] = session.get('seller_id')
@@ -60,7 +64,6 @@ def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> s
             logger.info(f"Kein End-Datum angegeben, verwende aktuelles Datum: {function_args['end_date']}")
         
         # Konvertiere Parameter zu den richtigen Typen
-        # NEW CODE ADDED HERE
         param_types = query_pattern.get('parameter_types', {})
         for param, value in list(function_args.items()):
             if param == 'limit' and isinstance(value, str):

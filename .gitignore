@@ -1,36 +1,47 @@
-# 1) Alles ignorieren
-*
+# Python-spezifische Dateien
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# 2) .gitignore nicht ignorieren
-!.gitignore
+# Backups und temporäre Dateien
+*.bak
+*.tmp
+*.temp
+*.swp
+*~
+backups_*/
+*.cleaned
+*.cleaned.bak
+*.extract_customer_name
+*.patch
+*.log
 
-# 3) Whiteliste einzelne Dateien
-!app.py
-!notfall_logs.json
-!requirements.txt
-!themen.txt
-
-# 4) Templates komplett erlauben
-!templates/
-templates/*
-!templates/**
-
-# 5) Static-Ordner, aber nur styles.css
-!static/
-static/*
-!static/styles.css
-
-# 6) Feedback komplett erlauben
-!feedback/
-feedback/*
-!feedback/**
-
-# 7) Chatlogs komplett erlauben
-!chatlogs/
-chatlogs/*
-!chatlogs/**
-
-# 8) Unerwünschte Sachen explizit ausschließen (meist schon von "*" abgedeckt)
+# IDE-spezifische Dateien
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.DS_Store
 .cache/
 .ipython/
 .local/
@@ -40,6 +51,38 @@ chatlogs/*
 .profile
 .pythonstartup.py
 .vimrc
+
+# Anwendungsspezifische Dateien
 uploads/
 flask_session/
-__pycache__/
+node_modules/
+
+# Spezifische Dateien, die wir behalten wollen
+!.gitignore
+!app.py
+!notfall_logs.json
+!requirements.txt
+!themen.txt
+!query_selector.py
+!query_patterns.json
+!bigquery_functions.py
+!sql_query_helper.py
+!prepare_sql_name.py
+!table_schema.json
+!tool_config.yaml
+
+# Verzeichnisse, die wir behalten wollen
+!templates/
+!templates/**
+!static/
+!static/styles.css
+!feedback/
+!feedback/**
+!chatlogs/
+!chatlogs/**
+!frontend/
+!frontend/**
+!backend/
+!backend/**
+!updates/
+!updates/**

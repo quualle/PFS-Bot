@@ -356,106 +356,44 @@ def check_for_human_in_loop(
     Returns:
         None if no clarification needed, otherwise a dict with clarification message
     """
-    # Die Entscheidung wird nun vollständig dem LLM überlassen
-    # Eine Rückfrage wird nur noch gestellt, wenn die Konfidenz niedrig ist
     
-    # Low confidence triggers clarification
     if confidence < 3:
-        logger.info(f"Niedrige Konfidenz ({confidence}) für {selected_query}, erstelle text-basierte Rückfrage")
-        
-        # Falls es sich um eine Kundenanfrage handelt
-        if selected_query == "get_customer_history" and "customer_name" in parameters:
-            customer_name = parameters.get("customer_name", "unbekannt")
-            logger.info(f"Erstelle text-basierte Rückfrage für Kunden: {customer_name}")
-            
-            # Wir speichern hier die möglichen Queries für die spätere Verarbeitung
-            available_queries = {
-                "historiedaten": "get_customer_history",
-                "historie": "get_customer_history",
-                "kundenhistorie": "get_customer_history",
-                "kundendaten": "get_customer_history",
-                "ticket": "get_customer_tickets",
-                "tickets": "get_customer_tickets",
-                "ticketinhalte": "get_customer_tickets",
-                "vertrag": "get_customer_contracts",
-                "verträge": "get_customer_contracts",
-                "vertragsinformationen": "get_customer_contracts"
-            }
-            
+        # Check if this is a customer information query
+        if "customer" in user_request.lower() and "über" in user_request.lower():
             return {
-                "type": "text_clarification",
-                "query": selected_query,
-                "message": f"Ich kann dir verschiedene Informationen zu {customer_name} geben. Möchtest du allgemeine Kundenhistorie, Ticketinhalte oder Vertragsinformationen?",
-                "context": {
-                    "customer_name": customer_name,
-                    "clarification_type": "customer_info",
-                    "available_queries": available_queries
+                "clarification_type": "text_clarification",
+                "clarification_message": "Möchtest du die komplette Kundenhistorie (Verträge und Einsätze) oder die Kommunikationshistorie (Tickets und Notizen) sehen?",
+                "possible_queries": ["get_customer_history", "get_customer_tickets"],
+                "clarification_context": {
+                    "query_type": "customer_info",
+                    "customer_name": parameters.get("customer_name", ""),
+                    "original_query": selected_query
                 }
             }
         
-        # Agency queries that might need clarification
-        elif selected_query in ["get_agency_performance", "get_revenue_by_agency"]:
-            logger.info(f"Erstelle text-basierte Zeitraum-Rückfrage für {selected_query}")
-            
-            # Wir speichern hier die möglichen Zeiträume für die spätere Verarbeitung
-            available_timeframes = {
-                "letzter monat": "last_month",
-                "letzten monat": "last_month",
-                "diesen monat": "current_month",
-                "aktueller monat": "current_month",
-                "aktuelles quartal": "current_quarter",
-                "dieses quartal": "current_quarter",
-                "dieses jahr": "year_to_date",
-                "jahr": "year_to_date",
-                "gesamtes jahr": "year_to_date"
-            }
-            
+        # Check if this is a date range query without specific period
+        if any(word in user_request.lower() for word in ["wann", "zeitraum", "periode", "von", "bis"]):
             return {
-                "type": "text_clarification",
-                "query": selected_query,
-                "message": f"Für welchen Zeitraum möchtest du die Informationen sehen? Zum Beispiel 'letzter Monat', 'aktuelles Quartal' oder 'dieses Jahr'?",
-                "context": {
-                    "clarification_type": "timeframe",
-                    "original_query": selected_query,
-                    "available_timeframes": available_timeframes
+                "clarification_type": "text_clarification",
+                "clarification_message": "Für welchen Zeitraum möchtest du die Information haben?",
+                "possible_queries": [selected_query],
+                "clarification_context": {
+                    "query_type": "date_range",
+                    "original_query": selected_query
                 }
             }
-        
-        # General low confidence handling
-        else:
-            # Use the available query patterns to suggest alternatives
-            query_patterns = load_query_patterns()
             
-            # Hole die 3 wahrscheinlichsten Abfragen als Vorschläge
-            potential_queries = [selected_query] + [q for q in query_patterns.keys() if q != selected_query][:2]
-            query_descriptions = []
-            
-            for query in potential_queries:
-                description = query_patterns.get(query, {}).get("description", query)
-                query_descriptions.append(f"'{description}'")
-            
-            # Erstelle eine textbasierte Rückfrage
-            options_text = ", ".join(query_descriptions[:-1]) + " oder " + query_descriptions[-1]
-            
-            # Dictionary zur Zuordnung von Beschreibung zu Query erstellen
-            query_mapping = {}
-            for query in potential_queries:
-                description = query_patterns.get(query, {}).get("description", query).lower()
-                query_mapping[description.lower()] = query
-            
-            return {
-                "type": "text_clarification",
-                "query": selected_query,
-                "message": f"Ich bin mir nicht sicher, welche Informationen du genau suchst. Möchtest du {options_text}?",
-                "context": {
-                    "clarification_type": "query_selection",
-                    "original_parameters": parameters.copy(),
-                    "query_mapping": query_mapping
-                }
+        # Default clarification for low confidence
+        return {
+            "clarification_type": "text_clarification",
+            "clarification_message": "Bitte präzisiere deine Anfrage. Was genau möchtest du wissen?",
+            "possible_queries": [selected_query],
+            "clarification_context": {
+                "query_type": "general",
+                "original_query": selected_query
             }
+        }
     
-    # No clarification needed
-    logger.info(f"Keine Rückfrage nötig für {selected_query}")
     return None
 
 # Function to process user's text clarification response

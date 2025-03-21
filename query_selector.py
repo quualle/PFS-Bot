@@ -66,39 +66,14 @@ def create_query_selection_prompt(
     
     # Provide domain context
     domain_context = """
-Dies ist ein System zur Datenabfrage für ein Pflegevermittlungsunternehmen.
-Die Hauptentitäten sind:
-- Leads: Potentielle Kunden, die Interesse gezeigt haben
-- Kunden/Haushalte: Personen mit aktiven Verträgen
-- Verträge: Vereinbarungen zwischen Kunden und Agenturen
-- Care Stays: Konkrete Pflegeeinsätze mit Pflegekräften
-- Agenturen: Vermitteln Pflegekräfte an Kunden
-- Pflegekräfte: Personen, die Pflegedienste anbieten
-"""
-    
-    # Decision tree guidance
-    decision_tree = """
-Folge diesem Entscheidungsprozess:
-1. Identifiziere das Hauptthema der Anfrage: Kunden, Verträge, Einsätze, Agenturen, Statistik
-2. Prüfe zeitliche Dimension: aktuell, vergangen, zukünftig, Zeitraum?
-3. Bestimme spezifische Entitäten: bestimmter Kunde, alle Kunden, bestimmte Agentur?
-4. Wähle die Query mit der höchsten Spezifität für diese Kombination
-
-Beispielentscheidungen:
-- "Zeige aktuelle Einsätze" → get_active_care_stays_now (aktueller Zeitpunkt)
-- "Zeige Einsätze im Mai" → get_care_stays_by_date_range (spezifischer Zeitraum)
-- "Zeige Kunde Müller" → get_customer_history (spezifischer Kunde)
-- "Wieviel Umsatz im letzten Quartal?" → get_monthly_performance (Umsatzstatistik mit Zeitraum)
-- "Welche Kündigungen gab es im Mai?" → get_contract_terminations (Kündigungsstatistik mit Zeitraum)
-- "Wie viele Kunden habe ich aktuell?" → get_active_care_stays_now (aktuelle Kundenzahl)
-- "Wie viele Kunden sind in Pause?" → get_customers_on_pause (Kunden ohne aktiven Care Stay)
-- "Wie viele neue Kunden habe ich abgeschlossen?" → get_contract_count (neue Vertragsabschlüsse)
-- "Welche neuen Verträge habe ich abgeschlossen?" → get_contract_details (detaillierte Vertragsdetails)
-- "Wie viele Leads habe ich gekauft?" → get_leads_count (Anzahl der Leads)
-- "Welche Leads habe ich gekauft?" → get_leads (detaillierte Lead-Details)
-- "Was ist meine Abschlussquote?" → get_cvr_lead_contract (Conversion Rate Leads zu Verträgen)
-- "Wie viele neu abgeschlossene Kunden oder Verträge habe ich?" → get_contract_count (neue Vertragsabschlüsse)
-- "Welche Verträge habe ich abgeschlossen?" → get_contract_details (detaillierte Vertragsdetails)
+This is a system for querying a database.
+The main entities are:
+- Leads: Potential customers who have shown interest
+- Leads/Households: People with active contracts
+- Contracts: Agreements between customers and agencies
+- Care Stays: Specific care services with caregivers
+- Agencies: Companies that provide caregivers to customers
+- Caregivers: People who do the care services
 """
     
     # Create the prompt content
@@ -107,54 +82,74 @@ You are a query selection assistant for a senior care database system. Your task
 
 {domain_context}
 
+Current time: 
 {current_time_context}
 
+Conversation history:
 {history_context}
 
 User request: "{user_request}"
 
-Available queries:
+Now this are the available queries:
 {json.dumps(query_descriptions, indent=2)}
 
-{decision_tree}
+Selection Process:
+1. Identify the main topic: Statistics, Customers/Leads, Contracts, Care Stays, Agencies
+2. Check temporal dimension: current or specific period?
+3. Determine specific entities: specific customer, all customers or specific agency?
+4. Select the most specific matching query
 
-Instructions:
-1. Analyze the user request to understand the semantic meaning and intent
-2. Consider which required parameters are available or can be inferred from the request
-3. Select the most appropriate query from the available options
-4. Explain your reasoning for this selection
-5. Identify any parameters that need to be extracted from the request
+General information for your understanding:
+- ChatBotUser is a seller, who mediates between customers and agencies
+- Sellers buy leads and try to convert them to customers
+- Agencies propose caretakers via the seller to this customer
+- Seller is the contactperson of the customer
+- Seller communicates with the agency regarding the customer via tickets
+- A caretaker beeing at the customer is called a care_stay.
+- Technically a care_stay exists before the arrival of the caretaker, including information about arrival and departure.
+- A contract has one or more care_stays hwich usualy are without a space in between. 
+- If there is a space between care_stays, this is a pause.
+- A termination ("Kündigung") is the end of a contract but might be not serious if the customer stays with the seller, but changes the agency. In this case the seller kept the customer.
+- Seller asks this chatbot for data about the one customer or quantitative information about many customers like "how many customers/terminations/pauses/... do I have?"
 
-Date Parameter Handling:
-- ALWAYS use the CURRENT SYSTEM DATE as the end_date when the user says "since X" or "from X" without specifying an end date
-- For phrases like "in the last X days/weeks/months", calculate the start_date from the current system date and set end_date to the current system date
-- For specific time periods like "in January", determine both start_date and end_date based on the mentioned period
-- For questions about "this month/quarter/year", use the beginning of the current month/quarter/year as start_date and current system date as end_date
-- Today's date should be determined dynamically from the system, not hardcoded
+Available Queries and Their Purpose:
+- get_active_care_stays_now: Current active care stays elements (=how many customers are currently active)
+- get_care_stays_by_date_range: MAIN FUNCTION for time-based queries (=how many customers have been active in a period)
+- get_contract_terminations: All Contract terminations with separeted categories (serious_terminations and agency_switch_count) 
+- get_customer_history: Complete customer history including all care_stay elements and contract elements 
+- get_customer_on_pause: Customers currently on pause
+- get_customer_tickets: All tickets written regarding a customer written with the contracted agency (customers dont write tickets)
+- get_monthly_performance: Monthly performance metrics for a seller
+- get_leads: gives back all leads which are owned by the seller, filtered by a time period, including many information
+- get_leads_converted_to_customers: Leads converted to customers in given period
+- get_care_givers_for_customer: Care givers for a specific customer
+- get_leads_count: Count of leads in a specific period
+- get_contract_count: Count of new contracts in a period
+- get_contract_details: Detailed information about a contract 
+- get_cvr_lead_contract: Lead to contract conversion rate
+- get_customers_on_pause: Customers currently on pause
 
-Important considerations:
-- Zeit-basierte Abfragen (wie get_care_stays_by_date_range) benötigen klar definierte Zeiträume
-- Performance-Abfragen (wie get_monthly_performance) benötigen spezifische Zeiträume
-- Für Fragen nach aktiven Kunden oder der aktuellen Kundenzahl IMMER get_active_care_stays_now verwenden
-- Für Fragen nach Kunden in Pause/Betreuungspause NUR get_customers_on_pause verwenden
-- Für Fragen nach Umsatz oder Einnahmen get_revenue_by_agency oder get_monthly_performance bevorzugen
-- Für Fragen nach spezifischen Kunden get_customer_history bevorzugen
-- Für Fragen nach Kündigungen oder Vertragsenden get_contract_terminations verwenden und immer 'ernsthaft' und 'agenturwechsel' separat und summiert zurückgeben
-- Für Fragen nach gekündigten Verträgen mit Unterscheidung zwischen 'ernsthaften' Kündigungen und 'Agenturwechsel' get_contract_terminations verwenden
-- Für Fragen nach Tickets get_customer_tickets verwenden
-- Für Fragen nach Betreuungskräften/Pflegekräften bei einem bestimmten Kunden get_care_givers_for_customer verwenden
-- Für Fragen nach der ANZAHL von Leads und gekauften Kontakten get_leads_count verwenden
-- Für Fragen nach WELCHE Leads gekauft wurden oder bei Anfragen nach Details zu Leads get_leads verwenden
-- Für Fragen nach Abschlussquoten oder Conversion Rate IMMER get_cvr_lead_contract mit Zeitraumfilter verwenden
-- Für Fragen nach der ANZAHL neu abgeschlossener Kunden oder Verträge IMMER get_contract_count verwenden
-- Für Fragen nach WELCHE Verträge abgeschlossen wurden oder bei Anfragen nach Details zu neuen Verträgen get_contract_details verwenden
+Frequently Used Terms:
+- Care Stay: A specific care service period
+- Lead: Potential customer showing interest
+- Contract: Agreement between customer and agency
+- Agency: Company providing caregivers
+- Conversion: Lead becoming a customer
+- Termination: End of contract (serious or agency change)
 
-Format your response as JSON with these fields:
-- selected_query: [query name]
-- reasoning: [explanation]
-- parameters: [extracted parameters object with parameter names as keys]
-- confidence: [1-5 scale, where 5 is highest confidence]
-- parameter_extraction_strategy: [explanation of how parameters should be obtained if they're not clear from the request]
+Example User Questions:
+- "Zeige aktuelle Einsätze" → get_active_care_stays_now
+- "Wie viele Kunden hatte ich im März?" → get_care_stays_by_date_range
+- "Zeige Kunde Müller" → get_customer_history
+- "Welche Kündigungen gab es im Mai?" → get_contract_terminations
+- "Wie viele Kunden sind in Pause?" → get_customers_on_pause
+- "Was ist meine Abschlussquote?" → get_cvr_lead_contract
+
+Parameter Handling:
+- Use CURRENT SYSTEM DATE as end_date for "since X" or "from X" without specified end
+- For "last X days/weeks/months", calculate start_date from current date
+- For specific periods like "in January", determine both start and end dates
+- For "this month/quarter/year", use period start as start_date and current date as end_date
 """
     
     # Return as messages array for API call

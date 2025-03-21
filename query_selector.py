@@ -18,10 +18,22 @@ def load_query_patterns() -> Dict:
             json_start = content.find('{')
             if json_start >= 0:
                 content = content[json_start:]
-                return json.loads(content).get("common_queries", {})
+                try:
+                    patterns = json.loads(content)
+                    if not patterns or "common_queries" not in patterns:
+                        logger.error("Invalid query_patterns.json format: missing common_queries")
+                        return {}
+                    return patterns.get("common_queries", {})
+                except json.JSONDecodeError as je:
+                    logger.error(f"JSON parsing error in query_patterns.json: {je}")
+                    return {}
+            logger.error("No valid JSON content found in query_patterns.json")
             return {}
+    except FileNotFoundError:
+        logger.error("query_patterns.json not found")
+        return {}
     except Exception as e:
-        logger.error(f"Error loading query patterns: {e}")
+        logger.error(f"Unexpected error loading query patterns: {e}")
         return {}
 
 def create_query_selection_prompt(
@@ -130,18 +142,17 @@ Available Queries and Their Purpose:
 - get_customers_on_pause: Customers currently on pause
 
 Frequently Used Terms:
-- Care Stay: A specific care service period
-- Lead: Potential customer showing interest
-- Contract: Agreement between customer and agency
-- Agency: Company providing caregivers
-- Conversion: Lead becoming a customer
-- Termination: End of contract (serious or agency change)
+- Kunde: Customer, that usually has a contract with an agency. Can also be in the lead state
+- Lead: Mostly a potential customer showing interest. Sometimes term is abused for customers
+- Vertrag: Mostly used for technical state of beeing not a lead anymore, but having a care stay, that is in active state ("Bestätigt")
+- Agentur: Company providing caregivers
+- Kündigung: Termination/ of contract (serious or agency change)
 
 Example User Questions:
-- "Zeige aktuelle Einsätze" → get_active_care_stays_now
-- "Wie viele Kunden hatte ich im März?" → get_care_stays_by_date_range
-- "Zeige Kunde Müller" → get_customer_history
-- "Welche Kündigungen gab es im Mai?" → get_contract_terminations
+- "Welche Pflegeinsätze habe ich gerade" → get_active_care_stays_now
+- "Wie viele Kunden hatte ich im [Zeitraum]?" → get_care_stays_by_date_range
+- "Was weisst du über den Kunden Müller?" → get_customer_history OR get_customer_tickets for qualitative information
+- "Welche Kündigungen gab es im [Zeitraum]?" → get_contract_terminations
 - "Wie viele Kunden sind in Pause?" → get_customers_on_pause
 - "Was ist meine Abschlussquote?" → get_cvr_lead_contract
 
@@ -261,7 +272,7 @@ def select_query_with_llm(
     user_request: str, 
     conversation_history: Optional[List[Dict]] = None,
     user_id: Optional[str] = None
-) -> Tuple[str, Dict, Optional[Dict]]:
+) -> Tuple[Optional[str], Optional[Dict], Optional[Dict]]:
     """Select the most appropriate query using LLM
     
     Args:
@@ -272,36 +283,61 @@ def select_query_with_llm(
     Returns:
         Tuple containing (selected_query_name, parameters_dict, human_in_loop_dict)
         where human_in_loop_dict is None if no clarification is needed, otherwise contains clarification info
+        Returns (None, None, error_dict) if selection fails
     """
-    # Create prompt messages
-    messages = create_query_selection_prompt(user_request, conversation_history)
-    
-    # Call LLM
-    llm_response = call_llm(messages)
-    
-    # Parse response
-    parsed_response = parse_llm_response(llm_response)
-    
-    # Get the selected query and parameters
-    selected_query = parsed_response.get("selected_query")
-    parameters = parsed_response.get("parameters", {})
-    confidence = parsed_response.get("confidence", 0)
-    
-    # Post-process parameters to handle date expressions correctly
-    parameters = post_process_llm_parameters(user_request, parameters)
-    
-    # If user_id is provided and seller_id is needed, use it
-    if user_id and "seller_id" in parameters and parameters["seller_id"] == "user_id":
-        parameters["seller_id"] = user_id
-    
-    # Log selection for feedback if confidence is low
-    if confidence < 3:
-        log_selection_for_feedback(user_request, parsed_response)
-    
-    # Check if human-in-the-loop is needed
-    human_in_loop = check_for_human_in_loop(user_request, selected_query, parameters, confidence)
-    
-    return selected_query, parameters, human_in_loop
+    try:
+        # Create selection prompt
+        messages = create_query_selection_prompt(user_request, conversation_history)
+        if not messages:
+            logger.error("Failed to create query selection prompt")
+            return None, None, {"error": "Fehler bei der Erstellung des Auswahlprompts"}
+
+        # Get LLM response
+        try:
+            llm_response = call_llm(messages)
+            if not llm_response:
+                logger.error("Empty LLM response")
+                return None, None, {"error": "Keine Antwort vom Sprachmodell erhalten"}
+        except Exception as e:
+            logger.error(f"LLM call failed: {e}")
+            return None, None, {"error": "Fehler bei der Kommunikation mit dem Sprachmodell"}
+
+        # Parse response
+        try:
+            selection_data = parse_llm_response(llm_response)
+            if not selection_data or "query" not in selection_data:
+                logger.error("Invalid LLM response format")
+                return None, None, {"error": "Ungültiges Antwortformat vom Sprachmodell"}
+        except Exception as e:
+            logger.error(f"Failed to parse LLM response: {e}")
+            return None, None, {"error": "Fehler bei der Verarbeitung der Modellantwort"}
+
+        selected_query = selection_data.get("query")
+        parameters = selection_data.get("parameters", {})
+        confidence = selection_data.get("confidence", 0)
+
+        # Post-process parameters
+        try:
+            parameters = post_process_llm_parameters(user_request, parameters)
+        except Exception as e:
+            logger.error(f"Parameter post-processing failed: {e}")
+            return None, None, {"error": "Fehler bei der Parameterverarbeitung"}
+
+        # Check confidence and need for clarification
+        if confidence < 3:  # Niedrige Konfidenz
+            logger.info(f"Low confidence ({confidence}) for query selection")
+            human_in_loop = check_for_human_in_loop(user_request, selected_query, parameters, confidence)
+            if human_in_loop:
+                return selected_query, parameters, human_in_loop
+
+        # Log selection for feedback
+        log_selection_for_feedback(user_request, selection_data)
+
+        return selected_query, parameters, None
+
+    except Exception as e:
+        logger.error(f"Query selection failed: {e}")
+        return None, None, {"error": "Unerwarteter Fehler bei der Anfrageauswahl"}
 
 def check_for_human_in_loop(
     user_request: str, 

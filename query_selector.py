@@ -229,9 +229,7 @@ def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo", expect_json: bo
         response = openai.chat.completions.create(
             model=model,
             messages=messages,
-            timeout=20,  # 20 Sekunden Timeout
-            request_timeout=20,  # Alternative Timeout-Parameter
-            temperature=0.2  # Lower temperature for more deterministic responses
+           
         )
         if expect_json:
             return response.choices[0].message.content

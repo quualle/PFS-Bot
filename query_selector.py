@@ -345,7 +345,7 @@ def check_for_human_in_loop(
     parameters: Dict,
     confidence: int
 ) -> Optional[Dict]:
-    """Check if clarification is needed and return a text question instead of button options
+    """Check if clarification is needed and return a text question
     
     Args:
         user_request: The original user request
@@ -358,180 +358,136 @@ def check_for_human_in_loop(
     """
     
     if confidence < 3:
-        # Check if this is a customer information query
-        if "customer" in user_request.lower() and "über" in user_request.lower():
-            return {
-                "clarification_type": "text_clarification",
-                "clarification_message": "Möchtest du die komplette Kundenhistorie (Verträge und Einsätze) oder die Kommunikationshistorie (Tickets und Notizen) sehen?",
-                "possible_queries": ["get_customer_history", "get_customer_tickets"],
-                "clarification_context": {
-                    "query_type": "customer_info",
-                    "customer_name": parameters.get("customer_name", ""),
-                    "original_query": selected_query
-                }
+        # Create a prompt for the LLM to generate a clarification question
+        clarification_prompt = [
+            {
+                "role": "system",
+                "content": """Du bist ein hilfreicher Assistent für ein Pflegevermittlungssystem.
+Deine Aufgabe ist es, präzise und hilfreiche Rückfragen zu formulieren, wenn eine Benutzeranfrage nicht eindeutig ist.
+
+Verfügbare Queries und ihre Verwendung:
+- get_customer_history: Vollständige Kundenhistorie mit allen Verträgen und Einsätzen
+- get_customer_tickets: Kommunikationshistorie, Tickets und Notizen zu einem Kunden
+- get_care_stays_by_date_range: Kundenstatistiken für bestimmte Zeiträume
+- get_contract_terminations: Details zu Vertragskündigungen
+- get_customers_on_pause: Liste der Kunden, die aktuell in Pause sind
+
+Wichtige Kontextinformationen:
+- Ein Kunde kann mehrere Verträge mit verschiedenen Agenturen haben
+- Jeder Vertrag kann mehrere Pflegeeinsätze beinhalten
+- Tickets enthalten die Kommunikation zwischen Verkäufer und Agentur
+- Zeiträume können spezifisch (z.B. "März") oder relativ ("letzte 3 Monate") sein
+
+Formuliere eine präzise, kontextbezogene Rückfrage die:
+1. Direkt auf die Unklarheit in der Benutzeranfrage eingeht
+2. Die relevanten Auswahlmöglichkeiten klar aufzeigt
+3. In einem freundlichen, professionellen Ton formuliert ist
+4. Auf Deutsch gestellt wird"""
+            },
+            {
+                "role": "user",
+                "content": f"""Ursprüngliche Benutzeranfrage: "{user_request}"
+Vom System ausgewählte Query: {selected_query}
+Confidence-Level: {confidence}/5
+Erkannte Parameter: {parameters}
+
+Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu präzisieren."""
             }
+        ]
         
-        # Check if this is a date range query without specific period
-        if any(word in user_request.lower() for word in ["wann", "zeitraum", "periode", "von", "bis"]):
+        try:
+            # Get clarification question from LLM
+            llm_response = call_llm(clarification_prompt)
+            
             return {
                 "clarification_type": "text_clarification",
-                "clarification_message": "Für welchen Zeitraum möchtest du die Information haben?",
+                "clarification_message": llm_response or "Bitte präzisiere deine Anfrage.",
                 "possible_queries": [selected_query],
                 "clarification_context": {
-                    "query_type": "date_range",
-                    "original_query": selected_query
+                    "query_type": "llm_generated",
+                    "original_query": selected_query,
+                    "original_parameters": parameters
                 }
             }
             
-        # Default clarification for low confidence
-        return {
-            "clarification_type": "text_clarification",
-            "clarification_message": "Bitte präzisiere deine Anfrage. Was genau möchtest du wissen?",
-            "possible_queries": [selected_query],
-            "clarification_context": {
-                "query_type": "general",
-                "original_query": selected_query
+        except Exception as e:
+            logger.error(f"Error generating LLM clarification: {e}")
+            return {
+                "clarification_type": "text_clarification",
+                "clarification_message": "Bitte präzisiere deine Anfrage.",
+                "possible_queries": [selected_query],
+                "clarification_context": {
+                    "query_type": "general",
+                    "original_query": selected_query,
+                    "original_parameters": parameters
+                }
             }
-        }
     
     return None
 
-# Function to process user's text clarification response
 def process_text_clarification_response(
     clarification_context: Dict,
     user_response: str,
     original_user_request: str
-) -> Tuple[str, Dict]:
-    """Process the user's text response to a clarification question
+) -> Tuple[Optional[str], Optional[Dict]]:
+    """Process the user's text response to a clarification question"""
     
-    Args:
-        clarification_context: The context from the original clarification
-        user_response: The user's text response to the clarification
-        original_user_request: The original user request
-        
-    Returns:
-        Tuple containing (selected_query_name, parameters_dict)
-    """
-    logger.info(f"Processing text clarification response: '{user_response}'")
-    
-    # Lowercase for better matching
-    user_response_lower = user_response.lower()
-    
-    # Get the clarification type from context
-    clarification_type = clarification_context.get("clarification_type")
-    
-    # Initialize default values
-    selected_query = None
-    parameters = {}
-    
-    if clarification_type == "customer_info":
-        # Handle customer information clarification
-        customer_name = clarification_context.get("customer_name")
-        available_queries = clarification_context.get("available_queries", {})
-        
-        # Try to match response with available queries
-        selected_query = None
-        for keyword, query in available_queries.items():
-            if keyword in user_response_lower:
-                selected_query = query
-                break
-        
-        # Default to customer history if no match
-        if not selected_query:
-            # If response is vague, default to history
-            if any(word in user_response_lower for word in ["ja", "alles", "allgemein", "all", "info"]):
-                selected_query = "get_customer_history"
-            else:
-                # Parse intent with simple keyword matching
-                if any(word in user_response_lower for word in ["ticket", "support", "probleme"]):
-                    selected_query = "get_customer_tickets"
-                elif any(word in user_response_lower for word in ["vertrag", "vertrage", "verträge"]):
-                    selected_query = "get_customer_contracts"
-                else:
-                    selected_query = "get_customer_history"  # Default
-        
-        # Set parameters
-        parameters = {"customer_name": customer_name}
-        
-    elif clarification_type == "timeframe":
-        # Handle timeframe clarification
-        original_query = clarification_context.get("original_query")
-        available_timeframes = clarification_context.get("available_timeframes", {})
-        
-        # Try to match response with available timeframes
-        selected_timeframe = None
-        for keyword, timeframe in available_timeframes.items():
-            if keyword in user_response_lower:
-                selected_timeframe = timeframe
-                break
-        
-        # Default to current month if no match
-        if not selected_timeframe:
-            if "letzte" in user_response_lower or "vergangene" in user_response_lower:
-                selected_timeframe = "last_month"
-            elif "quartal" in user_response_lower:
-                selected_timeframe = "current_quarter"
-            elif "jahr" in user_response_lower:
-                selected_timeframe = "year_to_date"
-            else:
-                selected_timeframe = "current_month"  # Default
-        
-        # Set query and parameters
-        selected_query = original_query
-        parameters = {"timeframe": selected_timeframe}
-        
-    elif clarification_type == "query_selection":
-        # Handle query selection clarification
-        query_mapping = clarification_context.get("query_mapping", {})
-        original_parameters = clarification_context.get("original_parameters", {})
-        
-        # Try to match response with query descriptions
-        for description, query in query_mapping.items():
-            if description in user_response_lower:
-                selected_query = query
-                break
-        
-        # If no match found, use the first option as default
-        if not selected_query and query_mapping:
-            selected_query = list(query_mapping.values())[0]
-        
-        # Set parameters (use original parameters)
-        parameters = original_parameters
-    
-    else:
-        # Fallback for unknown clarification type
-        logger.warning(f"Unknown clarification type: {clarification_type}")
-        # Use a generic approach based on keywords in the response
-        if "kunde" in user_response_lower or "kunden" in user_response_lower:
-            selected_query = "get_customer_history"
-        elif "vertrag" in user_response_lower or "verträge" in user_response_lower:
-            selected_query = "get_customer_contracts"
-        elif "ticket" in user_response_lower:
-            selected_query = "get_customer_tickets"
-        elif "leistung" in user_response_lower or "performance" in user_response_lower:
-            selected_query = "get_agency_performance"
-        else:
-            # Default to a general query
-            selected_query = "get_agency_performance"
-    
-    # Log the clarification process
-    try:
-        clarification_log = {
-            "timestamp": str(datetime.datetime.now()),
-            "original_request": original_user_request,
-            "user_response": user_response,
-            "selected_query": selected_query,
-            "parameters": parameters
-        }
-        
-        with open("text_clarification_log.jsonl", "a") as f:
-            f.write(json.dumps(clarification_log) + "\n")
-    except Exception as e:
-        logger.error(f"Error logging text clarification: {e}")
-    
-    logger.info(f"Selected query from text clarification: {selected_query} with parameters: {parameters}")
-    return selected_query, parameters
+    # Create a prompt for the LLM to analyze the response
+    analysis_prompt = [
+        {
+            "role": "system",
+            "content": """Du bist ein hilfreicher Assistent für ein Pflegevermittlungssystem.
+Deine Aufgabe ist es, die Antwort des Benutzers auf eine Rückfrage zu analysieren und die passende Query auszuwählen.
 
+Verfügbare Queries:
+- get_customer_history: Vollständige Kundenhistorie (Verträge, Einsätze)
+- get_customer_tickets: Kommunikationshistorie und Notizen
+- get_care_stays_by_date_range: Kundenstatistiken für Zeiträume
+- get_contract_terminations: Vertragskündigungen
+- get_customers_on_pause: Kunden in Pause
+
+Gib deine Analyse als JSON zurück mit:
+{
+    "selected_query": "name_der_query",
+    "confidence": 5,  # 1-5
+    "parameters": {}  # relevante Parameter
+}"""
+        },
+        {
+            "role": "user",
+            "content": f"""Ursprüngliche Anfrage: {original_user_request}
+Kontext der Rückfrage: {clarification_context}
+Antwort des Benutzers: {user_response}
+
+Wähle die am besten passende Query und Parameter basierend auf der Antwort."""
+        }
+    ]
+    
+    try:
+        # Get analysis from LLM
+        llm_response = call_llm(analysis_prompt)
+        if not llm_response:
+            return None, None
+            
+        # Parse the LLM response
+        try:
+            analysis = json.loads(llm_response)
+            selected_query = analysis.get("selected_query")
+            parameters = analysis.get("parameters", {})
+            
+            # Merge with original parameters if they exist
+            original_parameters = clarification_context.get("original_parameters", {})
+            parameters.update(original_parameters)
+            
+            return selected_query, parameters
+            
+        except json.JSONDecodeError:
+            logger.error("Failed to parse LLM response as JSON")
+            return None, None
+            
+    except Exception as e:
+        logger.error(f"Error processing clarification response: {e}")
+        return None, None
 
 # Legacy function to process button-based clarification response (for backward compatibility)
 def process_clarification_response(

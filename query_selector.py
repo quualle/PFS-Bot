@@ -196,7 +196,7 @@ def post_process_llm_parameters(user_request: str, parameters: Dict) -> Dict:
     
     return parameters
 
-def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo") -> str:
+def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo", expect_json: bool = True) -> str:
     """Send messages to LLM and get response
     
     This is a placeholder function - replace with your actual LLM call implementation.
@@ -208,7 +208,10 @@ def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo") -> str:
         # If using OpenAI
         if not os.getenv("OPENAI_API_KEY"):
             logger.warning("OpenAI API key not found. Using mock response for demo.")
-            return '{"selected_query": "get_active_care_stays_now", "reasoning": "Mock response", "parameters": {"seller_id": "user_id"}, "confidence": 3, "parameter_extraction_strategy": "Get seller_id from user session"}'
+            if expect_json:
+                return '{"selected_query": "get_active_care_stays_now", "reasoning": "Mock response", "parameters": {"seller_id": "user_id"}, "confidence": 3, "parameter_extraction_strategy": "Get seller_id from user session"}'
+            else:
+                return "Bitte konkretisiere deine Anfrage. Möchtest du allgemeine Informationen oder spezifische Daten sehen?"
         
         # Current OpenAI API syntax
         response = openai.chat.completions.create(
@@ -216,11 +219,18 @@ def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo") -> str:
             messages=messages,
             temperature=0.1,  # Low temperature for more deterministic responses
         )
-        return response.choices[0].message.content
+        if expect_json:
+            return response.choices[0].message.content
+        else:
+            return response.choices[0].message.content.strip()
+            
     except Exception as e:
         logger.error(f"Error calling LLM: {e}")
         # Fallback response
-        return '{"selected_query": "get_active_care_stays_now", "reasoning": "Fallback due to error", "parameters": {"seller_id": "user_id"}, "confidence": 1, "parameter_extraction_strategy": "Get seller_id from user session"}'
+        if expect_json:
+            return '{"selected_query": "get_active_care_stays_now", "reasoning": "Fallback due to error", "parameters": {"seller_id": "user_id"}, "confidence": 1, "parameter_extraction_strategy": "Get seller_id from user session"}'
+        else:
+            return "Bitte präzisiere deine Anfrage. Was genau möchtest du wissen?"
 
 def parse_llm_response(response_text: str) -> Dict:
     """Parse the LLM response into a structured format"""
@@ -358,10 +368,13 @@ def check_for_human_in_loop(
     """
     
     if confidence < 3:
+        # Extrahiere den Kundennamen für Kontextinformationen
+        customer_name = parameters.get("customer_name", "")
+        
         # Create a prompt for the LLM to generate a clarification question
         clarification_prompt = [
             {
-                "role": "system",
+                "role": "system", 
                 "content": """Du bist ein hilfreicher Assistent für ein Pflegevermittlungssystem.
 Deine Aufgabe ist es, präzise und hilfreiche Rückfragen zu formulieren, wenn eine Benutzeranfrage nicht eindeutig ist.
 
@@ -382,7 +395,9 @@ Formuliere eine präzise, kontextbezogene Rückfrage die:
 1. Direkt auf die Unklarheit in der Benutzeranfrage eingeht
 2. Die relevanten Auswahlmöglichkeiten klar aufzeigt
 3. In einem freundlichen, professionellen Ton formuliert ist
-4. Auf Deutsch gestellt wird"""
+4. Auf Deutsch gestellt wird
+
+WICHTIG: Gib NUR die Rückfrage zurück, KEIN JSON-Format und KEINE Erklärungen."""
             },
             {
                 "role": "user",
@@ -397,12 +412,20 @@ Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu p
         
         try:
             # Get clarification question from LLM
-            llm_response = call_llm(clarification_prompt)
+            llm_response = call_llm(clarification_prompt, model="gpt-3.5-turbo", expect_json=False)
+            
+            # Nutze die Antwort direkt oder den Standardtext, wenn keine Antwort
+            clarification_message = llm_response
+            if not clarification_message or len(clarification_message.strip()) < 5:
+                if customer_name:
+                    clarification_message = f"Bitte präzisiere deine Anfrage zu {customer_name}. Möchtest du allgemeine Informationen, Vertragsdetails oder Kommunikationshistorie sehen?"
+                else:
+                    clarification_message = "Bitte präzisiere deine Anfrage. Was genau möchtest du wissen?"
             
             return {
                 "clarification_type": "text_clarification",
-                "clarification_message": llm_response or "Bitte präzisiere deine Anfrage.",
-                "possible_queries": [selected_query],
+                "clarification_message": clarification_message,
+                "possible_queries": ["get_customer_history", "get_customer_tickets"] if customer_name else [selected_query],
                 "clarification_context": {
                     "query_type": "llm_generated",
                     "original_query": selected_query,
@@ -412,9 +435,15 @@ Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu p
             
         except Exception as e:
             logger.error(f"Error generating LLM clarification: {e}")
+            
+            # Fallback auf eine einfache Rückfrage
+            clarification_message = "Bitte präzisiere deine Anfrage."
+            if customer_name:
+                clarification_message = f"Bitte präzisiere deine Anfrage zu {customer_name}."
+                
             return {
                 "clarification_type": "text_clarification",
-                "clarification_message": "Bitte präzisiere deine Anfrage.",
+                "clarification_message": clarification_message,
                 "possible_queries": [selected_query],
                 "clarification_context": {
                     "query_type": "general",
@@ -432,6 +461,10 @@ def process_text_clarification_response(
 ) -> Tuple[Optional[str], Optional[Dict]]:
     """Process the user's text response to a clarification question"""
     
+    query_type = clarification_context.get("query_type")
+    original_query = clarification_context.get("original_query", "")
+    original_parameters = clarification_context.get("original_parameters", {})
+    
     # Create a prompt for the LLM to analyze the response
     analysis_prompt = [
         {
@@ -446,20 +479,21 @@ Verfügbare Queries:
 - get_contract_terminations: Vertragskündigungen
 - get_customers_on_pause: Kunden in Pause
 
-Gib deine Analyse als JSON zurück mit:
+Antworte im EXAKTEN JSON-Format:
 {
-    "selected_query": "name_der_query",
-    "confidence": 5,  # 1-5
-    "parameters": {}  # relevante Parameter
+  "selected_query": "name_der_query",
+  "confidence": 5,
+  "parameters": {}
 }"""
         },
         {
             "role": "user",
-            "content": f"""Ursprüngliche Anfrage: {original_user_request}
+            "content": f"""Ursprüngliche Anfrage: "{original_user_request}"
 Kontext der Rückfrage: {clarification_context}
-Antwort des Benutzers: {user_response}
+Antwort des Benutzers: "{user_response}"
 
-Wähle die am besten passende Query und Parameter basierend auf der Antwort."""
+Wähle die am besten passende Query und Parameter basierend auf der Antwort des Benutzers.
+Gib AUSSCHLIESSLICH ein JSON-Objekt zurück, keine zusätzlichen Erklärungen."""
         }
     ]
     
@@ -467,26 +501,62 @@ Wähle die am besten passende Query und Parameter basierend auf der Antwort."""
         # Get analysis from LLM
         llm_response = call_llm(analysis_prompt)
         if not llm_response:
+            # Fallback to original query if possible
+            if original_query:
+                return original_query, original_parameters
             return None, None
             
         # Parse the LLM response
         try:
+            # Try to parse as direct JSON
             analysis = json.loads(llm_response)
             selected_query = analysis.get("selected_query")
             parameters = analysis.get("parameters", {})
             
-            # Merge with original parameters if they exist
-            original_parameters = clarification_context.get("original_parameters", {})
-            parameters.update(original_parameters)
-            
+            # Add customer_name to parameters if it was in original_parameters
+            if "customer_name" in original_parameters:
+                parameters["customer_name"] = original_parameters["customer_name"]
+                
+            logger.info(f"Successfully parsed LLM response as JSON: {analysis}")
             return selected_query, parameters
             
         except json.JSONDecodeError:
-            logger.error("Failed to parse LLM response as JSON")
+            logger.error("Invalid LLM response format")
+            # Try to extract JSON from text response
+            try:
+                # Look for JSON pattern
+                json_start = llm_response.find('{')
+                json_end = llm_response.rfind('}') + 1
+                if json_start >= 0 and json_end > json_start:
+                    json_str = llm_response[json_start:json_end]
+                    analysis = json.loads(json_str)
+                    selected_query = analysis.get("selected_query")
+                    parameters = analysis.get("parameters", {})
+                    
+                    # Add customer_name to parameters if it was in original_parameters
+                    if "customer_name" in original_parameters:
+                        parameters["customer_name"] = original_parameters["customer_name"]
+                        
+                    logger.info(f"Extracted JSON from LLM response: {analysis}")
+                    return selected_query, parameters
+            except Exception as e:
+                logger.error(f"Failed to extract JSON from response: {e}")
+            
+            # Fallback to original query if possible
+            if original_query:
+                return original_query, original_parameters
+            
+            # Last resort fallback to get_customer_history if customer_name is present
+            if "customer_name" in original_parameters:
+                return "get_customer_history", original_parameters
+                
             return None, None
             
     except Exception as e:
         logger.error(f"Error processing clarification response: {e}")
+        # Fallback to original query if possible
+        if original_query:
+            return original_query, original_parameters
         return None, None
 
 # Legacy function to process button-based clarification response (for backward compatibility)

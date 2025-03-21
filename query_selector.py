@@ -5,7 +5,9 @@ import datetime
 from typing import Dict, List, Optional, Any, Tuple
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG, 
+                   format='%(asctime)s %(levelname)s:%(name)s:%(message)s', 
+                   datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
 def load_query_patterns() -> Dict:
@@ -305,6 +307,7 @@ def select_query_with_llm(
         # Get LLM response
         try:
             llm_response = call_llm(messages)
+            logger.debug(f"Raw LLM response: {llm_response}")
             if not llm_response:
                 logger.error("Empty LLM response")
                 return None, None, {"error": "Keine Antwort vom Sprachmodell erhalten"}
@@ -315,6 +318,7 @@ def select_query_with_llm(
         # Parse response
         try:
             selection_data = parse_llm_response(llm_response)
+            logger.debug(f"Parsed LLM response: {selection_data}")
             if not selection_data or "query" not in selection_data:
                 logger.error("Invalid LLM response format")
                 return None, None, {"error": "Ungültiges Antwortformat vom Sprachmodell"}
@@ -367,9 +371,12 @@ def check_for_human_in_loop(
         None if no clarification needed, otherwise a dict with clarification message
     """
     
+    logger.debug(f"Checking for human-in-loop: Query={selected_query}, Confidence={confidence}, Parameters={parameters}")
+    
     if confidence < 3:
         # Extrahiere den Kundennamen für Kontextinformationen
         customer_name = parameters.get("customer_name", "")
+        logger.debug(f"Low confidence detected: {confidence}/5. Customer name: '{customer_name}'")
         
         # Create a prompt for the LLM to generate a clarification question
         clarification_prompt = [
@@ -412,7 +419,9 @@ Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu p
         
         try:
             # Get clarification question from LLM
+            logger.debug("Calling LLM for clarification question generation")
             llm_response = call_llm(clarification_prompt, model="gpt-3.5-turbo", expect_json=False)
+            logger.debug(f"LLM clarification response: '{llm_response}'")
             
             # Nutze die Antwort direkt oder den Standardtext, wenn keine Antwort
             clarification_message = llm_response
@@ -421,16 +430,21 @@ Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu p
                     clarification_message = f"Bitte präzisiere deine Anfrage zu {customer_name}. Möchtest du allgemeine Informationen, Vertragsdetails oder Kommunikationshistorie sehen?"
                 else:
                     clarification_message = "Bitte präzisiere deine Anfrage. Was genau möchtest du wissen?"
+                logger.debug(f"Using fallback clarification message: '{clarification_message}'")
+            
+            clarification_context = {
+                "query_type": "llm_generated",
+                "original_query": selected_query,
+                "original_parameters": parameters
+            }
+            
+            logger.info(f"Human-in-loop activated with message: '{clarification_message}'")
             
             return {
                 "clarification_type": "text_clarification",
                 "clarification_message": clarification_message,
                 "possible_queries": ["get_customer_history", "get_customer_tickets"] if customer_name else [selected_query],
-                "clarification_context": {
-                    "query_type": "llm_generated",
-                    "original_query": selected_query,
-                    "original_parameters": parameters
-                }
+                "clarification_context": clarification_context
             }
             
         except Exception as e:
@@ -441,6 +455,8 @@ Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu p
             if customer_name:
                 clarification_message = f"Bitte präzisiere deine Anfrage zu {customer_name}."
                 
+            logger.info(f"Using error fallback clarification: '{clarification_message}'")
+            
             return {
                 "clarification_type": "text_clarification",
                 "clarification_message": clarification_message,
@@ -452,6 +468,7 @@ Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu p
                 }
             }
     
+    logger.debug("No human-in-loop needed, confidence is sufficient")
     return None
 
 def process_text_clarification_response(
@@ -464,6 +481,9 @@ def process_text_clarification_response(
     query_type = clarification_context.get("query_type")
     original_query = clarification_context.get("original_query", "")
     original_parameters = clarification_context.get("original_parameters", {})
+    
+    logger.debug(f"Processing clarification response: '{user_response}'")
+    logger.debug(f"Clarification context: {clarification_context}")
     
     # Create a prompt for the LLM to analyze the response
     analysis_prompt = [
@@ -500,7 +520,10 @@ Gib AUSSCHLIESSLICH ein JSON-Objekt zurück, keine zusätzlichen Erklärungen.""
     try:
         # Get analysis from LLM
         llm_response = call_llm(analysis_prompt)
+        logger.debug(f"Raw LLM response for clarification: {llm_response}")
+        
         if not llm_response:
+            logger.error("Empty LLM response for clarification")
             # Fallback to original query if possible
             if original_query:
                 return original_query, original_parameters
@@ -520,8 +543,10 @@ Gib AUSSCHLIESSLICH ein JSON-Objekt zurück, keine zusätzlichen Erklärungen.""
             logger.info(f"Successfully parsed LLM response as JSON: {analysis}")
             return selected_query, parameters
             
-        except json.JSONDecodeError:
-            logger.error("Invalid LLM response format")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid LLM response format: {e}")
+            logger.error(f"Failed JSON: {llm_response}")
+            
             # Try to extract JSON from text response
             try:
                 # Look for JSON pattern
@@ -529,6 +554,7 @@ Gib AUSSCHLIESSLICH ein JSON-Objekt zurück, keine zusätzlichen Erklärungen.""
                 json_end = llm_response.rfind('}') + 1
                 if json_start >= 0 and json_end > json_start:
                     json_str = llm_response[json_start:json_end]
+                    logger.debug(f"Extracted JSON string: {json_str}")
                     analysis = json.loads(json_str)
                     selected_query = analysis.get("selected_query")
                     parameters = analysis.get("parameters", {})
@@ -539,15 +565,17 @@ Gib AUSSCHLIESSLICH ein JSON-Objekt zurück, keine zusätzlichen Erklärungen.""
                         
                     logger.info(f"Extracted JSON from LLM response: {analysis}")
                     return selected_query, parameters
-            except Exception as e:
-                logger.error(f"Failed to extract JSON from response: {e}")
+            except Exception as ex:
+                logger.error(f"Failed to extract JSON from response: {ex}")
             
             # Fallback to original query if possible
             if original_query:
+                logger.info(f"Falling back to original query: {original_query}")
                 return original_query, original_parameters
             
             # Last resort fallback to get_customer_history if customer_name is present
             if "customer_name" in original_parameters:
+                logger.info(f"Last resort fallback to get_customer_history for customer: {original_parameters['customer_name']}")
                 return "get_customer_history", original_parameters
                 
             return None, None

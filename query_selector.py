@@ -3,6 +3,7 @@ import logging
 import os
 import datetime
 from typing import Dict, List, Optional, Any, Tuple
+import re
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -167,7 +168,16 @@ Parameter Handling:
     
     # Return as messages array for API call
     return [
-        {"role": "system", "content": "You are a query selection assistant for a database system. Respond only with valid JSON."},
+        {"role": "system", "content": """Du bist ein Abfrage-Auswahlassistent für ein Datenbanksystem. 
+Antworte NUR mit einem validen JSON-Objekt im folgenden Format:
+{
+  "query": "name_der_ausgewählten_abfrage",
+  "parameters": { "param1": "wert1", "param2": "wert2" },
+  "confidence": 5,  # Wert zwischen 1-5, wobei 5 die höchste Konfidenz darstellt
+  "reasoning": "Kurze Begründung für die Auswahl dieser Abfrage"
+}
+
+Wichtig: Die "query" MUSS exakt einem der verfügbaren Abfragenamen entsprechen."""},
         {"role": "user", "content": prompt_content}
     ]
 
@@ -211,15 +221,17 @@ def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo", expect_json: bo
         if not os.getenv("OPENAI_API_KEY"):
             logger.warning("OpenAI API key not found. Using mock response for demo.")
             if expect_json:
-                return '{"selected_query": "get_active_care_stays_now", "reasoning": "Mock response", "parameters": {"seller_id": "user_id"}, "confidence": 3, "parameter_extraction_strategy": "Get seller_id from user session"}'
+                return '{"query": "get_active_care_stays_now", "parameters": {"seller_id": "user_id"}, "confidence": 3}'
             else:
                 return "Bitte konkretisiere deine Anfrage. Möchtest du allgemeine Informationen oder spezifische Daten sehen?"
         
-        # Current OpenAI API syntax
+        # Call LLM with messages
         response = openai.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=0.1,  # Low temperature for more deterministic responses
+            timeout=20,  # 20 Sekunden Timeout
+            request_timeout=20,  # Alternative Timeout-Parameter
+            temperature=0.2  # Lower temperature for more deterministic responses
         )
         if expect_json:
             return response.choices[0].message.content
@@ -230,12 +242,18 @@ def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo", expect_json: bo
         logger.error(f"Error calling LLM: {e}")
         # Fallback response
         if expect_json:
-            return '{"selected_query": "get_active_care_stays_now", "reasoning": "Fallback due to error", "parameters": {"seller_id": "user_id"}, "confidence": 1, "parameter_extraction_strategy": "Get seller_id from user session"}'
+            return '{"query": "get_active_care_stays_now", "parameters": {"seller_id": "user_id"}, "confidence": 1}'
         else:
             return "Bitte präzisiere deine Anfrage. Was genau möchtest du wissen?"
 
 def parse_llm_response(response_text: str) -> Dict:
     """Parse the LLM response into a structured format"""
+    if not response_text:
+        logger.error("Empty response text received")
+        return {}
+        
+    logger.debug(f"Parsing response text: {response_text[:200]}...")
+    
     try:
         # Attempt to parse the response as JSON
         return json.loads(response_text)
@@ -248,17 +266,28 @@ def parse_llm_response(response_text: str) -> Dict:
             end_idx = response_text.rfind('}') + 1
             if start_idx >= 0 and end_idx > start_idx:
                 json_str = response_text[start_idx:end_idx]
+                logger.debug(f"Extracted potential JSON: {json_str[:200]}...")
                 return json.loads(json_str)
+                
+            # Try looking for code blocks with JSON
+            code_block_matches = re.findall(r'```(?:json)?\s*({[\s\S]*?})\s*```', response_text)
+            if code_block_matches:
+                for match in code_block_matches:
+                    try:
+                        logger.debug(f"Found code block with potential JSON: {match[:200]}...")
+                        return json.loads(match)
+                    except json.JSONDecodeError:
+                        continue
         except Exception as nested_e:
             logger.error(f"Failed to extract JSON from response: {nested_e}")
         
         # Return a fallback response if all parsing fails
+        logger.error("All JSON parsing attempts failed")
         return {
-            "selected_query": "get_active_care_stays_now",  # Default query
+            "query": "get_active_care_stays_now",  # Default query using correct field name
             "reasoning": "Failed to parse LLM response",
             "parameters": {"seller_id": "user_id"},
-            "confidence": 0,
-            "parameter_extraction_strategy": "Get seller_id from user session"
+            "confidence": 0
         }
 
 def log_selection_for_feedback(user_request: str, selection_data: Dict, result_success: bool = None) -> None:
@@ -319,14 +348,28 @@ def select_query_with_llm(
         try:
             selection_data = parse_llm_response(llm_response)
             logger.debug(f"Parsed LLM response: {selection_data}")
-            if not selection_data or "query" not in selection_data:
-                logger.error("Invalid LLM response format")
+            if not selection_data:
+                logger.error("Empty selection data after parsing")
+                return None, None, {"error": "Leere Antwort vom Sprachmodell"}
+                
+            # Prüfe auf "query" oder "selected_query" als Fallback
+            selected_query = None
+            if "query" in selection_data:
+                selected_query = selection_data.get("query")
+            elif "selected_query" in selection_data:
+                selected_query = selection_data.get("selected_query")
+                selection_data["query"] = selected_query  # Für Konsistenz
+            
+            if not selected_query:
+                logger.error("Missing query field in LLM response")
+                logger.error(f"Response content: {llm_response}")
                 return None, None, {"error": "Ungültiges Antwortformat vom Sprachmodell"}
+                
         except Exception as e:
             logger.error(f"Failed to parse LLM response: {e}")
+            logger.error(f"Response content: {llm_response}")
             return None, None, {"error": "Fehler bei der Verarbeitung der Modellantwort"}
 
-        selected_query = selection_data.get("query")
         parameters = selection_data.get("parameters", {})
         confidence = selection_data.get("confidence", 0)
 

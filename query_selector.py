@@ -208,7 +208,7 @@ def post_process_llm_parameters(user_request: str, parameters: Dict) -> Dict:
     
     return parameters
 
-def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo", expect_json: bool = True) -> str:
+def call_llm(messages: List[Dict], model: str = "o3-mini", expect_json: bool = True) -> str:
     """Send messages to LLM and get response
     
     This is a placeholder function - replace with your actual LLM call implementation.
@@ -228,8 +228,8 @@ def call_llm(messages: List[Dict], model: str = "gpt-3.5-turbo", expect_json: bo
         # Call LLM with messages
         response = openai.chat.completions.create(
             model=model,
-            messages=messages,
-           
+            messages=messages
+              # Lower temperature for more deterministic responses
         )
         if expect_json:
             return response.choices[0].message.content

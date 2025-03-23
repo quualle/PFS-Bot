@@ -329,33 +329,26 @@ def store_chatlog(user_name, chat_history):
     filename = f"{user_name}_{date_str}_{session_id}.txt"
     filepath = os.path.join(CHATLOG_FOLDER, filename)
     
-    # Check if file exists to add a header for new files
-    file_exists = os.path.exists(filepath)
-    
-    # Open in append mode to add to existing file rather than overwrite
-    with open(filepath, 'a', encoding='utf-8') as f:
+    # Write the complete chat history to the file (overwrite existing)
+    with open(filepath, 'w', encoding='utf-8') as f:
         # Add a timestamp for this update
         current_time = datetime.now().strftime("%H:%M:%S")
         
-        if not file_exists:
-            # If this is a new file, add a header
-            f.write(f"=== CHAT LOG: {user_name} ===\n")
-            f.write(f"Date: {date_str}\n")
-            f.write(f"Session ID: {session_id}\n\n")
-        else:
-            # If appending, add a separator
-            f.write(f"\n--- Update at {current_time} ---\n\n")
+        # Add a header
+        f.write(f"=== CHAT LOG: {user_name} ===\n")
+        f.write(f"Date: {date_str}\n")
+        f.write(f"Session ID: {session_id}\n")
+        f.write(f"Last Updated: {current_time}\n\n")
             
-        # Only write the latest message to avoid duplication
+        # Write the entire chat history
         if chat_history:
-            latest = chat_history[-1]
-            user_msg = latest.get('user', '').replace('\n', ' ')
-            bot_msg = latest.get('bot', '').replace('\n', ' ')
-            msg_index = len(chat_history)
-            
-            f.write(f"Message {msg_index}:\n")
-            f.write(f"  User: {user_msg}\n")
-            f.write(f"  Bot : {bot_msg}\n\n")
+            for idx, message in enumerate(chat_history, 1):
+                user_msg = message.get('user', '').replace('\n', ' ')
+                bot_msg = message.get('bot', '').replace('\n', ' ')
+                
+                f.write(f"Message {idx}:\n")
+                f.write(f"  User: {user_msg}\n")
+                f.write(f"  Bot : {bot_msg}\n\n")
 
 def store_feedback(feedback_type, comment, chat_history, rated_message=""):
     # Make sure the feedback directory exists

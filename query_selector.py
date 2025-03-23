@@ -4,6 +4,7 @@ import os
 import datetime
 from typing import Dict, List, Optional, Any, Tuple
 import re
+from conversation_manager import ConversationManager
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -429,7 +430,7 @@ Deine Aufgabe ist es, präzise und hilfreiche Rückfragen zu formulieren, wenn e
 
 Verfügbare Queries und ihre Verwendung:
 - get_customer_history: Vollständige Kundenhistorie mit allen Verträgen und Einsätzen
-- get_customer_tickets: Kommunikationshistorie, Tickets und Notizen zu einem Kunden
+- get_customer_tickets: Kommunikationshistorie und Notizen zu einem Kunden
 - get_care_stays_by_date_range: Kundenstatistiken für bestimmte Zeiträume
 - get_contract_terminations: Details zu Vertragskündigungen
 - get_customers_on_pause: Liste der Kunden, die aktuell in Pause sind
@@ -516,9 +517,23 @@ Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu p
 def process_text_clarification_response(
     clarification_context: Dict,
     user_response: str,
-    original_user_request: str
+    original_user_request: str,
+    conversation_history: Optional[List[Dict]] = None
 ) -> Tuple[Optional[str], Optional[Dict]]:
     """Process the user's text response to a clarification question"""
+    
+    # Create conversation manager instance
+    conv_manager = ConversationManager()
+    
+    # Check for simple affirmative responses first
+    if conv_manager.is_affirmative_response(user_response):
+        # If the user simply confirms, maintain original intent
+        logger.info("Detected affirmative response, maintaining original query intent")
+        original_query = clarification_context.get("original_query", "")
+        original_parameters = clarification_context.get("original_parameters", {})
+        
+        if original_query:
+            return original_query, original_parameters
     
     query_type = clarification_context.get("query_type")
     original_query = clarification_context.get("original_query", "")
@@ -534,6 +549,10 @@ def process_text_clarification_response(
             "content": """Du bist ein hilfreicher Assistent für ein Pflegevermittlungssystem.
 Deine Aufgabe ist es, die Antwort des Benutzers auf eine Rückfrage zu analysieren und die passende Query auszuwählen.
 
+WICHTIG: Achte auf den Konversationskontext und die Kontinuität.
+Wenn ein Benutzer auf eine Rückfrage mit einer einfachen Bestätigung wie 'ja' oder 'ja bitte' antwortet,
+wechsle NICHT das Thema. Führe stattdessen die zuvor besprochene Aktion aus.
+
 Verfügbare Queries:
 - get_customer_history: Vollständige Kundenhistorie (Verträge, Einsätze)
 - get_customer_tickets: Kommunikationshistorie und Notizen
@@ -547,17 +566,26 @@ Antworte im EXAKTEN JSON-Format:
   "confidence": 5,
   "parameters": {}
 }"""
-        },
-        {
-            "role": "user",
-            "content": f"""Ursprüngliche Anfrage: "{original_user_request}"
+        }
+    ]
+    
+    # Include conversation history if available
+    if conversation_history:
+        # Add up to 3 most recent messages for context
+        for i, msg in enumerate(conversation_history[-3:]):
+            if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                analysis_prompt.append(msg)
+    
+    # Add user's response context
+    analysis_prompt.append({
+        "role": "user",
+        "content": f"""Ursprüngliche Anfrage: "{original_user_request}"
 Kontext der Rückfrage: {clarification_context}
 Antwort des Benutzers: "{user_response}"
 
-Wähle die am besten passende Query und Parameter basierend auf der Antwort des Benutzers.
+Wähle die am besten passende Query und Parameter basierend auf ALLEN verfügbaren Kontext.
 Gib AUSSCHLIESSLICH ein JSON-Objekt zurück, keine zusätzlichen Erklärungen."""
-        }
-    ]
+    })
     
     try:
         # Get analysis from LLM
@@ -687,3 +715,55 @@ def update_selection_feedback(user_request: str, selected_query: str, success: b
                 
     except Exception as e:
         logger.error(f"Error updating selection feedback: {e}")
+
+def determine_if_clarification_needed(query_possibilities, user_request, session_data=None):
+    """
+    Determine if clarification is needed based on query possibilities
+    """
+    # If no possibilities found, no clarification needed (we'll handle differently)
+    if not query_possibilities:
+        return None
+    
+    # Check for confidence levels
+    top_confidence = 0
+    selected_query = None
+    parameters = {}
+    
+    # Find query with highest confidence
+    for possibility in query_possibilities:
+        confidence = possibility.get("confidence", 0)
+        if confidence > top_confidence:
+            top_confidence = confidence
+            selected_query = possibility.get("query_name")
+            parameters = possibility.get("parameters", {})
+    
+    # Need for human-in-loop decision based on confidence threshold
+    if top_confidence < 5:  # Configurable threshold
+        logger.debug(f"Confidence {top_confidence} below threshold, clarification needed")
+        
+        # Create a conversation-aware clarification prompt using ConversationManager
+        conv_manager = ConversationManager()
+        
+        # Get conversation context if session data is provided
+        context_prompt = ""
+        if session_data and "conversation_history" in session_data:
+            context_prompt = conv_manager.extract_conversation_topic(session_data)
+            if context_prompt:
+                context_prompt = f"\nAktuelle Gesprächskontext: {context_prompt}"
+        
+        # Create clarification message with context awareness
+        clarification_message = f"""Ich sehe, dass Sie nach Informationen zu {selected_query} fragen.{context_prompt}
+Bitte bestätigen Sie, dass ich die richtige Information abrufen soll, oder geben Sie weitere Details an."""
+        
+        return {
+            "clarification_type": "text_clarification",
+            "clarification_message": clarification_message,
+            "possible_queries": [selected_query],
+            "clarification_context": {
+                "query_type": "general",
+                "original_query": selected_query,
+                "original_parameters": parameters
+            }
+        }
+    
+    return None

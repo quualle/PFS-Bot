@@ -12,6 +12,7 @@ import tempfile
 import requests  # Added import for requests
 from datetime import datetime, timedelta
 import dateparser
+from conversation_manager import ConversationManager
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from flask_wtf import CSRFProtect
@@ -47,6 +48,8 @@ def load_tool_config():
         return {
             "description": "Tool-Konfiguration für LLM-basierte Entscheidungen"
         }
+
+conversation_manager = ConversationManager(max_history=10)
 
 
 ###########################################
@@ -1985,13 +1988,14 @@ def determine_function_need(user_message, query_patterns, conversation_history=N
         logging.error(f"Error in determine_function_need: {e}")
         return True, None, [], {}, "I'm not sure which query to use. Could you provide more details?", f"Error: {str(e)}"
 
-def handle_conversational_clarification(user_message, previous_clarification_data=None):
+def handle_conversational_clarification(user_message, previous_clarification_data=None, conversation_history=None):
     """
     Processes a user's response to a clarification request in a conversational manner.
     
     Args:
         user_message: The user's response to the clarification request
         previous_clarification_data: Data from the previous clarification request
+        conversation_history: The conversation history for better context
         
     Returns:
         tuple: (is_resolved, function_name, parameters, new_clarification_data)
@@ -2005,9 +2009,22 @@ def handle_conversational_clarification(user_message, previous_clarification_dat
     
     possible_functions = previous_clarification_data.get("possible_functions", [])
     
+    # Add conversation history context if available
+    conversation_context = ""
+    if conversation_history and len(conversation_history) > 0:
+        recent_history = conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
+        conversation_context = "Recent conversation history:\n"
+        for entry in recent_history:
+            if "user" in entry:
+                conversation_context += f"User: {entry['user']}\n"
+            if "assistant" in entry:
+                conversation_context += f"Assistant: {entry['assistant']}\n"
+    
     # Create prompt
     prompt = f"""
     The user's original question required clarification. You asked for clarification and received a response.
+    
+    {conversation_context}
     
     Original question: "{previous_clarification_data.get('original_question', '')}"
     
@@ -2070,25 +2087,45 @@ def handle_conversational_clarification(user_message, previous_clarification_dat
         logging.error(f"Error in handle_conversational_clarification: {e}")
         return False, None, {}, None
 
-def call_llm(messages, model="gpt-4o-mini"):
+def call_llm(messages, model="o3-mini", conversation_history=None):
     """
-    Unified function to call OpenAI LLM with error handling
+    Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
+    Diese sollte die bestehende call_llm Funktion in app.py ersetzen.
     """
+    # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
+    if conversation_history:
+        # Verwende nur die neuesten Nachrichten, um Token-Limits zu vermeiden
+        relevant_history = conversation_history[-5:]  # Anzahl nach Bedarf anpassen
+        
+        # Füge History am Anfang der messages hinzu, erhalte die Reihenfolge
+        context_messages = []
+        for msg in relevant_history:
+            # Vermeide Duplikate
+            if all(not (m.get('content') == msg.get('content') and 
+                        m.get('role') == msg.get('role')) 
+                  for m in messages):
+                context_messages.append(msg)
+        
+        messages = context_messages + messages
+    
+    # Integration in bestehende OpenAI-Aufrufe
     try:
         response = openai.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=0.4  # Lower temperature for more deterministic responses
+            temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
         )
         return response.choices[0].message.content
     except Exception as e:
-        logging.error(f"Error calling LLM: {e}")
-        raise
+        logger.error(f"Fehler beim Aufrufen des LLM: {e}")
+        return None
 
 def process_user_query(user_message, session_data):
     """
-    Enhanced multi-layered process for intelligent user query processing with optimized decision flow
+    Verbesserte Version der process_user_query Funktion mit Konversationshistorie.
+    Diese sollte die bestehende process_user_query Funktion in app.py ersetzen.
     """
+    
     conversation_history = session_data.get("conversation_history", [])
     
     # Check if there's an ongoing clarification dialog
@@ -2107,11 +2144,12 @@ def process_user_query(user_message, session_data):
             # Import the new function if needed
             from query_selector import process_text_clarification_response
             
-            # Process the user's text response
+            # Process the user's text response - PASS CONVERSATION HISTORY
             function_name, parameters = process_text_clarification_response(
                 clarification_context,
                 user_message,
-                original_question
+                original_question,
+                conversation_history  # Pass the conversation history
             )
             
             # Clean up clarification state
@@ -2124,7 +2162,7 @@ def process_user_query(user_message, session_data):
         else:
             # Legacy button-based or conversational clarification
             is_resolved, function_name, parameters, new_clarification_data = handle_conversational_clarification(
-                user_message, clarification_data
+                user_message, clarification_data, conversation_history  # Pass conversation history here too
             )
         
         if is_resolved:
@@ -2154,6 +2192,13 @@ def process_user_query(user_message, session_data):
             try:
                 # Wenn bereits eine formatierte Antwort vorliegt, nutze diese
                 if formatted_result:
+                    # Update conversation history before returning
+                    session_data = conversation_manager.update_conversation(
+                        session_data, 
+                        user_message, 
+                        formatted_result, 
+                        {"name": function_name, "content": tool_result}
+                    )
                     return formatted_result
                 
                 # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
@@ -2165,6 +2210,7 @@ def process_user_query(user_message, session_data):
                     {"role": "function", "name": function_name, "content": tool_result}
                 ]
                 
+                # Use conversation history for better context
                 response = openai.chat.completions.create(
                     model="o3-mini",
                     messages=messages,
@@ -2172,15 +2218,42 @@ def process_user_query(user_message, session_data):
                 )
                 
                 final_response = response.choices[0].message.content
+                
+                # Update conversation history with this interaction
+                session_data = conversation_manager.update_conversation(
+                    session_data, 
+                    user_message, 
+                    final_response, 
+                    {"name": function_name, "content": tool_result}
+                )
+                
                 debug_print("Antwort", f"Antwort generiert (gekürzt): {final_response[:100]}...")
                 return final_response
             except Exception as e:
                 # Fallback antwort
                 debug_print("Antwort", f"Fehler bei der Antwortgenerierung: {e}")
-                return generate_fallback_response(function_name, tool_result)
+                fallback = generate_fallback_response(function_name, tool_result)
+                
+                # Still update conversation history with fallback
+                session_data = conversation_manager.update_conversation(
+                    session_data, 
+                    user_message, 
+                    fallback, 
+                    {"name": function_name, "content": tool_result}
+                )
+                
+                return fallback
         else:
             # Need more clarification
             session["clarification_data"] = new_clarification_data
+            
+            # Update conversation history with this clarification
+            session_data = conversation_manager.update_conversation(
+                session_data, 
+                user_message, 
+                new_clarification_data["clarification_message"]
+            )
+            
             return new_clarification_data["clarification_message"]
     
     # Aktuelles Datum für zeitliche Anfragen
@@ -2225,6 +2298,12 @@ def process_user_query(user_message, session_data):
             
             final_response = response.choices[0].message.content
             debug_print("Antwort", f"Wissensbasis-Antwort generiert (gekürzt): {final_response[:100]}...")
+
+            session_data = conversation_manager.update_conversation(
+                session_data, 
+                user_message, 
+                final_response
+            )
             return final_response
         except Exception as e:
             debug_print("Antwort", f"Fehler bei der Wissensbasis-Antwortgenerierung: {e}")
@@ -2376,6 +2455,13 @@ def process_user_query(user_message, session_data):
             try:
                 # Wenn bereits eine formatierte Antwort vorliegt, nutze diese
                 if formatted_result:
+                    # Add this block here
+                    session_data = conversation_manager.update_conversation(
+                        session_data, 
+                        user_message, 
+                        formatted_result,
+                        {"name": selected_function, "content": tool_result}
+                    )
                     return formatted_result
                 
                 # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
@@ -2395,11 +2481,26 @@ def process_user_query(user_message, session_data):
                 
                 final_response = response.choices[0].message.content
                 debug_print("Antwort", f"Antwort generiert (gekürzt): {final_response[:100]}...")
+                session_data = conversation_manager.update_conversation(
+                session_data, 
+                user_message, 
+                final_response,
+                {"name": selected_function, "content": tool_result}
+    )
                 return final_response
             except Exception as e:
                 debug_print("Antwort", f"Fehler bei der Antwortgenerierung: {e}")
-                # Fallback to simpler response
-                return generate_fallback_response(selected_function, tool_result)
+                fallback_response = generate_fallback_response(selected_function, tool_result)
+
+                # Add this block here
+                session_data = conversation_manager.update_conversation(
+                    session_data, 
+                    user_message, 
+                    fallback_response,
+                    {"name": selected_function, "content": tool_result}
+                )
+
+                return fallback_response
 
 def generate_fallback_response(selected_tool, tool_result):
     """Helper function to generate a fallback response when LLM generation fails"""
@@ -2433,8 +2534,8 @@ def generate_fallback_response(selected_tool, tool_result):
         debug_print("Antwort", f"Fehler bei der Fallback-Antwortgenerierung: {fallback_error}")
         return "Es ist ein technisches Problem aufgetreten. Bitte versuchen Sie es später erneut oder formulieren Sie Ihre Anfrage anders."
 
-def create_enhanced_system_prompt(selected_tool):
-    """Erstellt einen verbesserten System-Prompt basierend auf der Art der Abfrage"""
+def create_enhanced_system_prompt(selected_tool, conversation_history=None):
+    """Erstellt einen verbesserten System-Prompt basierend auf der Art der Abfrage und Konversationskontext"""
     base_prompt = """
     Du bist ein präziser Datenassistent, der Datenbankabfragen beantwortet.
     
@@ -2452,6 +2553,18 @@ def create_enhanced_system_prompt(selected_tool):
     - "Pause": Ein aktiver Vertrag ohne aktuell laufenden Care Stay, aber mit mind. einem früheren Care Stay
     
     Heutiges Datum: """ + datetime.now().strftime("%d.%m.%Y")
+    
+    # Füge Konversationskontext hinzu, wenn verfügbar
+    conversation_context = ""
+    if conversation_history and len(conversation_history) > 0:
+        # Beschränke auf die letzten 3 Einträge für Relevanz
+        recent_history = conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
+        conversation_context = "\n\nKONVERSATIONSKONTEXT (berücksichtige diesen für kontextuelle Antworten):\n"
+        for entry in recent_history:
+            if "user" in entry:
+                conversation_context += f"Benutzer: {entry['user']}\n"
+            if "assistant" in entry:
+                conversation_context += f"Assistent: {entry['assistant']}\n"
     
     # Spezialisierte Prompts je nach Tool-Typ
     tool_specific_prompts = {
@@ -2500,15 +2613,22 @@ def create_enhanced_system_prompt(selected_tool):
     
     # Wähle den passenden spezifischen Prompt, falls verfügbar
     if selected_tool in tool_specific_prompts:
-        return base_prompt + tool_specific_prompts[selected_tool]
+        full_prompt = base_prompt + tool_specific_prompts[selected_tool]
+    else:
+        # Fallback: Allgemeiner Prompt
+        full_prompt = base_prompt + """
+        GENERELLE ANTWORTREGELN FÜR ALLE ABFRAGEN:
+        1. Wenn die Daten zeitbezogen sind, erwähne den Zeitraum
+        2. Führe die wichtigsten Datenpunkte auf (max. 10 Beispiele)
+        3. Behalte die Fachterminologie bei (Care Stay, Lead, etc.)
+        """
     
-    # Fallback: Allgemeiner Prompt
-    return base_prompt + """
-    GENERELLE ANTWORTREGELN FÜR ALLE ABFRAGEN:
-    1. Wenn die Daten zeitbezogen sind, erwähne den Zeitraum
-    2. Führe die wichtigsten Datenpunkte auf (max. 10 Beispiele)
-    3. Behalte die Fachterminologie bei (Care Stay, Lead, etc.)
-    """
+    # Füge Konversationskontext hinzu, falls vorhanden
+    if conversation_context:
+        full_prompt += conversation_context
+        full_prompt += "\nWICHTIG: Beziehe dich auf diesen Kontext, wenn die aktuelle Anfrage sich darauf bezieht. Halte deine Antwort dennoch fokussiert auf die aktuelle Anfrage."
+    
+    return full_prompt
 
 def format_simple_results(data_list):
     """Formatiert einfache Ergebnisse für Fallback-Antworten"""

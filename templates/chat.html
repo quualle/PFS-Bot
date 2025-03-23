@@ -1365,56 +1365,84 @@
             feedbackOverlay.style.display = "none";
         });
 
+        // Simpler and more direct approach to attach feedback handlers
         function attachFeedbackHandlers() {
+            console.log("Attaching feedback handlers...");
+            
+            // Remove any existing handlers by adding a delegated event handler on the chat container
+            document.getElementById('chatHistory').removeEventListener('click', handleFeedbackClick);
+            document.getElementById('chatHistory').addEventListener('click', handleFeedbackClick);
+            
             const thumbs = document.querySelectorAll('.thumb-up, .thumb-down');
-            thumbs.forEach(thumb => {
-                // Remove any existing event listener to prevent duplication
-                const newThumb = thumb.cloneNode(true);
-                thumb.parentNode.replaceChild(newThumb, thumb);
-                
-                newThumb.addEventListener('click', function() {
-                    // Get feedback type (positive/negative)
-                    currentFeedbackType = this.getAttribute('data-type');
-                    
-                    // Capture the message content for context
-                    const messageElement = this.closest('.message');
-                    const messageContent = messageElement ? messageElement.querySelector('span').innerText : '';
-                    
-                    // Store the message we're providing feedback on
-                    document.getElementById('currentFeedbackMessage').value = messageContent;
-                    
-                    // Update modal title based on feedback type
-                    feedbackTitle.textContent = currentFeedbackType === 'positive' 
-                        ? "Positives Feedback" 
-                        : "Verbesserungsvorschlag";
-                        
-                    // Set appropriate placeholder based on feedback type
-                    feedbackComment.placeholder = currentFeedbackType === 'positive' 
-                        ? "Was war besonders hilfreich? (optional)" 
-                        : "Was ist nicht optimal? Was hättest du gerne als Antwort gehört? (optional)";
-                    
-                    // Show the feedback overlay
-                    feedbackOverlay.style.display = "flex";
-                    
-                    // Focus on the comment textarea
-                    setTimeout(() => feedbackComment.focus(), 100);
-                    
-                    // Highlight the clicked button
-                    if (currentFeedbackType === 'positive') {
-                        this.style.opacity = '1';
-                        this.style.transform = 'scale(1.2)';
-                        const thumbDown = this.parentNode.querySelector('.thumb-down');
-                        if (thumbDown) thumbDown.style.opacity = '0.5';
-                    } else {
-                        this.style.opacity = '1';
-                        this.style.transform = 'scale(1.2)';
-                        const thumbUp = this.parentNode.querySelector('.thumb-up');
-                        if (thumbUp) thumbUp.style.opacity = '0.5';
-                    }
-                });
-            });
+            console.log(`Found ${thumbs.length} thumbs buttons`);
         }
-
+        
+        // Separate handler function for better organization
+        function handleFeedbackClick(event) {
+            // Check if a thumb was clicked
+            if (event.target.classList.contains('thumb-up') || event.target.classList.contains('thumb-down')) {
+                const thumb = event.target;
+                console.log(`Thumb clicked: ${thumb.getAttribute('data-type')}`);
+                
+                // Get feedback type (positive/negative)
+                currentFeedbackType = thumb.getAttribute('data-type');
+                
+                // Capture the message content for context
+                const messageElement = thumb.closest('.message');
+                console.log("Found message element:", messageElement);
+                
+                let messageContent = "";
+                
+                // Try multiple selectors to find the message content
+                if (messageElement) {
+                    // First try to get the text content excluding the feedback icons
+                    const messageTextSpan = messageElement.querySelector('span');
+                    if (messageTextSpan) {
+                        messageContent = messageTextSpan.innerText;
+                    } else {
+                        // Fallback to getting all text
+                        messageContent = messageElement.innerText;
+                    }
+                }
+                
+                console.log("Message content found:", messageContent.substring(0, 50) + (messageContent.length > 50 ? "..." : ""));
+                
+                // Store the message we're providing feedback on
+                document.getElementById('currentFeedbackMessage').value = messageContent;
+                
+                // Update modal title based on feedback type
+                feedbackTitle.textContent = currentFeedbackType === 'positive' 
+                    ? "Positives Feedback" 
+                    : "Verbesserungsvorschlag";
+                    
+                // Set appropriate placeholder based on feedback type
+                feedbackComment.placeholder = currentFeedbackType === 'positive' 
+                    ? "Was war besonders hilfreich? (optional)" 
+                    : "Was ist nicht optimal? Was hättest du gerne als Antwort gehört? (optional)";
+                
+                // Clear any previous comment
+                feedbackComment.value = '';
+                
+                // Show the feedback overlay
+                feedbackOverlay.style.display = "flex";
+                
+                // Focus on the comment textarea
+                setTimeout(() => feedbackComment.focus(), 100);
+                
+                // Highlight the clicked button
+                thumb.style.opacity = '1';
+                thumb.style.transform = 'scale(1.2)';
+                
+                // Dim the other button
+                const otherType = currentFeedbackType === 'positive' ? 'thumb-down' : 'thumb-up';
+                const otherThumb = messageElement.querySelector(`.${otherType}`);
+                if (otherThumb) otherThumb.style.opacity = '0.5';
+                
+                // Prevent the event from bubbling up
+                event.stopPropagation();
+            }
+        }
+        
         // Initialen Status setzen
         checkUserName();
         forceScrollToBottom();

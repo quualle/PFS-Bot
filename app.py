@@ -1852,29 +1852,33 @@ def determine_query_approach(user_message, conversation_history=None):
     prompt = f"""
     Analyze this user query and determine the most appropriate approach to answer it.
     
-    User query: "{user_message}"
+    User query: ""{user_message}""
+    --END OF USER QUERY--
     
-    You have three possible approaches:
+    You have three possibilities to bring up an answer:
+
+
+        1. No tool needed - Use this for:
+        - Simple greetings or chitchat (like "Hallo", "Wie geht's?")
+        - Basic calculations or questions not related to your domain
+        - Requests to summarize the conversation
+        - General questions that don't need specific company knowledge or data
     
-        1. Wissensbasis (Knowledge Base) - Use this for:
+        2. Wissensbasis (Knowledge Base) - Use this for:
         - Questions about how our company works
         - How-to guides and process questions
         - Information about our CRM system
         - General qualitative knowledge about our operations
         - Questions that don't require specific customer data or numbers
         
-        2. Function Calling (Database Queries) - Use this for:
+        3. Function Calling (Database Queries) - Use this for:
         - Questions about specific customers or customer data
         - Numerical/statistical reports (revenue, performance)
         - Contract information for specific customers
         - Care stays, lead data, or ticketing information
         - Any queries requiring real-time data from our database
         
-        3. Conversational - Use this for:
-        - Simple greetings or chitchat (like "Hallo", "Wie geht's?")
-        - Basic calculations or questions not related to your domain
-        - Requests to summarize the conversation
-        - General questions that don't need specific company knowledge or data
+        
         
         Analyze the query carefully. Determine which approach would provide the best answer.
         
@@ -1885,7 +1889,7 @@ def determine_query_approach(user_message, conversation_history=None):
         """
     
     messages = [
-        {"role": "system", "content": "You are a query routing assistant for a senior care services company. Respond in JSON format."},
+        {"role": "system", "content": "You are a routing assistant for a senior care services company. You decide which approach is best for the user's query. Respond in JSON format."},
         {"role": "user", "content": prompt}
     ]
     
@@ -2285,10 +2289,10 @@ def process_user_query(user_message, session_data):
         try:
             # Create wissensbasis prompt
             system_prompt = """
-            Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen. 
-            Beantworte die Frage basierend auf der bereitgestellten Wissensbasis.
-            Sei klar, präzise und sachlich. Wenn du die Antwort nicht in der Wissensbasis findest, 
-            sage ehrlich, dass du es nicht weißt.
+            Du bist Xora, ein freundlicher, humorvoller und ziemlich cooler Assistent für ein die Kundenbetreuuer/Verkäufer der Firma Pflegehilfe für Senioren.
+            Du beantwortest Fragen und beziehst dafür Informationen aus der Wissensbasis. 
+            Sei klar, präzise im Inhalt deiner Antwort. Der Ton ist aufgelockert, da es um internen Kontakt innerhalb einer Firma mit Start-Up Charackter handelt. Wenn du die Antwort nicht in der Wissensbasis findest, 
+            sage ehrlich, dass du es nicht weißt - Keine Erfindungen!
             """
             
             messages = [
@@ -2297,7 +2301,7 @@ def process_user_query(user_message, session_data):
             ]
             
             response = openai.chat.completions.create(
-                model="gpt-4o",  # Using a more capable model for knowledge-based queries
+                model="o3-mini",  # Using a more capable model for knowledge-based queries
                 messages=messages,
                 temperature=0.3
             )
@@ -2321,10 +2325,9 @@ def process_user_query(user_message, session_data):
         try:
             # Create a simple conversational prompt
             system_prompt = """
-            Du bist Xora, ein freundlicher Assistent für ein Pflegevermittlungsunternehmen.
+            Du bist Xora, ein freundlicher, humorvoller und ziemlich cooler Assistent für ein die Kundenbetreuuer/Verkäufer der Firma Pflegehilfe für Senioren.
             Beantworte einfache Fragen klar und präzise.
-            Du kannst auf allgemeine Fragen antworten, aber verweise bei spezifischen Fragen zum Unternehmen
-            oder zu Kundendaten auf deine Wissensbasis oder Datenbank-Funktionen.
+            Du erhälst Fragen, für deren beantwortung keine weiteren Infos oder nur die Konversationshistorie notwendig sind und beantwortest diese in einem klaren, aber aufgelockerten Ton.
             """
             
             # Prepare conversation context from history
@@ -2346,7 +2349,7 @@ def process_user_query(user_message, session_data):
             response = openai.chat.completions.create(
                 model="o3-mini",  # Using a smaller model for conversational responses
                 messages=messages,
-                temperature=0.7  # Slightly higher temperature for more natural responses
+                temperature=1.0  # Slightly higher temperature for more natural responses
             )
             
             final_response = response.choices[0].message.content
@@ -2555,6 +2558,7 @@ def process_user_query(user_message, session_data):
                 )
 
                 return fallback_response
+
 def generate_fallback_response(selected_tool, tool_result):
     """Helper function to generate a fallback response when LLM generation fails"""
     try:
@@ -3413,7 +3417,7 @@ def chat():
                             ]
                             
                             response = openai.chat.completions.create(
-                                model="gpt-4o",  # Capabilities for knowledge-based queries
+                                model="o3-mini",  # Capabilities for knowledge-based queries
                                 messages=wissensbasis_messages,
                                 temperature=0.3
                             )

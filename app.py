@@ -2168,7 +2168,7 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
         )
         return response.choices[0].message.content
     except Exception as e:
-        logger.error(f"Fehler beim Aufrufen des LLM: {e}")
+        logging.error(f"Fehler beim Aufrufen des LLM: {e}")
         return None
 
 def process_user_query(user_message, session_data):

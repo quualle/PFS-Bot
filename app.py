@@ -1643,9 +1643,8 @@ ANTWORTFORMAT:
     try:
         # LLM-Anfrage
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo", # oder o3-mini, je nach Verfügbarkeit
+            model="o3-mini", # oder o3-mini, je nach Verfügbarkeit
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1, # Niedrig für konsistente, deterministische Antworten
             response_format={"type": "json_object"}
         )
         
@@ -2122,8 +2121,7 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
     try:
         response = openai.chat.completions.create(
             model=model,
-            messages=messages,
-            temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
+            messages=messages
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -2223,8 +2221,7 @@ def process_user_query(user_message, session_data):
                 # Use conversation history for better context
                 response = openai.chat.completions.create(
                     model="o3-mini",
-                    messages=messages,
-                    temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
+                    messages=messages
                 )
                 
                 final_response = response.choices[0].message.content
@@ -2302,8 +2299,7 @@ def process_user_query(user_message, session_data):
             
             response = openai.chat.completions.create(
                 model="o3-mini",  # Using a more capable model for knowledge-based queries
-                messages=messages,
-                temperature=0.3
+                messages=messages
             )
             
             final_response = response.choices[0].message.content
@@ -2348,8 +2344,7 @@ def process_user_query(user_message, session_data):
             
             response = openai.chat.completions.create(
                 model="o3-mini",  # Using a smaller model for conversational responses
-                messages=messages,
-                temperature=1.0  # Slightly higher temperature for more natural responses
+                messages=messages
             )
             
             final_response = response.choices[0].message.content
@@ -2532,8 +2527,7 @@ def process_user_query(user_message, session_data):
                 
                 response = openai.chat.completions.create(
                     model="o3-mini",
-                    messages=messages,
-                    temperature=0.4  # Niedrigere Temperatur für präzisere Antworten
+                    messages=messages
                 )
                 
                 final_response = response.choices[0].message.content
@@ -3418,8 +3412,7 @@ def chat():
                             
                             response = openai.chat.completions.create(
                                 model="o3-mini",  # Capabilities for knowledge-based queries
-                                messages=wissensbasis_messages,
-                                temperature=0.3
+                                messages=wissensbasis_messages
                             )
                             
                             wissensbasis_response = response.choices[0].message.content
@@ -4736,8 +4729,7 @@ def get_clarification_response():
             
             response = openai.chat.completions.create(
                 model="o3-mini",
-                messages=adjusted_messages,
-                temperature=0.4
+                messages=adjusted_messages
             )
             
             final_response = response.choices[0].message.content

@@ -1310,7 +1310,7 @@ def extract_parameters_with_llm(user_message, tool_name, missing_params):
     """
     
     messages = [
-        {"role": "system", "content": system_prompt},
+        {"role": "developer", "content": system_prompt},
         {"role": "user", "content": f"Benutzeranfrage: '{user_message}'\nExtrahiere die benötigten Parameter."}
     ]
     
@@ -1808,7 +1808,7 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     
     # LLM-Aufruf für Tool-Auswahl
     messages = [
-        {"role": "system", "content": system_prompt + "\n\nVerfügbare Tools:\n" + tool_descriptions},
+        {"role": "developer", "content": system_prompt + "\n\nVerfügbare Tools:\n" + tool_descriptions},
         {"role": "user", "content": f"Benutzeranfrage: '{user_message}'\nWelches Tool passt am besten?"}
     ]
     
@@ -1922,7 +1922,7 @@ def determine_query_approach(user_message, conversation_history=None):
         """
     
     messages = [
-        {"role": "system", "content": "You are a routing assistant for a senior care services company. You decide which approach is best for the user's query. Respond in JSON format."},
+        {"role": "developer", "content": "You are a routing assistant for a senior care services company. You decide which approach is best for the user's query. Respond in JSON format."},
         {"role": "user", "content": prompt}
     ]
     
@@ -1934,7 +1934,7 @@ def determine_query_approach(user_message, conversation_history=None):
             content = message.get("content", "")
             context_message += f"{role}: {content}\n"
         
-        messages.insert(1, {"role": "system", "content": context_message})
+        messages.insert(1, {"role": "developer", "content": context_message})
     
     # Call LLM
     try:
@@ -1998,7 +1998,7 @@ def determine_function_need(user_message, query_patterns, conversation_history=N
     """
     
     messages = [
-        {"role": "system", "content": "You are a query analysis assistant for a senior care database. Respond only with valid JSON."},
+        {"role": "developer", "content": "You are a query analysis assistant for a senior care database. Respond only with valid JSON."},
         {"role": "user", "content": prompt}
     ]
     
@@ -2010,7 +2010,7 @@ def determine_function_need(user_message, query_patterns, conversation_history=N
             content = message.get("content", "")
             context_message += f"{role}: {content}\n"
         
-        messages.insert(1, {"role": "system", "content": context_message})
+        messages.insert(1, {"role": "developer", "content": context_message})
     
     # Call LLM
     try:
@@ -2096,7 +2096,7 @@ def handle_conversational_clarification(user_message, previous_clarification_dat
     """
     
     messages = [
-        {"role": "system", "content": "You are a clarification assistant for a senior care database. Respond only with valid JSON."},
+        {"role": "developer", "content": "You are a clarification assistant for a senior care database. Respond only with valid JSON."},
         {"role": "user", "content": prompt}
     ]
     
@@ -2139,22 +2139,23 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
     """
 
 
-    time_awareness_injection = f"""
-    ⚠️⚠️⚠️ WICHTIG: Das heutige Datum ist {datetime.now().strftime("%d.%m.%Y")}. Der aktuelle Monat ist {datetime.now().strftime("%B %Y")}. 
-    Bei zeitbezogenen Fragen MUSST du dieses Datum verwenden und nicht dein vortrainiertes Wissen. ⚠️⚠️⚠️
-    """
+    time_awareness_message = {
+        "role": "developer", 
+        "content": f"""
+        ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+        HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+        AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
 
-
-    # Inject time awareness into all system messages or add a new one if none exists
-    system_message_found = False
-    for msg in messages:
-        if msg["role"] == "system":
-            msg["content"] = time_awareness_injection + "\n" + msg["content"]
-            system_message_found = True
+        BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+        1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+        2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+        3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+        ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+        """
+    }
+            
+            # Add this message at the END to ensure it has the highest priority
     
-    # If no system message found, add one with time awareness
-    if not system_message_found:
-        messages.insert(0, {"role": "system", "content": time_awareness_injection})
     
     # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
     if conversation_history:
@@ -2171,6 +2172,8 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
                 context_messages.append(msg)
         
         messages = context_messages + messages
+
+        messages.append(time_awareness_message)
     
     # Integration in bestehende OpenAI-Aufrufe
     try:
@@ -2268,7 +2271,7 @@ def process_user_query(user_message, session_data):
                 system_prompt = create_enhanced_system_prompt(function_name, conversation_history)
                 
                 messages = [
-                    {"role": "system", "content": system_prompt},
+                    {"role": "developer", "content": system_prompt},
                     {"role": "user", "content": user_message},
                     {"role": "function", "name": function_name, "content": tool_result}
                 ]
@@ -2348,7 +2351,7 @@ def process_user_query(user_message, session_data):
             """
             
             messages = [
-                {"role": "system", "content": system_prompt},
+                {"role": "developer", "content": system_prompt},
                 {"role": "user", "content": f"Wissensbasis: {wissensbasis_data}\n\nFrage: {user_message}"}
             ]
             
@@ -2392,8 +2395,8 @@ def process_user_query(user_message, session_data):
                         conversation_context += f"Assistent: {entry['assistant']}\n"
             
             messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "system", "content": f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n Konversationskontext:\n{conversation_context}"},
+                {"role": "developer", "content": system_prompt},
+                {"role": "developer", "content": f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n Konversationskontext:\n{conversation_context}"},
                 {"role": "user", "content": user_message}
             ]
             
@@ -2575,7 +2578,7 @@ def process_user_query(user_message, session_data):
                 system_prompt = create_enhanced_system_prompt(selected_function, conversation_history)
                 
                 messages = [
-                    {"role": "system", "content": system_prompt},
+                    {"role": "developer", "content": system_prompt},
                     {"role": "user", "content": user_message},
                     {"role": "function", "name": selected_function, "content": tool_result}
                 ]
@@ -3429,7 +3432,7 @@ def chat():
             debug_print("API Setup", f"Anzahl definierter Tools: {len(tools)}")
 
             messages = [
-                {"role": "system", "content": system_prompt},
+                {"role": "developer", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ]
 
@@ -3493,7 +3496,7 @@ def chat():
                             """
                             
                             wissensbasis_messages = [
-                                {"role": "system", "content": system_prompt},
+                                {"role": "developer", "content": system_prompt},
                                 {"role": "user", "content": f"Wissensbasis: {wissensbasis_data}\n\nFrage: {user_message}"}
                             ]
                             
@@ -4804,7 +4807,7 @@ def get_clarification_response():
             system_prompt = create_enhanced_system_prompt(selected_query)
             
             messages = [
-                {"role": "system", "content": system_prompt},
+                {"role": "developer", "content": system_prompt},
                 {"role": "user", "content": pending_query},
                 {"role": "function", "name": selected_query, "content": tool_result}
             ]
@@ -4812,7 +4815,7 @@ def get_clarification_response():
             # Generate response with LLM
             # o3-mini doesn't support function role, so we'll convert the function message to a user message
             adjusted_messages = [
-                {"role": "system", "content": system_prompt},
+                {"role": "developer", "content": system_prompt},
                 {"role": "user", "content": f"User question: {pending_query}\n\nQuery result: {tool_result}"}
             ]
             

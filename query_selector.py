@@ -134,10 +134,10 @@ Available Queries and Their Purpose:
 - get_customer_history: Complete customer history including all care_stay elements and contract elements 
 - get_customer_on_pause: Customers currently on pause
 - get_customer_tickets: All tickets written regarding a customer written with the contracted agency (customers dont write tickets)
-- get_monthly_performance: Monthly performance metrics for a seller
+- get_monthly_performance: Monthly performance metrics for a seller, also average commision per customer
 - get_leads: gives back all leads which are owned by the seller, filtered by a time period, including many information
 - get_leads_converted_to_customers: Leads converted to customers in given period
-- get_care_givers_for_customer: Care givers for a specific customer
+- get_care_givers_for_customer: Caregivers("BK"/"Pflegekraft") for a specific customer
 - get_leads_count: Count of leads in a specific period
 - get_contract_count: Count of new contracts in a period
 - get_contract_details: Detailed information about a contract 
@@ -158,6 +158,7 @@ Example User Questions:
 - "Welche Kündigungen gab es im [Zeitraum]?" → get_contract_terminations
 - "Wie viele Kunden sind in Pause?" → get_customers_on_pause
 - "Was ist meine Abschlussquote?" → get_cvr_lead_contract
+- "Was ist meine durchschnittliche Provision pro Kunde" → get_monthly_performance
 
 Parameter Handling:
 - Use CURRENT SYSTEM DATE as end_date for "since X" or "from X" without specified end

@@ -1942,6 +1942,8 @@ def determine_function_need(user_message, query_patterns, conversation_history=N
     prompt = f"""
     Analyze this user query to determine if we have a clear function match or need clarification.
     
+    Current date: {datetime.now().strftime("%Y-%m-%d")}
+
     User query: "{user_message}"
     
     Available functions:

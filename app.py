@@ -1941,12 +1941,20 @@ def determine_query_approach(user_message, conversation_history=None):
         response = call_llm(messages, "o3-mini")  # Using a smaller, faster model for this decision
         result = json.loads(response)
         
-        approach = result.get("approach", "function_calling")  # Default to function_calling if parsing fails
+        approach = result.get("approach", "conversational")  # Default to conversational if parsing fails
         confidence = float(result.get("confidence", 0.5))
+        if confidence < 0.4:  # Set an appropriate threshold
+            logging.info(f"QUERY ROUTING - Low confidence ({confidence}), falling back to conversational")
+            approach = "conversational"
         reasoning = result.get("reasoning", "No reasoning provided")
         
         debug_print("Approach Decision", f"Determined approach: {approach} with confidence {confidence}")
         debug_print("Reasoning", reasoning)
+        logging.info(f"QUERY ROUTING - User message: '{user_message}' → Approach: {approach}, Confidence: {confidence}")
+        logging.info(f"QUERY ROUTING - Reasoning: {reasoning}")
+
+        # Add logs to function selection (when it selects get_active_care_stays_now)
+        logging.info(f"FUNCTION SELECTION - Selected function: {selected_function} for query: '{user_message}'")
         
         return approach, confidence, reasoning
     except Exception as e:

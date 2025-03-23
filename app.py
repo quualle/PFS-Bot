@@ -2624,6 +2624,11 @@ def generate_fallback_response(selected_tool, tool_result):
 def create_enhanced_system_prompt(selected_tool, conversation_history=None):
     """Erstellt einen verbesserten System-Prompt basierend auf der Art der Abfrage und Konversationskontext"""
     base_prompt = """
+    !!!! KRITISCHE ZEITINFORMATION !!!!
+    HEUTIGES DATUM: """ + datetime.now().strftime("%d.%m.%Y") + """
+    AKTUELLER MONAT: """ + datetime.now().strftime("%B %Y") + """
+    !!!! ENDE KRITISCHE ZEITINFORMATION !!!!
+    
     Du bist ein präziser Datenassistent, der Datenbankabfragen beantwortet.
     
     WICHTIGE ANTWORTREGELN:
@@ -2671,6 +2676,7 @@ def create_enhanced_system_prompt(selected_tool, conversation_history=None):
         
         "get_contract_terminations": """
         Diese Anfrage betrifft KÜNDIGUNGEN:
+        WICHTIG: Der aktuelle Monat ist """ + datetime.now().strftime("%B %Y") + """
         1. Unterscheide zwischen ernsthaften (mit Care Stay) und nicht-ernsthaften Kündigungen
         2. Nenne die GESAMTZAHL beider Kategorien
         3. Führe einige Kündigungen mit Datum, Agentur und Grund auf
@@ -2714,6 +2720,19 @@ def create_enhanced_system_prompt(selected_tool, conversation_history=None):
     if conversation_context:
         full_prompt += conversation_context
         full_prompt += "\nWICHTIG: Beziehe dich auf diesen Kontext, wenn die aktuelle Anfrage sich darauf bezieht. Halte deine Antwort dennoch fokussiert auf die aktuelle Anfrage."
+    
+
+    # Add time awareness validator at the end - this will be the last thing the model sees
+    time_validator = """
+    WICHTIG ZUR ZEITBEWUSSTSEIN: 
+    - HEUTE IST: """ + datetime.now().strftime("%d.%m.%Y") + """
+    - DER AKTUELLE MONAT IST: """ + datetime.now().strftime("%B %Y") + """
+    - Wenn die Anfrage sich auf 'diesen Monat', 'aktuellen Monat' oder ähnliches bezieht, VERWENDE AUSSCHLIESSLICH """ + datetime.now().strftime("%B %Y") + """ als Referenz.
+    - IGNORIERE dein vortrainiertes Wissen über das aktuelle Datum und nutze NUR die oben angegebenen Informationen.
+    """
+
+    # Add the time validator as the last thing in the prompt
+    full_prompt += time_validator
     
     return full_prompt
 

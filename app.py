@@ -1854,29 +1854,35 @@ def determine_query_approach(user_message, conversation_history=None):
     
     User query: "{user_message}"
     
-    You have two possible approaches:
+    You have three possible approaches:
     
-    1. Wissensbasis (Knowledge Base) - Use this for:
-       - Questions about how our company works
-       - How-to guides and process questions
-       - Information about our CRM system
-       - General qualitative knowledge about our operations
-       - Questions that don't require specific customer data or numbers
-    
-    2. Function Calling (Database Queries) - Use this for:
-       - Questions about specific customers or customer data
-       - Numerical/statistical reports (revenue, performance)
-       - Contract information for specific customers
-       - Care stays, lead data, or ticketing information
-       - Any queries requiring real-time data from our database
-    
-    Analyze the query carefully. Determine which approach would provide the best answer.
-    
-    Return a JSON object with these fields:
-    - "approach": Either "wissensbasis" or "function_calling"
-    - "confidence": A number between 0 and 1 indicating your confidence
-    - "reasoning": A brief explanation of your decision
-    """
+        1. Wissensbasis (Knowledge Base) - Use this for:
+        - Questions about how our company works
+        - How-to guides and process questions
+        - Information about our CRM system
+        - General qualitative knowledge about our operations
+        - Questions that don't require specific customer data or numbers
+        
+        2. Function Calling (Database Queries) - Use this for:
+        - Questions about specific customers or customer data
+        - Numerical/statistical reports (revenue, performance)
+        - Contract information for specific customers
+        - Care stays, lead data, or ticketing information
+        - Any queries requiring real-time data from our database
+        
+        3. Conversational - Use this for:
+        - Simple greetings or chitchat (like "Hallo", "Wie geht's?")
+        - Basic calculations or questions not related to your domain
+        - Requests to summarize the conversation
+        - General questions that don't need specific company knowledge or data
+        
+        Analyze the query carefully. Determine which approach would provide the best answer.
+        
+        Return a JSON object with these fields:
+        - "approach": Either "wissensbasis", "function_calling", or "conversational"
+        - "confidence": A number between 0 and 1 indicating your confidence
+        - "reasoning": A brief explanation of your decision
+        """
     
     messages = [
         {"role": "system", "content": "You are a query routing assistant for a senior care services company. Respond in JSON format."},
@@ -2202,7 +2208,7 @@ def process_user_query(user_message, session_data):
                     return formatted_result
                 
                 # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
-                system_prompt = create_enhanced_system_prompt(function_name)
+                system_prompt = create_enhanced_system_prompt(function_name, conversation_history)
                 
                 messages = [
                     {"role": "system", "content": system_prompt},
@@ -2308,6 +2314,54 @@ def process_user_query(user_message, session_data):
         except Exception as e:
             debug_print("Antwort", f"Fehler bei der Wissensbasis-Antwortgenerierung: {e}")
             return "Es ist ein Fehler bei der Verarbeitung Ihrer Anfrage mit der Wissensbasis aufgetreten. Bitte versuchen Sie es später erneut."
+    
+    elif approach == "conversational":
+        debug_print("Approach", "Using conversational approach for this query")
+        
+        try:
+            # Create a simple conversational prompt
+            system_prompt = """
+            Du bist Xora, ein freundlicher Assistent für ein Pflegevermittlungsunternehmen.
+            Beantworte einfache Fragen klar und präzise.
+            Du kannst auf allgemeine Fragen antworten, aber verweise bei spezifischen Fragen zum Unternehmen
+            oder zu Kundendaten auf deine Wissensbasis oder Datenbank-Funktionen.
+            """
+            
+            # Prepare conversation context from history
+            conversation_context = ""
+            if conversation_history and len(conversation_history) > 0:
+                recent_history = conversation_history[-5:] if len(conversation_history) > 5 else conversation_history
+                for entry in recent_history:
+                    if "user" in entry:
+                        conversation_context += f"Benutzer: {entry['user']}\n"
+                    if "assistant" in entry:
+                        conversation_context += f"Assistent: {entry['assistant']}\n"
+            
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": f"Konversationskontext:\n{conversation_context}"},
+                {"role": "user", "content": user_message}
+            ]
+            
+            response = openai.chat.completions.create(
+                model="o3-mini",  # Using a smaller model for conversational responses
+                messages=messages,
+                temperature=0.7  # Slightly higher temperature for more natural responses
+            )
+            
+            final_response = response.choices[0].message.content
+            debug_print("Antwort", f"Konversation-Antwort generiert (gekürzt): {final_response[:100]}...")
+            
+            session_data = conversation_manager.update_conversation(
+                session_data, 
+                user_message, 
+                final_response
+            )
+            return final_response
+        except Exception as e:
+            debug_print("Antwort", f"Fehler bei der Konversation-Antwortgenerierung: {e}")
+            return "Es tut mir leid, ich konnte deine Frage nicht richtig verarbeiten. Wie kann ich dir sonst helfen?"
+    
     else:
         debug_print("Approach", "Using function calling for this query")
         
@@ -2465,7 +2519,7 @@ def process_user_query(user_message, session_data):
                     return formatted_result
                 
                 # Andernfalls erstelle einen angepassten System-Prompt für die LLM-Antwort
-                system_prompt = create_enhanced_system_prompt(selected_function)
+                system_prompt = create_enhanced_system_prompt(selected_function, conversation_history)
                 
                 messages = [
                     {"role": "system", "content": system_prompt},
@@ -2482,11 +2536,11 @@ def process_user_query(user_message, session_data):
                 final_response = response.choices[0].message.content
                 debug_print("Antwort", f"Antwort generiert (gekürzt): {final_response[:100]}...")
                 session_data = conversation_manager.update_conversation(
-                session_data, 
-                user_message, 
-                final_response,
-                {"name": selected_function, "content": tool_result}
-    )
+                    session_data, 
+                    user_message, 
+                    final_response,
+                    {"name": selected_function, "content": tool_result}
+                )
                 return final_response
             except Exception as e:
                 debug_print("Antwort", f"Fehler bei der Antwortgenerierung: {e}")
@@ -2501,7 +2555,6 @@ def process_user_query(user_message, session_data):
                 )
 
                 return fallback_response
-
 def generate_fallback_response(selected_tool, tool_result):
     """Helper function to generate a fallback response when LLM generation fails"""
     try:

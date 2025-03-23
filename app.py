@@ -1851,6 +1851,9 @@ def determine_query_approach(user_message, conversation_history=None):
     prompt = f"""
     Analyze this user query and determine the most appropriate approach to answer it.
     
+
+    Current date: {datetime.now().strftime("%Y-%m-%d")}
+
     User query: ""{user_message}""
     --END OF USER QUERY--
     
@@ -2340,7 +2343,7 @@ def process_user_query(user_message, session_data):
             
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "system", "content": f"Konversationskontext:\n{conversation_context}"},
+                {"role": "system", "content": f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n Konversationskontext:\n{conversation_context}"},
                 {"role": "user", "content": user_message}
             ]
             

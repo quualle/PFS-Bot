@@ -537,6 +537,7 @@
         <div class="overlay-content">
             <h2 id="feedbackTitle">Feedback geben</h2>
             <p>Danke, dass du uns hilfst, XORA zu verbessern!</p>
+            <input type="hidden" id="currentFeedbackMessage" />
             <textarea id="feedbackComment" placeholder="Was ist gut oder schlecht? (optional)" style="width: 100%; min-height: 100px; margin-bottom: 20px; padding: 10px; background: rgba(255,255,255,0.1); color: white; border: none; border-radius: 8px;"></textarea>
             <div style="display: flex; justify-content: space-between; gap: 10px;">
                 <button id="cancelFeedbackBtn" style="background: #666; flex: 1;">Abbrechen</button>
@@ -887,6 +888,21 @@
                     }).then(response => {
                         console.log("Response received:", response.status, response.headers.get('content-type'));
                         
+                        // Check for HTTP errors, including CSRF token errors (status 400)
+                        if (!response.ok) {
+                            // First clone the response so we can read it twice
+                            return response.clone().text().then(text => {
+                                // Check if the response contains CSRF token error messages
+                                if (text.includes('CSRF') || text.includes('csrf') || text.includes('token expired')) {
+                                    throw new Error('CSRF token has expired');
+                                } else {
+                                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                                }
+                            }).catch(e => {
+                                throw e; // Re-throw the error after checking
+                            });
+                        }
+                        
                         // Extrem einfacher Reader
                         const reader = response.body.getReader();
                         const decoder = new TextDecoder();
@@ -1195,7 +1211,36 @@
                         readChunk();
                     }).catch(error => {
                         console.error("FETCH ERROR:", error);
-                        botResponseSpan.innerHTML = `Error: ${error.message}`;
+                        
+                        // Check for CSRF token expiration in the error response
+                        if (error.message && error.message.includes('CSRF token') || 
+                            error.message && error.message.includes('csrf') || 
+                            error.message && error.message.includes('token expired')) {
+                            // Create a user-friendly message with reload button for CSRF errors
+                            const refreshButton = document.createElement('button');
+                            refreshButton.textContent = 'Seite aktualisieren';
+                            refreshButton.className = 'refresh-button';
+                            refreshButton.style.backgroundColor = '#3498db';
+                            refreshButton.style.color = 'white';
+                            refreshButton.style.border = 'none';
+                            refreshButton.style.borderRadius = '5px';
+                            refreshButton.style.padding = '8px 16px';
+                            refreshButton.style.margin = '10px 0';
+                            refreshButton.style.cursor = 'pointer';
+                            refreshButton.onclick = function() {
+                                window.location.reload();
+                            };
+                            
+                            botResponseSpan.innerHTML = `
+                                <div style="color: #ff6b6b;">
+                                    <strong>Deine Sitzung ist abgelaufen.</strong><br>
+                                    Bitte aktualisiere die Seite, um fortzufahren.
+                                </div>`;
+                            botResponseSpan.appendChild(refreshButton);
+                        } else {
+                            // Handle other errors
+                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">Fehler: ${error.message}</div>`;
+                        }
                     });
                 } else {
                     // Non-streaming code
@@ -1218,23 +1263,67 @@
                         },
                         body: payload
                     })
-                    .then(r => r.json())
-                    .then(data => {
-                        xoraTyping.remove();
-
-                        if (data.response) {
-                            botResponseSpan.innerHTML = data.response;
-                        } else if (data.error) {
-                            botResponseSpan.innerHTML = `<span style="color: red;">${data.error}</span>`;
+                    .then(response => {
+                        // Check for HTTP errors, including CSRF token errors (status 400)
+                        if (!response.ok) {
+                            // First clone the response so we can read it twice
+                            return response.clone().text().then(text => {
+                                // Check if the response contains CSRF token error messages
+                                if (text.includes('CSRF') || text.includes('csrf') || text.includes('token expired')) {
+                                    throw new Error('CSRF token has expired');
+                                } else {
+                                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                                }
+                            }).catch(e => {
+                                throw e; // Re-throw the error after checking
+                            });
                         }
-                        forceScrollToBottom();
-                        attachFeedbackHandlers();
+                        
+                        return response.json();
                     })
-                    .catch(err => {
-                        xoraTyping.remove();
-                        botResponseSpan.innerHTML = `<span style="color: red;">Fehler beim Senden der Nachricht: ${err.message}</span>`;
-                        forceScrollToBottom();
-                        console.error(err);
+                    .then(data => {
+                        removeTypingIndicator(xoraTyping);
+                        if (data.error) {
+                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">${data.error}</div>`;
+                        } else if (data.response) {
+                            botResponseSpan.innerHTML = data.response;
+                            // Update session with chat messages
+                            updateSessionWithChatMessage(userMessageText, data.response);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error in non-streaming mode:", error);
+                        removeTypingIndicator(xoraTyping);
+                        
+                        // Check for CSRF token expiration in the error response
+                        if (error.message && error.message.includes('CSRF token') || 
+                            error.message && error.message.includes('csrf') || 
+                            error.message && error.message.includes('token expired')) {
+                            // Create a user-friendly message with reload button for CSRF errors
+                            const refreshButton = document.createElement('button');
+                            refreshButton.textContent = 'Seite aktualisieren';
+                            refreshButton.className = 'refresh-button';
+                            refreshButton.style.backgroundColor = '#3498db';
+                            refreshButton.style.color = 'white';
+                            refreshButton.style.border = 'none';
+                            refreshButton.style.borderRadius = '5px';
+                            refreshButton.style.padding = '8px 16px';
+                            refreshButton.style.margin = '10px 0';
+                            refreshButton.style.cursor = 'pointer';
+                            refreshButton.onclick = function() {
+                                window.location.reload();
+                            };
+                            
+                            botResponseSpan.innerHTML = `
+                                <div style="color: #ff6b6b;">
+                                    <strong>Deine Sitzung ist abgelaufen.</strong><br>
+                                    Bitte aktualisiere die Seite, um fortzufahren.
+                                </div>`;
+                            botResponseSpan.appendChild(refreshButton);
+                        } else {
+                            // Handle other errors
+                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">Fehler: ${error.message}</div>`;
+                        }
                     });
                 }
             });
@@ -1253,7 +1342,8 @@
                 },
                 body: JSON.stringify({
                     feedback_type: currentFeedbackType,
-                    comment: commentVal
+                    comment: commentVal,
+                    message: document.getElementById('currentFeedbackMessage').value
                 })
             })
             .then(r => r.json())
@@ -1278,12 +1368,49 @@
         function attachFeedbackHandlers() {
             const thumbs = document.querySelectorAll('.thumb-up, .thumb-down');
             thumbs.forEach(thumb => {
-                thumb.addEventListener('click', function() {
+                // Remove any existing event listener to prevent duplication
+                const newThumb = thumb.cloneNode(true);
+                thumb.parentNode.replaceChild(newThumb, thumb);
+                
+                newThumb.addEventListener('click', function() {
+                    // Get feedback type (positive/negative)
                     currentFeedbackType = this.getAttribute('data-type');
+                    
+                    // Capture the message content for context
+                    const messageElement = this.closest('.message');
+                    const messageContent = messageElement ? messageElement.querySelector('span').innerText : '';
+                    
+                    // Store the message we're providing feedback on
+                    document.getElementById('currentFeedbackMessage').value = messageContent;
+                    
+                    // Update modal title based on feedback type
                     feedbackTitle.textContent = currentFeedbackType === 'positive' 
                         ? "Positives Feedback" 
                         : "Verbesserungsvorschlag";
+                        
+                    // Set appropriate placeholder based on feedback type
+                    feedbackComment.placeholder = currentFeedbackType === 'positive' 
+                        ? "Was war besonders hilfreich? (optional)" 
+                        : "Was ist nicht optimal? Was hättest du gerne als Antwort gehört? (optional)";
+                    
+                    // Show the feedback overlay
                     feedbackOverlay.style.display = "flex";
+                    
+                    // Focus on the comment textarea
+                    setTimeout(() => feedbackComment.focus(), 100);
+                    
+                    // Highlight the clicked button
+                    if (currentFeedbackType === 'positive') {
+                        this.style.opacity = '1';
+                        this.style.transform = 'scale(1.2)';
+                        const thumbDown = this.parentNode.querySelector('.thumb-down');
+                        if (thumbDown) thumbDown.style.opacity = '0.5';
+                    } else {
+                        this.style.opacity = '1';
+                        this.style.transform = 'scale(1.2)';
+                        const thumbUp = this.parentNode.querySelector('.thumb-up');
+                        if (thumbUp) thumbUp.style.opacity = '0.5';
+                    }
                 });
             });
         }

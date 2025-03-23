@@ -4,10 +4,8 @@
 
 Bot verhalten/Fehler:
 
-Oktober 2023
+
 Bei new contracts auch AG wechsel differenzeieren
-CSRF expired warnung aktualisieren mit cooler meldung 
-daumen hoch und runter
 
 Längere antworten mit listen und vollständig. Alles gleich in einem Textblock
 Rückfragen sollen funktionieren
@@ -16,3 +14,8 @@ Rückfragen sollen funktionieren
 Was kann ich fragen im Xora
 
 
+Umgesetzt:
+Feedback
+chatlog
+Zeit
+CSRF

@@ -312,31 +312,69 @@ if not os.path.exists(FEEDBACK_FOLDER):
 def store_chatlog(user_name, chat_history):
     """
     Speichert den Chatverlauf als Textdatei in CHATLOG_FOLDER.
-    Dateiname enthält den user_name und Datum + Uhrzeit.
+    Dateiname enthält nur den user_name und das Datum (ohne Uhrzeit),
+    damit alle Nachrichten vom selben Tag in derselben Datei gespeichert werden.
     """
     if not user_name:
         user_name = "Unbekannt"
-
-    timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"{user_name}_{timestamp_str}.txt"
+    
+    # Make sure the directory exists
+    os.makedirs(CHATLOG_FOLDER, exist_ok=True)
+    
+    # Use just the date for the filename (not time) to group all chats from same day
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    session_id = session.get('user_id', 'unknown')
+    
+    # Create a unique filename based on user, date and session ID
+    filename = f"{user_name}_{date_str}_{session_id}.txt"
     filepath = os.path.join(CHATLOG_FOLDER, filename)
-
-    with open(filepath, 'w', encoding='utf-8') as f:
-        for idx, convo in enumerate(chat_history):
-            user_msg = convo.get('user', '').replace('\n', ' ')
-            bot_msg = convo.get('bot', '').replace('\n', ' ')
-            f.write(f"Nachricht {idx+1}:\n")
+    
+    # Check if file exists to add a header for new files
+    file_exists = os.path.exists(filepath)
+    
+    # Open in append mode to add to existing file rather than overwrite
+    with open(filepath, 'a', encoding='utf-8') as f:
+        # Add a timestamp for this update
+        current_time = datetime.now().strftime("%H:%M:%S")
+        
+        if not file_exists:
+            # If this is a new file, add a header
+            f.write(f"=== CHAT LOG: {user_name} ===\n")
+            f.write(f"Date: {date_str}\n")
+            f.write(f"Session ID: {session_id}\n\n")
+        else:
+            # If appending, add a separator
+            f.write(f"\n--- Update at {current_time} ---\n\n")
+            
+        # Only write the latest message to avoid duplication
+        if chat_history:
+            latest = chat_history[-1]
+            user_msg = latest.get('user', '').replace('\n', ' ')
+            bot_msg = latest.get('bot', '').replace('\n', ' ')
+            msg_index = len(chat_history)
+            
+            f.write(f"Message {msg_index}:\n")
             f.write(f"  User: {user_msg}\n")
             f.write(f"  Bot : {bot_msg}\n\n")
 
-def store_feedback(feedback_type, comment, chat_history):
+def store_feedback(feedback_type, comment, chat_history, rated_message=""):
+    # Make sure the feedback directory exists
+    os.makedirs(FEEDBACK_FOLDER, exist_ok=True)
+    
     name_in_session = session.get('user_name', 'Unbekannt')
     timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{name_in_session}_{feedback_type}_{timestamp_str}.txt"
     filepath = os.path.join(FEEDBACK_FOLDER, filename)
-
+    
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(f"Feedback-Typ: {feedback_type}\n")
+        f.write(f"Zeitpunkt: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n")
+        f.write(f"Benutzer: {name_in_session}\n\n")
+        
+        # Add the specific message being rated
+        if rated_message:
+            f.write(f"Bewertete Nachricht:\n{rated_message}\n\n")
+            
         f.write(f"Kommentar:\n{comment}\n\n")
         f.write("----- Chatverlauf -----\n\n")
         for idx, convo in enumerate(chat_history):
@@ -4575,15 +4613,17 @@ def store_feedback_route():
         data = request.get_json()
         feedback_type = data.get("feedback_type", "")
         comment = data.get("comment", "").strip()
-
+        message = data.get("message", "").strip()  # Get the specific message being rated
+        
         user_id = session.get('user_id')
         if not user_id:
             return jsonify({"success": False, "message": "User nicht erkannt"}), 400
-
+        
         chat_key = f'chat_history_{user_id}'
         chat_history = session.get(chat_key, [])
-
-        store_feedback(feedback_type, comment, chat_history)
+        
+        # Call the updated store_feedback function with the message parameter
+        store_feedback(feedback_type, comment, chat_history, message)
         return jsonify({"success": True}), 200
     except Exception as e:
         logging.exception("Fehler beim Speichern des Feedbacks.")

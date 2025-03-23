@@ -2624,12 +2624,15 @@ def generate_fallback_response(selected_tool, tool_result):
 def create_enhanced_system_prompt(selected_tool, conversation_history=None):
     """Erstellt einen verbesserten System-Prompt basierend auf der Art der Abfrage und Konversationskontext"""
     base_prompt = """
-    !!!! KRITISCHE ZEITINFORMATION !!!!
-    HEUTIGES DATUM: """ + datetime.now().strftime("%d.%m.%Y") + """
-    AKTUELLER MONAT: """ + datetime.now().strftime("%B %Y") + """
-    !!!! ENDE KRITISCHE ZEITINFORMATION !!!!
-    
-    Du bist ein präziser Datenassistent, der Datenbankabfragen beantwortet.
+        ⚠️⚠️⚠️⚠️⚠️ KRITISCHE ZEITINFORMATION – UNBEDINGT BEACHTEN ⚠️⚠️⚠️⚠️⚠️
+
+        DAS AKTUELLE DATUM IST: """ + datetime.now().strftime("%d.%m.%Y") + """
+        DER AKTUELLE MONAT IST: """ + datetime.now().strftime("%B %Y") + """
+
+        Du MUSST diese Zeitinformationen in deiner Antwort korrekt verwenden!
+        ⚠️⚠️⚠️⚠️⚠️ ENDE KRITISCHE ZEITINFORMATION ⚠️⚠️⚠️⚠️⚠️
+
+        Du bist ein präziser Datenassistent, der Datenbankabfragen beantwortet.
     
     WICHTIGE ANTWORTREGELN:
     1. Beginne sofort mit der Antwort ohne Einleitungen wie "Basierend auf den Daten..."
@@ -2724,16 +2727,26 @@ def create_enhanced_system_prompt(selected_tool, conversation_history=None):
 
     # Add time awareness validator at the end - this will be the last thing the model sees
     time_validator = """
-    WICHTIG ZUR ZEITBEWUSSTSEIN: 
-    - HEUTE IST: """ + datetime.now().strftime("%d.%m.%Y") + """
-    - DER AKTUELLE MONAT IST: """ + datetime.now().strftime("%B %Y") + """
-    - Wenn die Anfrage sich auf 'diesen Monat', 'aktuellen Monat' oder ähnliches bezieht, VERWENDE AUSSCHLIESSLICH """ + datetime.now().strftime("%B %Y") + """ als Referenz.
-    - IGNORIERE dein vortrainiertes Wissen über das aktuelle Datum und nutze NUR die oben angegebenen Informationen.
+
+    ⚠️⚠️⚠️⚠️⚠️ KRITISCHE ZEITINFORMATION – UNBEDINGT BEACHTEN ⚠️⚠️⚠️⚠️⚠️
+
+    DAS AKTUELLE DATUM IST: """ + datetime.now().strftime("%d.%m.%Y") + """
+    DER AKTUELLE MONAT IST: """ + datetime.now().strftime("%B %Y") + """
+
+    Du MUSST diese Zeitinformationen in deiner Antwort korrekt verwenden:
+    1. Wenn nach "diesem Monat" gefragt wird, ist damit """ + datetime.now().strftime("%B %Y") + """ gemeint
+    2. Wenn nach "heute" gefragt wird, ist damit der """ + datetime.now().strftime("%d.%m.%Y") + """ gemeint
+    3. Wenn nach "aktuell" oder "jetzt" gefragt wird, beziehe dich auf """ + datetime.now().strftime("%B %Y") + """
+
+    IGNORIERE komplett dein vortrainiertes Wissen über Zeiträume und Daten.
+    Dein vortrainiertes Wissen über Datum und Monat ist FALSCH und VERALTET.
+
+    ⚠️⚠️⚠️⚠️⚠️ ENDE KRITISCHE ZEITINFORMATION ⚠️⚠️⚠️⚠️⚠️
     """
 
     # Add the time validator as the last thing in the prompt
     full_prompt += time_validator
-    
+
     return full_prompt
 
 def format_simple_results(data_list):

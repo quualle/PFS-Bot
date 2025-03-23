@@ -2137,6 +2137,25 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
     Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
     Diese sollte die bestehende call_llm Funktion in app.py ersetzen.
     """
+
+
+    time_awareness_injection = f"""
+    ⚠️⚠️⚠️ WICHTIG: Das heutige Datum ist {datetime.now().strftime("%d.%m.%Y")}. Der aktuelle Monat ist {datetime.now().strftime("%B %Y")}. 
+    Bei zeitbezogenen Fragen MUSST du dieses Datum verwenden und nicht dein vortrainiertes Wissen. ⚠️⚠️⚠️
+    """
+
+
+    # Inject time awareness into all system messages or add a new one if none exists
+    system_message_found = False
+    for msg in messages:
+        if msg["role"] == "system":
+            msg["content"] = time_awareness_injection + "\n" + msg["content"]
+            system_message_found = True
+    
+    # If no system message found, add one with time awareness
+    if not system_message_found:
+        messages.insert(0, {"role": "system", "content": time_awareness_injection})
+    
     # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
     if conversation_history:
         # Verwende nur die neuesten Nachrichten, um Token-Limits zu vermeiden

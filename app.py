@@ -1485,7 +1485,24 @@ def chat():
                                     content_type="text/event-stream"
                                 )
                         
-                        
+                        # Direkte Konversationsanfragen wie mathematische Berechnungen
+                        elif selected_tool == "direct_conversation":
+                            debug_print("Tool-Auswahl", "Direkter Konversationsmodus erkannt - Leite Anfrage direkt an LLM weiter")
+                            direct_messages = [
+                                {"role": "system", "content": "Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen."},
+                                {"role": "user", "content": user_message}
+                            ]
+                            
+                            response = openai.chat.completions.create(
+                                model="o3-mini",
+                                messages=direct_messages
+                            )
+                            
+                            direct_response = response.choices[0].message.content
+                            return Response(
+                                stream_text_response(direct_response, user_message, session_data),
+                                content_type="text/event-stream"
+                            )
                         
                         
                         

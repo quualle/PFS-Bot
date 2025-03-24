@@ -40,7 +40,7 @@ from bigquery_functions import (
     get_households_for_seller, 
     calculate_kpis_for_seller,
     get_seller_data)
-from tool_manager import load_tool_config, create_tool_description_prompt, select_tool, load_tool_descriptions, load_tool_descriptions
+from tool_manager import load_tool_config, create_tool_description_prompt, select_tool, load_tool_descriptions, load_tool_descriptions, select_optimal_tool_with_reasoning
 try:
     from query_selector import select_query_with_llm, update_selection_feedback, process_clarification_response, process_text_clarification_response
     USE_LLM_QUERY_SELECTOR = True
@@ -49,6 +49,8 @@ except ImportError as e:
     logging.warning(f"LLM-based query selector not available: {e}")
     USE_LLM_QUERY_SELECTOR = False
 from llm_manager import create_enhanced_system_prompt, generate_fallback_response, call_llm
+
+
 def load_tool_config():
     """Lädt die Tool-Konfiguration aus einer YAML-Datei"""
     TOOL_CONFIG_PATH = "tool_config.yaml"

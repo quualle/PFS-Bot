@@ -49,7 +49,7 @@ except ImportError as e:
     logging.warning(f"LLM-based query selector not available: {e}")
     USE_LLM_QUERY_SELECTOR = False
 from llm_manager import create_enhanced_system_prompt, generate_fallback_response, call_llm
-
+from utils import debug_print
 
 def load_tool_config():
     """Lädt die Tool-Konfiguration aus einer YAML-Datei"""
@@ -235,7 +235,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app = configure_google_auth(app)
 Session(app)
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.info)
 
 UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'uploaded_files')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -304,9 +304,6 @@ DEBUG_CATEGORIES = {
     "UI Aktionen": False
 }
 
-def debug_print(category, message):
-    if DEBUG_CATEGORIES.get(category, False):
-        print(f"[{category}] {message}")
 
 themen_datei = '/home/PfS/themen.txt'
 

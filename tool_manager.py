@@ -1,3 +1,6 @@
+from utils import debug_print
+
+
 def load_tool_descriptions():
     """Lädt die Tools-Definitionen aus der query_patterns.json-Datei"""
     try:
@@ -209,11 +212,11 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     ]
     
     try:
-        logging.debug("Tool-Auswahl", "Starte LLM-Aufruf zur Tool-Bestimmung")
+        debug_print("Tool-Auswahl", "Starte LLM-Aufruf zur Tool-Bestimmung")
         response = openai.chat.completions.create(
             model="o3-mini",
             messages=messages,
-            max_tokens=1000
+            max_tokens=250
         )
         
         response_text = response.choices[0].message.content.strip()

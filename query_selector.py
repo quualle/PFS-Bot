@@ -76,10 +76,6 @@ def create_query_selection_prompt(
             content = message.get("content", "")
             history_context += f"{role}: {content}\n"
     
-    # Get current date and time for accurate date processing
-    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-    current_time_context = f"Current system date: {current_date}\n"
-    
     # Provide domain context
     domain_context = """
 This is a system for querying a database.
@@ -97,9 +93,6 @@ The main entities are:
 You are a query selection assistant for a senior care database system. Your task is to select the most appropriate database query based on a user's request.
 
 {domain_context}
-
-Current time: 
-{current_time_context}
 
 Conversation history:
 {history_context}
@@ -326,30 +319,38 @@ def select_query_with_llm(
         where human_in_loop_dict is None if no clarification is needed, otherwise contains clarification info
         Returns (None, None, error_dict) if selection fails
     """
+    # Logging the starting point of query selection
+    logger.info(f"QUERY SELECTION START - User request: '{user_request}'")
+
     try:
         # Create selection prompt
         messages = create_query_selection_prompt(user_request, conversation_history)
+        logger.info("QUERY SELECTION - Prompt creation complete")
+        
         if not messages:
-            logger.error("Failed to create query selection prompt")
+            logger.error("QUERY SELECTION ERROR - Failed to create query selection prompt")
             return None, None, {"error": "Fehler bei der Erstellung des Auswahlprompts"}
 
         # Get LLM response
         try:
+            logger.info("QUERY SELECTION - Calling LLM for query classification")
             llm_response = call_llm(messages)
-            logger.debug(f"Raw LLM response: {llm_response}")
+            logger.debug(f"QUERY SELECTION - Raw LLM response: {llm_response[:200]}...")
+            
             if not llm_response:
-                logger.error("Empty LLM response")
+                logger.error("QUERY SELECTION ERROR - Empty LLM response")
                 return None, None, {"error": "Keine Antwort vom Sprachmodell erhalten"}
         except Exception as e:
-            logger.error(f"LLM call failed: {e}")
+            logger.error(f"QUERY SELECTION ERROR - LLM call failed: {e}")
             return None, None, {"error": "Fehler bei der Kommunikation mit dem Sprachmodell"}
 
         # Parse response
         try:
+            logger.info("QUERY SELECTION - Parsing LLM response")
             selection_data = parse_llm_response(llm_response)
-            logger.debug(f"Parsed LLM response: {selection_data}")
+            
             if not selection_data:
-                logger.error("Empty selection data after parsing")
+                logger.error("QUERY SELECTION ERROR - Empty selection data after parsing")
                 return None, None, {"error": "Leere Antwort vom Sprachmodell"}
                 
             # Prüfe auf "query" oder "selected_query" als Fallback
@@ -361,39 +362,57 @@ def select_query_with_llm(
                 selection_data["query"] = selected_query  # Für Konsistenz
             
             if not selected_query:
-                logger.error("Missing query field in LLM response")
-                logger.error(f"Response content: {llm_response}")
+                logger.error("QUERY SELECTION ERROR - Missing query field in LLM response")
+                logger.error(f"QUERY SELECTION ERROR - Response content: {llm_response[:200]}...")
                 return None, None, {"error": "Ungültiges Antwortformat vom Sprachmodell"}
+            
+            logger.info(f"QUERY SELECTION - Selected query: '{selected_query}'")
                 
         except Exception as e:
-            logger.error(f"Failed to parse LLM response: {e}")
-            logger.error(f"Response content: {llm_response}")
+            logger.error(f"QUERY SELECTION ERROR - Failed to parse LLM response: {e}")
+            logger.error(f"QUERY SELECTION ERROR - Response content: {llm_response[:200]}...")
             return None, None, {"error": "Fehler bei der Verarbeitung der Modellantwort"}
 
         parameters = selection_data.get("parameters", {})
         confidence = selection_data.get("confidence", 0)
+        reasoning = selection_data.get("reasoning", "No reasoning provided")
+        
+        logger.info(f"QUERY SELECTION - Query: '{selected_query}', Confidence: {confidence}")
+        logger.info(f"QUERY SELECTION - Reasoning: {reasoning}")
+        logger.info(f"QUERY SELECTION - Parameters: {parameters}")
 
         # Post-process parameters
         try:
+            logger.info("QUERY SELECTION - Post-processing parameters")
             parameters = post_process_llm_parameters(user_request, parameters)
+            logger.info(f"QUERY SELECTION - Final parameters after post-processing: {parameters}")
         except Exception as e:
-            logger.error(f"Parameter post-processing failed: {e}")
+            logger.error(f"QUERY SELECTION ERROR - Parameter post-processing failed: {e}")
             return None, None, {"error": "Fehler bei der Parameterverarbeitung"}
 
         # Check confidence and need for clarification
         if confidence < 3:  # Niedrige Konfidenz
-            logger.info(f"Low confidence ({confidence}) for query selection")
+            logger.info(f"QUERY SELECTION - Low confidence ({confidence}) for query selection")
+            logger.info("QUERY SELECTION - Checking for human-in-loop activation")
             human_in_loop = check_for_human_in_loop(user_request, selected_query, parameters, confidence)
+            
             if human_in_loop:
+                logger.info("QUERY SELECTION - Human-in-loop activated")
+                if isinstance(human_in_loop, dict) and 'message' in human_in_loop:
+                    logger.info(f"QUERY SELECTION - Human-in-loop message: '{human_in_loop['message']}'")
                 return selected_query, parameters, human_in_loop
+            else:
+                logger.info("QUERY SELECTION - Human-in-loop not activated despite low confidence")
 
         # Log selection for feedback
+        logger.info("QUERY SELECTION - Recording selection for feedback")
         log_selection_for_feedback(user_request, selection_data)
-
+        
+        logger.info("QUERY SELECTION COMPLETE - Returning selected query")
         return selected_query, parameters, None
 
     except Exception as e:
-        logger.error(f"Query selection failed: {e}")
+        logger.error(f"QUERY SELECTION ERROR - Unexpected error: {e}")
         return None, None, {"error": "Unerwarteter Fehler bei der Anfrageauswahl"}
 
 def check_for_human_in_loop(
@@ -414,12 +433,13 @@ def check_for_human_in_loop(
         None if no clarification needed, otherwise a dict with clarification message
     """
     
-    logger.debug(f"Checking for human-in-loop: Query={selected_query}, Confidence={confidence}, Parameters={parameters}")
+    logger.info(f"HUMAN-IN-LOOP - Starting check for query: {selected_query}")
+    logger.debug(f"HUMAN-IN-LOOP - Parameters: {parameters}, Confidence: {confidence}")
     
     if confidence < 3:
         # Extrahiere den Kundennamen für Kontextinformationen
         customer_name = parameters.get("customer_name", "")
-        logger.debug(f"Low confidence detected: {confidence}/5. Customer name: '{customer_name}'")
+        logger.info(f"HUMAN-IN-LOOP - Low confidence detected: {confidence}/5. Customer name: '{customer_name}'")
         
         # Create a prompt for the LLM to generate a clarification question
         clarification_prompt = [
@@ -429,89 +449,89 @@ def check_for_human_in_loop(
 Deine Aufgabe ist es, präzise und hilfreiche Rückfragen zu formulieren, wenn eine Benutzeranfrage nicht eindeutig ist.
 
 Verfügbare Queries und ihre Verwendung:
-- get_customer_history: Vollständige Kundenhistorie mit allen Verträgen und Einsätzen
-- get_customer_tickets: Kommunikationshistorie und Notizen zu einem Kunden
-- get_care_stays_by_date_range: Kundenstatistiken für bestimmte Zeiträume
-- get_contract_terminations: Details zu Vertragskündigungen
-- get_customers_on_pause: Liste der Kunden, die aktuell in Pause sind
+- get_active_care_stays_now: Aktuelle Pflegeeinsätze (benötigt optional eine Agentur-ID)
+- get_care_stays_by_date_range: Pflegeeinsätze in einem Zeitraum (benötigt Start- und Enddatum)
+- get_customer_history: Kundenhistorie (benötigt Kundennamen)
+- get_contract_terminations: Vertragskündigungen in einem Zeitraum
 
-Wichtige Kontextinformationen:
-- Ein Kunde kann mehrere Verträge mit verschiedenen Agenturen haben
-- Jeder Vertrag kann mehrere Pflegeeinsätze beinhalten
-- Tickets enthalten die Kommunikation zwischen Verkäufer und Agentur
-- Zeiträume können spezifisch (z.B. "März") oder relativ ("letzte 3 Monate") sein
+Die Benutzeranfrage war zu ungenau, um direkt eine Datenabfrage durchzuführen. 
+Stelle eine präzise, kurze Rückfrage, die hilft, die fehlenden Parameter zu erhalten.
 
-Formuliere eine präzise, kontextbezogene Rückfrage die:
-1. Direkt auf die Unklarheit in der Benutzeranfrage eingeht
-2. Die relevanten Auswahlmöglichkeiten klar aufzeigt
-3. In einem freundlichen, professionellen Ton formuliert ist
-4. Auf Deutsch gestellt wird
-
-WICHTIG: Gib NUR die Rückfrage zurück, KEIN JSON-Format und KEINE Erklärungen."""
+Deine Rückfrage sollte:
+- Höflich und hilfreich sein
+- Sich auf den Kontext der ursprünglichen Anfrage beziehen
+- Nach spezifischen Parametern fragen, die für die Abfrage benötigt werden
+- Kurz und prägnant sein (max. 1-2 Sätze)
+"""
             },
             {
-                "role": "user",
-                "content": f"""Ursprüngliche Benutzeranfrage: "{user_request}"
-Vom System ausgewählte Query: {selected_query}
-Confidence-Level: {confidence}/5
-Erkannte Parameter: {parameters}
+                "role": "user", 
+                "content": f"""
+Benutzeranfrage: "{user_request}"
 
-Generiere eine hilfreiche Rückfrage, die dem Benutzer hilft, seine Anfrage zu präzisieren."""
+Ausgewählte Abfrage: {selected_query}
+
+Verfügbare Parameter: {json.dumps(parameters)}
+
+Generiere eine hilfreiche Rückfrage, um die notwendigen Informationen zu erhalten.
+"""
             }
         ]
         
+        logger.info(f"HUMAN-IN-LOOP - Generating clarification message for query: {selected_query}")
         try:
-            # Get clarification question from LLM
-            logger.debug("Calling LLM for clarification question generation")
-            llm_response = call_llm(clarification_prompt, model="gpt-3.5-turbo", expect_json=False)
-            logger.debug(f"LLM clarification response: '{llm_response}'")
+            # Call LLM to generate the clarification text
+            clarification_message = call_llm(clarification_prompt, expect_json=False)
+            logger.info(f"HUMAN-IN-LOOP - Generated clarification: '{clarification_message}'")
             
-            # Nutze die Antwort direkt oder den Standardtext, wenn keine Antwort
-            clarification_message = llm_response
-            if not clarification_message or len(clarification_message.strip()) < 5:
-                if customer_name:
-                    clarification_message = f"Bitte präzisiere deine Anfrage zu {customer_name}. Möchtest du allgemeine Informationen, Vertragsdetails oder Kommunikationshistorie sehen?"
-                else:
-                    clarification_message = "Bitte präzisiere deine Anfrage. Was genau möchtest du wissen?"
-                logger.debug(f"Using fallback clarification message: '{clarification_message}'")
+            # Check if there are reasonable parameter options to provide
+            query_patterns = load_query_patterns()
+            query_data = {}
             
-            clarification_context = {
-                "query_type": "llm_generated",
-                "original_query": selected_query,
-                "original_parameters": parameters
-            }
+            if selected_query in query_patterns:
+                query_data = query_patterns[selected_query]
+                logger.info(f"HUMAN-IN-LOOP - Found query pattern for: {selected_query}")
             
-            logger.info(f"Human-in-loop activated with message: '{clarification_message}'")
+            # Load required parameters
+            required_params = query_data.get("required_parameters", [])
+            logger.info(f"HUMAN-IN-LOOP - Required parameters: {required_params}")
             
-            return {
-                "clarification_type": "text_clarification",
-                "clarification_message": clarification_message,
-                "possible_queries": ["get_customer_history", "get_customer_tickets"] if customer_name else [selected_query],
-                "clarification_context": clarification_context
-            }
+            # Check for missing required parameters
+            missing_params = []
+            for param in required_params:
+                param_name = param.get("name", "")
+                if not param_name:
+                    continue
+                    
+                # Check if this parameter is missing or has a placeholder value
+                param_value = parameters.get(param_name)
+                if param_value is None or param_value == "" or param_value == "N/A":
+                    missing_params.append(param_name)
             
-        except Exception as e:
-            logger.error(f"Error generating LLM clarification: {e}")
+            logger.info(f"HUMAN-IN-LOOP - Missing parameters: {missing_params}")
             
-            # Fallback auf eine einfache Rückfrage
-            clarification_message = "Bitte präzisiere deine Anfrage."
-            if customer_name:
-                clarification_message = f"Bitte präzisiere deine Anfrage zu {customer_name}."
-                
-            logger.info(f"Using error fallback clarification: '{clarification_message}'")
-            
-            return {
-                "clarification_type": "text_clarification",
-                "clarification_message": clarification_message,
-                "possible_queries": [selected_query],
-                "clarification_context": {
-                    "query_type": "general",
-                    "original_query": selected_query,
-                    "original_parameters": parameters
+            if missing_params:
+                logger.info(f"HUMAN-IN-LOOP - Activating human-in-loop for missing params: {missing_params}")
+                return {
+                    "message": clarification_message,
+                    "missing_parameters": missing_params,
+                    "query": selected_query,
+                    "current_parameters": parameters
                 }
+            else:
+                logger.info("HUMAN-IN-LOOP - No missing required parameters found")
+                return None
+                
+        except Exception as e:
+            logger.error(f"HUMAN-IN-LOOP ERROR - Failed to generate clarification: {e}")
+            # Fallback to a generic clarification message
+            return {
+                "message": "Um Ihnen besser helfen zu können, könnten Sie bitte Ihre Anfrage präzisieren?",
+                "query": selected_query,
+                "current_parameters": parameters
             }
-    
-    logger.debug("No human-in-loop needed, confidence is sufficient")
+            
+    logger.info("HUMAN-IN-LOOP - Not activated: confidence high enough")
     return None
 
 def process_text_clarification_response(

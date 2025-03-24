@@ -1,6 +1,7 @@
 from utils import debug_print
 import json
 import logging
+import openai
 from extract import extract_enhanced_date_params
 
 
@@ -75,7 +76,7 @@ def select_tool(user_message):
     
     try:
         # LLM-Anfrage
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="o3-mini", # oder o3-mini, je nach Verfügbarkeit
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}

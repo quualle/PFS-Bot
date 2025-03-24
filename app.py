@@ -52,17 +52,13 @@ from llm_manager import create_enhanced_system_prompt, generate_fallback_respons
 from utils import debug_print
 
 def load_tool_config():
-    """Lädt die Tool-Konfiguration aus einer YAML-Datei"""
-    TOOL_CONFIG_PATH = "tool_config.yaml"
-    try:
-        with open(TOOL_CONFIG_PATH, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f)
-    except Exception as e:
-        logging.error(f"Fehler beim Laden der Tool-Konfiguration: {e}")
-        # Einfache leere Konfiguration ohne hartcodierte Regeln
-        return {
-            "description": "Tool-Konfiguration für LLM-basierte Entscheidungen"
-        }
+    """Liefert die Standard-Tool-Konfiguration"""
+    # Direkte Rückgabe der Standardkonfiguration ohne Datei-Zugriff
+    return {
+        "description": "Tool-Konfiguration für LLM-basierte Entscheidungen",
+        "fallback_tool": "get_care_stays_by_date_range",
+        "use_llm_selection": True
+    }
 
 conversation_manager = ConversationManager(max_history=10)
 
@@ -1575,10 +1571,6 @@ def chat():
                         final_message = second_response.choices[0].message
                         antwort = final_message.content
                         debug_print("API Calls", f"Finale Antwort: {antwort[:100]}...")
-
-                    else:
-                        antwort = assistant_message.content
-                        debug_print("API Calls", f"Direkte Antwort (kein Function Call): {antwort[:100]}...")
                         # Warnung ins Log schreiben, wenn keine Funktion aufgerufen wurde
                         if any(term in user_message.lower() for term in ["care", "pflege", "kunden", "verträge", "mai", "monat"]):
                             logging.warning(f"Keine Funktion aufgerufen trotz relevanter Anfrage: '{user_message}'")
@@ -2987,7 +2979,6 @@ def admin():
         logging.exception("Fehler in admin-Funktion.")
         flash("Ein unerwarteter Fehler ist aufgetreten.", 'danger')
         return render_template('admin.html', themen_dict={})
-
 
 @app.route('/edit', methods=['GET'])
 @login_required

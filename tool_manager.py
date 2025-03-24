@@ -256,14 +256,10 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     return fallback_tool, f"Fallback zur Standardabfrage. Reasoning: {reasoning}"
 
 def load_tool_config():
-    """Lädt die Tool-Konfiguration aus einer YAML-Datei"""
-    TOOL_CONFIG_PATH = "tool_config.yaml"
-    try:
-        with open(TOOL_CONFIG_PATH, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f)
-    except Exception as e:
-        logging.error(f"Fehler beim Laden der Tool-Konfiguration: {e}")
-        # Einfache leere Konfiguration ohne hartcodierte Regeln
-        return {
-            "description": "Tool-Konfiguration für LLM-basierte Entscheidungen"
-        }
+    """Liefert die Standard-Tool-Konfiguration"""
+    # Direkte Rückgabe der Standardkonfiguration ohne Datei-Zugriff
+    return {
+        "description": "Tool-Konfiguration für LLM-basierte Entscheidungen",
+        "fallback_tool": "get_care_stays_by_date_range",
+        "use_llm_selection": True
+    }

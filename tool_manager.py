@@ -226,7 +226,13 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
         response_text = response.choices[0].message.content.strip()
         debug_print("Tool-Auswahl", f"LLM Tool-Auswahl: {response_text}")
         
-        # Parse das strukturierte Antwortformat
+        # Prüfen, ob explizit "kein Tool" benötigt wird
+        no_tool_needed = re.search(r'TOOL:\s*(Kein Tool|kein tool|keine tools|direkt|nicht notwendig)', response_text, re.IGNORECASE)
+        if no_tool_needed:
+            debug_print("Tool-Auswahl", "LLM hat entschieden, dass kein Tool benötigt wird - direkter Chat-Modus")
+            return "direct_conversation", f"Direkte Konversation ohne Tool. Reasoning: {response_text}"
+        
+        # Parse das strukturierte Antwortformat für ein spezifisches Tool
         tool_match = re.search(r'TOOL:\s*(\w+)', response_text)
         if tool_match:
             tool_choice = tool_match.group(1)

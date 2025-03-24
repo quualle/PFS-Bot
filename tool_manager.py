@@ -219,8 +219,7 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
         debug_print("Tool-Auswahl", "Starte LLM-Aufruf zur Tool-Bestimmung")
         response = openai.chat.completions.create(
             model="o3-mini",
-            messages=messages,
-            max_tokens=250
+            messages=messages
         )
         
         response_text = response.choices[0].message.content.strip()

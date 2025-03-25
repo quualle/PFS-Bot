@@ -600,9 +600,14 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="notfallmodus" value="0" id="notfallInput">
                 <input type="hidden" name="notfallart" value="" id="notfallArtInput">
-                <input type="text" name="message" placeholder="Gib deine Nachricht ein..." class="message-input" autocomplete="off">
+                <input type="text" name="message" placeholder="Gib deine Nachricht ein (bitte Zeitraum angeben)..." class="message-input" autocomplete="off">
                 <button type="submit" class="send-button"><span class="send-icon"></span></button>
             </form>
+            
+            <!-- Hinweis zur Zeitraumangabe -->
+            <div class="timeframe-hint" style="text-align: center; font-size: 12px; color: #88ccff; margin-top: 5px; margin-bottom: 5px;">
+                Für bessere Antworten bitte immer einen Zeitraum angeben (z.B. "März 2025", "letzte Woche")
+            </div>
 
             <!-- Clear Chat Button -->
             <div class="clear-chat-container">

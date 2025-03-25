@@ -20,6 +20,7 @@ Thema 1: CRM
 1s) Filterfunktionen			// Einsatz von Filtermöglichkeiten für eine optimierte Suche und Datenanalyse
 1t) Sonstige CRM-Themen			// Ergänzende CRM-spezifische Funktionen und allgemeine Hinweise
 1u) weitere crm themen
+1v) Richtlinie zur Abgabe von bewertungen von BK			// Dieser Maßstab soll helfen, Bewertungen zu standardisieren und einzunormen
 
 Thema 2: Vertragsangelegenheiten
 2a) Feiertagszuschläge			// Informationen zu Zuschlägen an Feiertagen
@@ -60,21 +61,28 @@ Thema 6: Vertriebsausbildung rhetorisch
 Thema 7: Finanzplanung für Vertriebspartner
 7a) Nutzung des Liquiditätsplan			// Hinweise und Anleitung des Liquiditätsplan
 
-Thema 8: Tests
-8a) tests
+Thema 8: Fragen & Probleme Organisationsintern
+8a) Zuweisung von Leads
+8b) Mehrfachvergabe eines Leads
+8c) Nutzung des ASANA unbesetzte-Stellen-Formular
+8d) Nutzung des ASANA Troublecheck
+8e) Nutzung des ASANA Anfragenformular
+8f) Ansprechbarkeit des Innendienst
+8g) Ansprechbarkeit des Marketing
+8h) Ansprechbarkeit der IT
 
 Thema 9: Notfälle & Vertragsgefährdungen
-9a) Neukunde: BK vor Anreise abgebrochen		    // Hier wird der Umgang erläutert um Neukunden wegen eines BK Abbruchs nicht direkt zu verlieren
-9b) Bestandskunde: BK während des Einsatzes abgereist               //
+9a) Neukunde: BK vor Anreise abgebrochen			// Hier wird der Umgang erläutert um Neukunden wegen eines BK Abbruchs nicht direkt zu verlieren
+9b) Bestandskunde: BK während des Einsatzes abgereist
 9c) Betrunkenheit Betreuungskraft
-9d) Streit/Gestörtes Sympathieverhältnis
 9e) Diebstahl
 9f) Verletzungen und Erkrankungen der Betreuungskraft
 9g) Sachschaden
 9h) Verweigerung bestimmter Aufgaben
-9i) Verschwinden der Betreuungskraft/Nichtauffinden
 9j) Betreuungskraft verlässt ihr Zimmer kaum noch
 9k) Aggressives Verhalten
 9l) Unzureichende Pflege oder Haushaltsführung
-9m) Streit/Sympathieverhältnis zu Betreuungskraft gestört
+9m) Hotel unterbringung			// Die Betreuungskraft soll im Hotel untergebracht werden weil eine Nächtigung im Haus nicht mehr gewünscht ist.
+
+
 

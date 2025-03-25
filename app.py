@@ -150,7 +150,7 @@ def calculate_chat_stats():
     for filename in os.listdir(CHATLOG_FOLDER):
         if not filename.endswith(".txt"):
             continue
-        
+
         filepath = os.path.join(CHATLOG_FOLDER, filename)
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -355,8 +355,8 @@ def log_notfall_event(user_id, notfall_art, user_message):
         json.dump(logs, f, ensure_ascii=False, indent=2)
 
 def contact_openai(messages, model=None):
-    model = 'o1-preview'
-    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o1-preview gesetzt.")
+    model = 'o3-mini'
+    debug_print("API Calls", "contact_openai wurde aufgerufen – fest auf o3-mini gesetzt.")
     try:
         response = openai.chat.completions.create(model=model, messages=messages)
         if response and response.choices:
@@ -373,7 +373,7 @@ def contact_openai(messages, model=None):
         return None
 
 def count_tokens(messages, model=None):
-    model = 'o1-preview'
+    model = 'o3-mini'
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -450,9 +450,9 @@ def set_username():
         username = request.form.get('username', '').strip()
         if len(username) < 3:
             return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
-        
+
         session['user_name'] = username
-        
+
         return jsonify({'success': True}), 200
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -527,10 +527,10 @@ def chat():
                 }
             ]
 
-            token_count = count_tokens(messages, model='o1-preview')
+            token_count = count_tokens(messages, model='o3-mini')
             debug_print("API Calls", f"Anzahl Tokens: {token_count}")
 
-            antwort = contact_openai(messages, model='o1-preview')
+            antwort = contact_openai(messages, model='o3-mini')
             if antwort:
                 chat_history.append({'user': user_message, 'bot': antwort})
                 session[chat_key] = chat_history
@@ -659,7 +659,7 @@ def admin():
                     {"role": "user", "content": "Du bist ein Experte, der aus Transkripten Wissen extrahiert..."},
                     {"role": "user", "content": f"Extrahiere ohne Verluste:\n'''{eingabe_text}'''"}
                 ]
-                extraktion_response = contact_openai(extraktion_messages, model="o1")
+                extraktion_response = contact_openai(extraktion_messages, model="o3-mini")
                 if not extraktion_response:
                     flash("Fehler bei der Wissensextraktion durch die KI.", 'danger')
                     return redirect(url_for('admin'))
@@ -684,7 +684,7 @@ def admin():
                     {"role": "user",
                      "content": f"Hier die Themenhierarchie:\n\n{themen_hierarchie}\n\nText:\n{extraktion_text}"}
                 ]
-                kategorisierung_response = contact_openai(kategorisierung_messages, model="o1")
+                kategorisierung_response = contact_openai(kategorisierung_messages, model="o3-mini")
                 if not kategorisierung_response:
                     flash("Fehler bei der Themenkategorisierung.", 'danger')
                     return redirect(url_for('admin'))
@@ -779,7 +779,7 @@ def verarbeite_eintrag(eingabe_text, ausgewähltes_thema, ausgewähltes_unterthe
         {"role": "user", "content": "Du bist ein Experte, der aus Transkripten Wissen extrahiert..."},
         {"role": "user", "content": f"Extrahiere ohne Verluste:\n'''{eingabe_text}'''"}
     ]
-    response = contact_openai(messages, model="o1")
+    response = contact_openai(messages, model="o3-mini")
     if not response:
         flash("Fehler bei der Zusammenfassung.", 'danger')
         return
@@ -1051,7 +1051,7 @@ def process_file_ai():
             {"role": "user", "content": "Du bist ein Assistent, der Texte in vorgegebene Themen..."},
             {"role": "user", "content": f"Hier die Themenhierarchie:\n\n{themen_hierarchie}\n\nText:\n{extracted_text}"}
         ]
-        kategorisierung_response = contact_openai(kategorisierung_messages, model="o1")
+        kategorisierung_response = contact_openai(kategorisierung_messages, model="o3-mini")
         if not kategorisierung_response:
             file_entry['status'] = 'Fehler: Kategorisierung fehlgeschlagen'
             session.modified = True

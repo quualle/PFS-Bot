@@ -188,16 +188,22 @@ def generate_fallback_response(selected_tool, tool_result):
 
 def create_enhanced_system_prompt(selected_tool, conversation_history=None):
     """Erstellt einen verbesserten System-Prompt basierend auf der Art der Abfrage und Konversationskontext"""
-    base_prompt = """
-        ⚠️⚠️⚠️⚠️⚠️ KRITISCHE ZEITINFORMATION – UNBEDINGT BEACHTEN ⚠️⚠️⚠️⚠️⚠️
+    base_prompt = f"""
+    ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+    HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+    AKTUELLER TAG: {datetime.now().strftime("%A")}
+    AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
 
-        DAS AKTUELLE DATUM IST: """ + datetime.now().strftime("%d.%m.%Y") + """
-        DER AKTUELLE MONAT IST: """ + datetime.now().strftime("%B %Y") + """
+    BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+    1. Wenn du nach dem aktuellen Datum, Monat, Tag oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+    2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+    3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+    4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
+    5. Wenn du nach dem aktuellen Tag, dem heutigen Datum oder ähnlichen Zeitinformationen gefragt wirst,
+       verwende AUSSCHLIESSLICH diese Informationen.
+    ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
 
-        Du MUSST diese Zeitinformationen in deiner Antwort korrekt verwenden!
-        ⚠️⚠️⚠️⚠️⚠️ ENDE KRITISCHE ZEITINFORMATION ⚠️⚠️⚠️⚠️⚠️
-
-        Du bist ein präziser Datenassistent, der Datenbankabfragen beantwortet.
+    Du bist ein präziser Datenassistent, der Datenbankabfragen beantwortet.
     
     WICHTIGE ANTWORTREGELN:
     1. Beginne sofort mit der Antwort ohne Einleitungen wie "Basierend auf den Daten..."
@@ -211,8 +217,7 @@ def create_enhanced_system_prompt(selected_tool, conversation_history=None):
     - "Lead": Ein potenzieller Kunde, der noch keinen Vertrag abgeschlossen hat
     - "Kündigung": Ein Vertrag, der nicht mehr aktiv ist, bei dem mind. ein Care Stay durchgeführt wurde
     - "Pause": Ein aktiver Vertrag ohne aktuell laufenden Care Stay, aber mit mind. einem früheren Care Stay
-    
-    Heutiges Datum: """ + datetime.now().strftime("%d.%m.%Y")
+    """
     
     # Füge Konversationskontext hinzu, wenn verfügbar
     conversation_context = ""
@@ -297,6 +302,7 @@ def create_enhanced_system_prompt(selected_tool, conversation_history=None):
 
     DAS AKTUELLE DATUM IST: """ + datetime.now().strftime("%d.%m.%Y") + """
     DER AKTUELLE MONAT IST: """ + datetime.now().strftime("%B %Y") + """
+    DER AKTUELLE TAG IST: """ + datetime.now().strftime("%A") + """
 
     Du MUSST diese Zeitinformationen in deiner Antwort korrekt verwenden:
     1. Wenn nach "diesem Monat" gefragt wird, ist damit """ + datetime.now().strftime("%B %Y") + """ gemeint

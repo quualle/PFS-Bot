@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import random
+import os
 
 # Logger konfigurieren
 logging.basicConfig(
@@ -22,110 +23,136 @@ def debug_print(section, message):
     if DEBUG_MODE:
         print(f"[DEBUG:{section}] {message}")
 
-try:
-    import openai
-    
-    def call_llm(messages, model="o3-mini", conversation_history=None):
-        """
-        Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
-        Diese sollte die bestehende call_llm Funktion in app.py ersetzen.
-        """
-        time_awareness_message = {
-            "role": "developer", 
-            "content": f"""
-            ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
-            HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
-            AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+# Variable zum Speichern der ursprünglichen OpenAI-Funktion
+original_create = None
+openai_initialized = False
 
-            BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
-            1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
-            2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
-            3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
-            4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
-            ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+# Funktion zum Initialisieren des Monkey-Patch
+def initialize_time_awareness():
+    """
+    Initialisiert den Monkey-Patch für die Zeit-Awareness.
+    Diese Funktion wird aufgerufen, sobald der erste API-Aufruf erfolgt.
+    """
+    global original_create, openai_initialized
+    
+    # Wenn bereits initialisiert, nichts tun
+    if openai_initialized:
+        return
+    
+    try:
+        import openai
+        
+        # Prüfen, ob API-Schlüssel gesetzt ist
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            logging.warning("OpenAI API-Schlüssel nicht in Umgebungsvariablen gefunden. Zeit-Awareness wird aktiviert, sobald der API-Schlüssel verfügbar ist.")
+            return
+            
+        # Speichere die originale Funktion
+        original_create = openai.chat.completions.create
+        
+        def time_aware_create(*args, **kwargs):
             """
-        }
+            Erweiterte Version der openai.chat.completions.create Funktion, 
+            die automatisch Zeit-Awareness-Informationen zu jedem Aufruf hinzufügt.
+            """
+            # Zeit-Awareness-Nachricht erstellen
+            time_awareness_message = {
+                "role": "developer", 
+                "content": f"""
+                ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+                HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+                AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+
+                BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+                1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+                2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+                3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+                4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
+                ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+                """
+            }
+            
+            # Prüfen, ob 'messages' in kwargs enthalten ist
+            if 'messages' in kwargs:
+                # Kopie der originalen Nachrichten erstellen, um sie nicht zu verändern
+                messages = kwargs['messages'].copy()
                 
-        # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
-        if conversation_history:
-            # Verwende nur die neuesten Nachrichten, um Token-Limits zu vermeiden
-            relevant_history = conversation_history[-5:]  # Anzahl nach Bedarf anpassen
+                # Zeit-Awareness-Nachricht hinzufügen
+                messages.append(time_awareness_message)
+                
+                # messages in kwargs aktualisieren
+                kwargs['messages'] = messages
             
-            # Füge History am Anfang der messages hinzu, erhalte die Reihenfolge
-            context_messages = []
-            for msg in relevant_history:
-                # Vermeide Duplikate
-                if all(not (m.get('content') == msg.get('content') and 
-                            m.get('role') == msg.get('role')) 
-                      for m in messages):
-                    context_messages.append(msg)
-            
-            messages = context_messages + messages
+            # Originale Funktion mit den erweiterten Argumenten aufrufen
+            return original_create(*args, **kwargs)
         
-        # Zeit-Awareness-Nachricht immer hinzufügen, unabhängig von der Konversationshistorie
-        messages.append(time_awareness_message)
+        # Die originale Funktion durch unsere erweiterte Version ersetzen
+        openai.chat.completions.create = time_aware_create
+        openai_initialized = True
+        logging.info("Zeit-Awareness für OpenAI-Aufrufe erfolgreich aktiviert.")
         
-        # Integration in bestehende OpenAI-Aufrufe
-        try:
-            response = openai.chat.completions.create(
-                model=model,
-                messages=messages
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            logging.error(f"Fehler beim Aufrufen des LLM: {e}")
-            return None
-    
-    # Monkey-Patch erst durchführen, wenn openai erfolgreich importiert wurde
-    # Speichere die originale Funktion
-    original_create = openai.chat.completions.create
-    
-    def time_aware_create(*args, **kwargs):
-        """
-        Erweiterte Version der openai.chat.completions.create Funktion, 
-        die automatisch Zeit-Awareness-Informationen zu jedem Aufruf hinzufügt.
-        """
-        # Zeit-Awareness-Nachricht erstellen
-        time_awareness_message = {
-            "role": "developer", 
-            "content": f"""
-            ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
-            HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
-            AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+    except (ImportError, AttributeError, Exception) as e:
+        logging.error(f"Fehler beim Initialisieren der Zeit-Awareness: {e}")
 
-            BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
-            1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
-            2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
-            3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
-            4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
-            ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
-            """
-        }
-        
-        # Prüfen, ob 'messages' in kwargs enthalten ist
-        if 'messages' in kwargs:
-            # Kopie der originalen Nachrichten erstellen, um sie nicht zu verändern
-            messages = kwargs['messages'].copy()
+def call_llm(messages, model="o3-mini", conversation_history=None):
+    """
+    Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
+    Diese sollte die bestehende call_llm Funktion in app.py ersetzen.
+    """
+    # Initialisiere Zeit-Awareness bei jedem Aufruf
+    initialize_time_awareness()
+    
+    time_awareness_message = {
+        "role": "developer", 
+        "content": f"""
+        ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+        HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+        AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+
+        BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+        1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+        2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+        3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+        4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
+        ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+        """
+    }
             
-            # Zeit-Awareness-Nachricht hinzufügen
-            messages.append(time_awareness_message)
-            
-            # messages in kwargs aktualisieren
-            kwargs['messages'] = messages
+    # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
+    if conversation_history:
+        # Verwende nur die neuesten Nachrichten, um Token-Limits zu vermeiden
+        relevant_history = conversation_history[-5:]  # Anzahl nach Bedarf anpassen
         
-        # Originale Funktion mit den erweiterten Argumenten aufrufen
-        return original_create(*args, **kwargs)
+        # Füge History am Anfang der messages hinzu, erhalte die Reihenfolge
+        context_messages = []
+        for msg in relevant_history:
+            # Vermeide Duplikate
+            if all(not (m.get('content') == msg.get('content') and 
+                        m.get('role') == msg.get('role')) 
+                  for m in messages):
+                context_messages.append(msg)
+        
+        messages = context_messages + messages
     
-    # Die originale Funktion durch unsere erweiterte Version ersetzen
-    openai.chat.completions.create = time_aware_create
+    # Zeit-Awareness-Nachricht immer hinzufügen, unabhängig von der Konversationshistorie
+    messages.append(time_awareness_message)
     
-except ImportError:
-    logging.error("OpenAI-Modul konnte nicht importiert werden. Zeit-Awareness-Feature deaktiviert.")
-    
-    # Fallback-Funktion, falls OpenAI nicht importiert werden kann
-    def call_llm(messages, model="o3-mini", conversation_history=None):
+    # Integration in bestehende OpenAI-Aufrufe
+    try:
+        import openai
+        
+        response = openai.chat.completions.create(
+            model=model,
+            messages=messages
+        )
+        return response.choices[0].message.content
+    except ImportError:
         logging.error("OpenAI-Modul nicht verfügbar. LLM-Aufruf nicht möglich.")
         return "Entschuldigung, aber der Sprachdienst ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
+    except Exception as e:
+        logging.error(f"Fehler beim Aufrufen des LLM: {e}")
+        return "Es tut mir leid, aber ich konnte Ihre Anfrage nicht verarbeiten. Bitte versuchen Sie es später erneut."
 
 def generate_fallback_response(selected_tool, tool_result):
     """Helper function to generate a fallback response when LLM generation fails"""

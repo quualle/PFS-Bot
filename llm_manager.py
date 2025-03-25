@@ -1,98 +1,131 @@
-def call_llm(messages, model="o3-mini", conversation_history=None):
-    """
-    Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
-    Diese sollte die bestehende call_llm Funktion in app.py ersetzen.
-    """
+from datetime import datetime, timedelta
+import json
+import logging
+import re
+import random
 
+# Logger konfigurieren
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
 
-    time_awareness_message = {
-        "role": "developer", 
-        "content": f"""
-        ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
-        HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
-        AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+# Detailliertes Logging für Entwicklungszwecke
+DEBUG_MODE = False
 
-        BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
-        1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
-        2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
-        3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
-        4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
-        ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+def debug_print(section, message):
+    """Debug-Ausgaben nur im DEBUG_MODE"""
+    if DEBUG_MODE:
+        print(f"[DEBUG:{section}] {message}")
+
+try:
+    import openai
+    
+    def call_llm(messages, model="o3-mini", conversation_history=None):
         """
-    }
+        Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
+        Diese sollte die bestehende call_llm Funktion in app.py ersetzen.
+        """
+        time_awareness_message = {
+            "role": "developer", 
+            "content": f"""
+            ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+            HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+            AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+
+            BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+            1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+            2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+            3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+            4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
+            ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+            """
+        }
+                
+        # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
+        if conversation_history:
+            # Verwende nur die neuesten Nachrichten, um Token-Limits zu vermeiden
+            relevant_history = conversation_history[-5:]  # Anzahl nach Bedarf anpassen
             
-    # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
-    if conversation_history:
-        # Verwende nur die neuesten Nachrichten, um Token-Limits zu vermeiden
-        relevant_history = conversation_history[-5:]  # Anzahl nach Bedarf anpassen
+            # Füge History am Anfang der messages hinzu, erhalte die Reihenfolge
+            context_messages = []
+            for msg in relevant_history:
+                # Vermeide Duplikate
+                if all(not (m.get('content') == msg.get('content') and 
+                            m.get('role') == msg.get('role')) 
+                      for m in messages):
+                    context_messages.append(msg)
+            
+            messages = context_messages + messages
         
-        # Füge History am Anfang der messages hinzu, erhalte die Reihenfolge
-        context_messages = []
-        for msg in relevant_history:
-            # Vermeide Duplikate
-            if all(not (m.get('content') == msg.get('content') and 
-                        m.get('role') == msg.get('role')) 
-                  for m in messages):
-                context_messages.append(msg)
-        
-        messages = context_messages + messages
-    
-    # Zeit-Awareness-Nachricht immer hinzufügen, unabhängig von der Konversationshistorie
-    messages.append(time_awareness_message)
-    
-    # Integration in bestehende OpenAI-Aufrufe
-    try:
-        response = openai.chat.completions.create(
-            model=model,
-            messages=messages
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        logging.error(f"Fehler beim Aufrufen des LLM: {e}")
-        return None
-
-# Monkey-Patch für openai.chat.completions.create, um Zeit-Awareness global zu implementieren
-# Dies ist ein fortgeschrittener Ansatz, der die API-Funktion erweitert, ohne die Codebasis zu ändern
-original_create = openai.chat.completions.create
-
-def time_aware_create(*args, **kwargs):
-    """
-    Erweiterte Version der openai.chat.completions.create Funktion, 
-    die automatisch Zeit-Awareness-Informationen zu jedem Aufruf hinzufügt.
-    """
-    # Zeit-Awareness-Nachricht erstellen
-    time_awareness_message = {
-        "role": "developer", 
-        "content": f"""
-        ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
-        HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
-        AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
-
-        BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
-        1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
-        2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
-        3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
-        4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
-        ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
-        """
-    }
-    
-    # Prüfen, ob 'messages' in kwargs enthalten ist
-    if 'messages' in kwargs:
-        # Kopie der originalen Nachrichten erstellen, um sie nicht zu verändern
-        messages = kwargs['messages'].copy()
-        
-        # Zeit-Awareness-Nachricht hinzufügen
+        # Zeit-Awareness-Nachricht immer hinzufügen, unabhängig von der Konversationshistorie
         messages.append(time_awareness_message)
         
-        # messages in kwargs aktualisieren
-        kwargs['messages'] = messages
+        # Integration in bestehende OpenAI-Aufrufe
+        try:
+            response = openai.chat.completions.create(
+                model=model,
+                messages=messages
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logging.error(f"Fehler beim Aufrufen des LLM: {e}")
+            return None
     
-    # Originale Funktion mit den erweiterten Argumenten aufrufen
-    return original_create(*args, **kwargs)
+    # Monkey-Patch erst durchführen, wenn openai erfolgreich importiert wurde
+    # Speichere die originale Funktion
+    original_create = openai.chat.completions.create
+    
+    def time_aware_create(*args, **kwargs):
+        """
+        Erweiterte Version der openai.chat.completions.create Funktion, 
+        die automatisch Zeit-Awareness-Informationen zu jedem Aufruf hinzufügt.
+        """
+        # Zeit-Awareness-Nachricht erstellen
+        time_awareness_message = {
+            "role": "developer", 
+            "content": f"""
+            ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+            HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+            AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
 
-# Die originale Funktion durch unsere erweiterte Version ersetzen
-openai.chat.completions.create = time_aware_create
+            BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+            1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+            2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+            3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+            4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
+            ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+            """
+        }
+        
+        # Prüfen, ob 'messages' in kwargs enthalten ist
+        if 'messages' in kwargs:
+            # Kopie der originalen Nachrichten erstellen, um sie nicht zu verändern
+            messages = kwargs['messages'].copy()
+            
+            # Zeit-Awareness-Nachricht hinzufügen
+            messages.append(time_awareness_message)
+            
+            # messages in kwargs aktualisieren
+            kwargs['messages'] = messages
+        
+        # Originale Funktion mit den erweiterten Argumenten aufrufen
+        return original_create(*args, **kwargs)
+    
+    # Die originale Funktion durch unsere erweiterte Version ersetzen
+    openai.chat.completions.create = time_aware_create
+    
+except ImportError:
+    logging.error("OpenAI-Modul konnte nicht importiert werden. Zeit-Awareness-Feature deaktiviert.")
+    
+    # Fallback-Funktion, falls OpenAI nicht importiert werden kann
+    def call_llm(messages, model="o3-mini", conversation_history=None):
+        logging.error("OpenAI-Modul nicht verfügbar. LLM-Aufruf nicht möglich.")
+        return "Entschuldigung, aber der Sprachdienst ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
 
 def generate_fallback_response(selected_tool, tool_result):
     """Helper function to generate a fallback response when LLM generation fails"""

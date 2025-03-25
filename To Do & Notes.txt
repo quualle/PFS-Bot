@@ -1,21 +1,17 @@
-"62d00b56a384fd908f7f5a6c"
-"2025-01-01T00:00:00.000Z"
-"2025-01-31T00:00:00.000Z"
+Für bigquery: tests
+
+seller_id = "62d00b56a384fd908f7f5a6c"
+start_date = "2025-01-01T00:00:00.000Z"
+end_date = "2025-01-31T00:00:00.000Z"
+
+
+
+TODO:
 
 Bot verhalten/Fehler:
-
-
 Bei new contracts auch AG wechsel differenzeieren
-
 Längere antworten mit listen und vollständig. Alles gleich in einem Textblock
 Rückfragen sollen funktionieren
-
-
 Was kann ich fragen im Xora
 
 
-Umgesetzt:
-Feedback
-chatlog
-Zeit
-CSRF

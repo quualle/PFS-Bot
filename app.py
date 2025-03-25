@@ -1493,6 +1493,25 @@ def chat():
                                 {"role": "user", "content": user_message}
                             ]
                             
+                            # Zeit-Awareness-Nachricht hinzufügen
+                            time_awareness_message = {
+                                "role": "developer", 
+                                "content": f"""
+                                ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+                                HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+                                AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+
+                                BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+                                1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+                                2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+                                3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+                                4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
+                                ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+                                """
+                            }
+                            
+                            direct_messages.append(time_awareness_message)  # Zeit-Awareness-Nachricht als letzte Nachricht hinzufügen
+                            
                             response = openai.chat.completions.create(
                                 model="o3-mini",
                                 messages=direct_messages

@@ -846,6 +846,7 @@ def stream_text_response(response_text, user_message, session_data):
         
         # Stream beenden
         yield f"data: {json.dumps({'type': 'complete', 'user': user_message, 'bot': response_text})}\n\n"
+        yield f"data: {json.dumps({'type': 'debug', 'message': 'Stream complete with function execution'})}\n\n"
         yield f"data: {json.dumps({'type': 'end'})}\n\n"
     except Exception as e:
         logging.exception("Fehler im Text-Stream")
@@ -1489,28 +1490,24 @@ def chat():
                         elif selected_tool == "direct_conversation":
                             debug_print("Tool-Auswahl", "Direkter Konversationsmodus erkannt - Leite Anfrage direkt an LLM weiter")
                             direct_messages = [
-                                {"role": "system", "content": "Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen."},
+                                {"role": "system", "content": f"""
+                                Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen.
+
+⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
+HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
+AKTUELLER TAG: {datetime.now().strftime("%A")}
+AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+
+BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
+1. Wenn du nach dem aktuellen Datum, Monat, Tag oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
+2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
+3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
+5. Wenn du nach dem aktuellen Tag, dem heutigen Datum oder ähnlichen Zeitinformationen gefragt wirst, verwende AUSSCHLIESSLICH diese Informationen.
+⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
+                                """},
                                 {"role": "user", "content": user_message}
                             ]
-                            
-                            # Zeit-Awareness-Nachricht hinzufügen
-                            time_awareness_message = {
-                                "role": "developer", 
-                                "content": f"""
-                                ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
-                                HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
-                                AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
-
-                                BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
-                                1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
-                                2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
-                                3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
-                                4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
-                                ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
-                                """
-                            }
-                            
-                            direct_messages.append(time_awareness_message)  # Zeit-Awareness-Nachricht als letzte Nachricht hinzufügen
                             
                             response = openai.chat.completions.create(
                                 model="o3-mini",
@@ -3419,7 +3416,6 @@ def process_file_manual():
     except Exception as e:
         logging.exception("Fehler bei der manuellen Verarbeitung.")
         return jsonify({'success': False, 'message': 'Ein interner Fehler ist aufgetreten.'}), 500
-
 
 ###########################################
 # App Start

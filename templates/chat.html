@@ -606,7 +606,7 @@
             
             <!-- Hinweis zur Zeitraumangabe -->
             <div class="timeframe-hint" style="text-align: center; font-size: 12px; color: #88ccff; margin-top: 5px; margin-bottom: 5px;">
-                Für bessere Antworten bitte immer einen Zeitraum angeben (z.B. "März 2025", "letzte Woche")
+                Für bessere Antworten bitte immer einen Zeitraum angeben (z.B. "März 2025", "4.Quartal 2024")
             </div>
 
             <!-- Clear Chat Button -->
@@ -694,7 +694,12 @@
                         botDiv.classList.add('message', 'bot');
                         botDiv.innerHTML = `
                             <strong>XORA:</strong>
-                            <span>Hi ${userName}, wie kann ich dir heute helfen?</span>
+                            <span>Hi ${userName}, schön dass du vorbeischaust! Wie kann ich dir heute helfen?<br><br>
+Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
+- Wie war meine Abschlussquote im Januar?<br>
+- Wie viele Kündigungen und Agenturwechsel hatte ich im Januar?<br>
+- Wie viele aktive Kunden habe ich gerade eben?<br>
+- Wie viele Pausen habe ich gerade?</span>
                         `;
                         chatHistory.appendChild(botDiv);
                         forceScrollToBottom();
@@ -760,7 +765,12 @@
                     botDiv.classList.add('message', 'bot');
                     botDiv.innerHTML = `
                         <strong>XORA:</strong>
-                        <span>Hi ${userName}, wie kann ich dir heute helfen?</span>
+                        <span>Hi ${userName}, wie kann ich dir heute helfen?<br><br>
+Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
+- Wie war meine Abschlussquote im Januar?<br>
+- Wie viele Kündigungen und Agenturwechsel hatte ich im Januar?<br>
+- Wie viele aktive Kunden habe ich gerade eben?<br>
+- Wie viele Pausen habe ich gerade?</span>
                     `;
                     chatHistory.appendChild(botDiv);
                     forceScrollToBottom();
@@ -1473,7 +1483,12 @@
                         botDiv.classList.add('message', 'bot');
                         botDiv.innerHTML = `
                             <strong>XORA:</strong>
-                            <span>Hallo ${userName}, wie kann ich dir behilflich sein?</span>
+                            <span>Hi ${userName}, wie kann ich dir behilflich sein?<br><br>
+Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
+- Wie war meine Abschlussquote im Januar?<br>
+- Wie viele Kündigungen und Agenturwechsel hatte ich im Januar?<br>
+- Wie viele aktive Kunden habe ich gerade eben?<br>
+- Wie viele Pausen habe ich gerade?</span>
                         `;
                         chatHistory.appendChild(botDiv);
                         forceScrollToBottom();

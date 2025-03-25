@@ -16,13 +16,11 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
         1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
         2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
         3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
+        4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
         ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
         """
     }
             
-            # Add this message at the END to ensure it has the highest priority
-    
-    
     # Wenn Konversationshistorie vorhanden ist, integriere sie mit den aktuellen Nachrichten
     if conversation_history:
         # Verwende nur die neuesten Nachrichten, um Token-Limits zu vermeiden
@@ -38,8 +36,9 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
                 context_messages.append(msg)
         
         messages = context_messages + messages
-
-        messages.append(time_awareness_message)
+    
+    # Zeit-Awareness-Nachricht immer hinzufügen, unabhängig von der Konversationshistorie
+    messages.append(time_awareness_message)
     
     # Integration in bestehende OpenAI-Aufrufe
     try:

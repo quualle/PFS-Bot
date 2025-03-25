@@ -601,7 +601,7 @@ def speichere_wissensbasis(eintrag):
     inhalt = eintrag.get("inhalt", "").strip()
 
     if thema and unterthema_full:
-        match_unterthema = re.match(r'(\d+[a-z]*)\)\s*(.*)', unterthema_full)
+        match_unterthema = re.match(r'(\d+[a-z]*)\)?\s*(.*)', unterthema_full)
         if match_unterthema:
             unterthema_key = match_unterthema.group(1)
             unterthema_title = match_unterthema.group(2)
@@ -1490,22 +1490,7 @@ def chat():
                         elif selected_tool == "direct_conversation":
                             debug_print("Tool-Auswahl", "Direkter Konversationsmodus erkannt - Leite Anfrage direkt an LLM weiter")
                             direct_messages = [
-                                {"role": "system", "content": f"""
-                                Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen.
-
-⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
-HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
-AKTUELLER TAG: {datetime.now().strftime("%A")}
-AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
-
-BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
-1. Wenn du nach dem aktuellen Datum, Monat, Tag oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
-2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
-3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
-4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
-5. Wenn du nach dem aktuellen Tag, dem heutigen Datum oder ähnlichen Zeitinformationen gefragt wirst, verwende AUSSCHLIESSLICH diese Informationen.
-⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
-                                """},
+                                {"role": "system", "content": "Du bist ein hilfreicher Assistent für ein Pflegevermittlungsunternehmen."},
                                 {"role": "user", "content": user_message}
                             ]
                             

@@ -99,424 +99,522 @@
 
         /* CHAT-HISTORY (DER SCROLL-BARE BEREICH) */
         .chat-history {
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            flex-grow: 1;
+            overflow-y: scroll;
+            margin-bottom: 20px;
+            padding-right: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 255, 255, 0.5) rgba(0, 0, 0, 0.5);
+        }
+        
+        /* CUSTOM SCROLLBAR FÜR WEBKIT-BASIERTE BROWSER */
+        .chat-history::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .chat-history::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.5);
             border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            position: relative;
+        }
+        .chat-history::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 255, 0.5);
+            border-radius: 10px;
+        }
+        .chat-history::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 255, 0.7);
         }
 
-        /* NACHRICHTEN-BUBBLE */
+        /* NACHRICHT BUBBLES */
         .message {
-            border-radius: 20px;
-            margin-bottom: 15px;
-            max-width: 100%;
-            padding: 12px 16px 35px 16px; 
-            animation: slideIn 0.5s ease-out;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            display: flex; 
-            flex-direction: column;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border-radius: 10px;
             position: relative;
-
-            font-size: 1.1em; 
-            line-height: 1.4; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-        }
-
-        /* USER-BUBBLE (BLAU) */
-        .message.user {
-            background-color: #00ffff;
-            color: #000;
-            align-self: flex-end;
-            border-bottom-right-radius: 0;
-        }
-
-        /* BOT-BUBBLE (GRAU) */
-        .message.bot {
-            background-color: #2e2e2e;
-            color: #fff;
-            align-self: flex-start;
-            border-bottom-left-radius: 0;
-        }
-
-        /* LABELS (SIE / XORA) LINKS OBEN, NACHRICHT DARUNTER */
-        .message strong {
-            position: absolute;
-            top: 12px; 
-            left: 16px; 
-            margin-bottom: 0;
-        }
-        .message span {
-            margin-top: 30px; 
-        }
-
-        /* FEEDBACK-ICONS (UNTEN RECHTS) */
-        .feedback-icons {
-            position: absolute;
-            bottom: 5px; 
-            right: 5px;
-            display: flex; 
-            gap: 10px;
-            font-size: 1.2em; 
-            cursor: pointer;
-        }
-        .feedback-icons span {
-            margin-left: 10px;
-        }
-
-        /* TIPP-ANIMATION */
-        .typing {
-            border-right: 2px solid #00ffff;
-            animation: blink-caret 0.75s step-end infinite;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(-50px); opacity: 0; }
-            to   { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to   { opacity: 1; }
-        }
-        @keyframes blink-caret {
-            from, to { border-color: transparent; }
-            50%      { border-color: #00ffff; }
-        }
-
-        /* CHAT-FORMULAR */
-        form {
-            display: flex;
-            gap: 10px;
-        }
-        input[type="text"] {
-            flex: 1;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            font-size: 1em;
-            outline: none;
-            transition: background 0.3s ease;
-            font-family: 'Arial', sans-serif;
-        }
-        input[type="text"]::placeholder {
-            color: #e0e0e0;
-        }
-        input[type="text"]:focus {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* ACTION-BUTTONS (3 BUTTONS Unten Rechts) */
-        .action-buttons {
-            position: absolute; 
-            bottom: 10px; 
-            right: 10px;
-            display: flex;
-            gap: 10px; 
-        }
-
-        /* BUTTONS */
-        button {
-            padding: 15px 25px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.3s;
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        button:hover {
-            transform: translateY(-3px);
-        }
-
-        .clear-chat-button {
-            background-color: #28a745; 
-            color: #fff;
-        }
-        .clear-chat-button:hover {
-            background-color: #218838; 
-        }
-
-        .notfall-button {
-            background-color: #dc3545; 
-            color: #fff;
-        }
-        .notfall-button:hover {
-            background-color: #b52a3a; 
-        }
-
-        .admin-button {
-            background-color: #f0ad4e; 
-            color: #000;
-        }
-        .admin-button:hover {
-            background-color: #ec971f;
-        }
-
-        /* OPTIONAL Notfall-Bubbles */
-        #notfallOptions {
-            display: none; 
-            flex-wrap: wrap; 
-            gap: 10px; 
-            justify-content: center; 
-            margin-bottom: 20px;
-        }
-        .notfall-option {
-            background-color: #ffcccc; 
-            color: #000; 
-            padding: 10px 15px; 
-            border-radius: 20px; 
-            cursor: pointer; 
-            transition: background-color 0.2s ease, color 0.2s ease, border 0.2s ease;
-            border: 2px solid transparent;
-        }
-        .notfall-option:hover {
-            background-color: #ff9999;
-        }
-        .notfall-option.selected {
-            border-color: #fff;
-            background-color: #ff6666;
-            color: #fff;
-        }
-
-        /* USER-GUIDANCE */
-        .user-guidance {
-            margin-top: 10px;
-            font-size: 0.85em;
-            color: #ccc;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease-in-out;
             line-height: 1.4;
         }
-        .user-guidance details {
-            margin-top: 8px;
-            cursor: pointer;
+        
+        /* USER-NACHRICHT (RECHTS, BLAU) */
+        .message.user {
+            background-color: #2a547c;
+            align-self: flex-end;
+            margin-left: auto;
         }
-        .user-guidance summary {
-            font-weight: bold;
+        
+        /* BOT-NACHRICHT (LINKS, DUNKLER) */
+        .message.bot {
+            background-color: #202936;
+            align-self: flex-start;
+            margin-right: auto;
+            position: relative;
+        }
+        
+        /* ANIMATION FÜR ERSCHEINEN */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* TIPP-ANIMATION */
+        .typing span::after {
+            content: '▋';
+            animation: cursor-blink 0.7s infinite;
+            margin-left: 2px;
+        }
+        @keyframes cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* FORM FÜR EINGABE */
+        .chat-form {
+            display: flex;
+            margin-top: 10px;
+        }
+        
+        /* NACHRICHTENFELD */
+        .message-input {
+            flex-grow: 1;
+            padding: 12px 17px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            margin-right: 10px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .message-input:focus {
             outline: none;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 255, 255, 0.2);
         }
-        .user-guidance ul {
-            list-style: disc;
-            margin-left: 1.4em;
-            margin-top: 5px;
+        
+        /* SENDEN-BUTTON */
+        .send-button {
+            background: linear-gradient(135deg, #2d6a9a, #0f4c81);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+        .send-button:hover {
+            background: linear-gradient(135deg, #3a7dae, #1b5e91);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .send-button:active {
+            transform: scale(0.97);
+        }
+        
+        /* SENDEPFEIL-ICON */
+        .send-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+        }
+        .send-icon::before {
+            content: '➤';
+            font-size: 18px;
+            transform: rotate(-45deg);
+            display: inline-block;
         }
 
-        /* STATS-CONTAINER (OBEN RECHTS) */
-        .stats-container {
-            position: absolute; 
-            top: 20px; 
-            right: 20px; 
-            width: 200px; 
-            background: rgba(255, 255, 255, 0.1); 
-            padding: 15px; 
-            border-radius: 10px; 
-            box-shadow: 0 0 15px rgba(0,0,0,0.4); 
-            text-align: left; 
-        }
-
-        /* MODAL-OVERLAY */
-        .modal-overlay {
+        /* USER-NAME-OVERLAY */
+        .overlay {
             position: fixed;
-            top: 0; 
+            top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0, 0, 0, 0.8);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
+            z-index: 100;
+            backdrop-filter: blur(5px);
         }
-        .modal {
-            background: #fff;
-            color: #000;
-            padding: 20px;
-            border-radius: 10px;
-            width: 400px;
-            max-width: 90%;
+        
+        /* OVERLAY BOX */
+        .overlay-content {
+            background: rgba(22, 33, 46, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
         }
-        .modal h3 {
+        .overlay h2 {
+            color: #00ffff;
             margin-top: 0;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+            font-size: 24px;
         }
-
-        /* NAME-OVERLAY - Mittig & Textfarbe fix */
-        .name-overlay {
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.8);
-            display: none; 
-            justify-content: center; 
-            align-items: center;
-            z-index: 10000;
+        .overlay p {
+            color: #e0e0e0;
+            margin-bottom: 25px;
+            line-height: 1.5;
         }
-        .name-modal {
-            background: #fff; 
-            color: #000; 
-            padding: 20px; 
-            border-radius: 8px; 
-            text-align: center; 
-            width: 400px;
-            max-width: 90%;
-        }
-        .name-modal input[type="text"] {
-            width: 80%;
-            padding: 8px;
-            margin-top: 10px;
+        
+        /* OVERLAY-EINGABEFELD */
+        .overlay input {
+            width: 100%;
+            padding: 12px;
             margin-bottom: 20px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            color: #000; /* Sichtbarer Text */
-        }
-        .name-modal button {
-            padding: 10px 20px;
-            background-color: #00ffff;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
         }
-        .name-modal button:disabled {
-            background-color: #a0a0a0;
+        .overlay input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        /* OVERLAY-BUTTON */
+        .overlay button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2d6a9a, #0f4c81);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .overlay button:hover {
+            background: linear-gradient(135deg, #3a7dae, #1b5e91);
+            transform: scale(1.05);
+        }
+        .overlay button:disabled {
+            background: #5a5a5a;
             cursor: not-allowed;
+            transform: none;
         }
 
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            .chat-box {
-                padding: 10px 15px;
-                height: 90vh;
-                width: 100vw;
-            }
-            .message {
-                width: 100%;
-            }
+        /* FEEDBACK-OPTIONEN */
+        .feedback-icons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            gap: 10px;
+        }
+        .feedback-icons span {
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            transition: all 0.2s ease;
+        }
+        .feedback-icons span:hover {
+            transform: scale(1.2);
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .thumb-up:hover {
+            background: rgba(40, 167, 69, 0.3) !important;
+        }
+        .thumb-down:hover {
+            background: rgba(220, 53, 69, 0.3) !important;
+        }
+
+        /* LINK-FORMATTIERUNG */
+        a {
+            color: #4dabf7;
+            text-decoration: none;
+            position: relative;
+            padding-bottom: 2px;
+        }
+        a:hover {
+            text-decoration: none;
+            color: #74c0ff;
+        }
+        a::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 1px;
+            background-color: currentColor;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+            transform-origin: right;
+        }
+        a:hover::after {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        /* Clear Chat Button */
+        .clear-chat-container {
+            margin-top: 10px;
+        }
+        .clear-chat-button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2d6a9a, #0f4c81);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .clear-chat-button:hover {
+            background: linear-gradient(135deg, #3a7dae, #1b5e91);
+            transform: scale(1.05);
+        }
+
+        /* NOTFALL-BUTTON */
+        .notfall-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 15px;
+            background: linear-gradient(135deg, #c62828, #d32f2f);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        .notfall-button:hover {
+            background: linear-gradient(135deg, #d32f2f, #e53935);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .notfall-button:active {
+            transform: translateY(0);
+        }
+
+        /* CLARIFICATION CONTAINER */
+        .clarification-box {
+            background-color: rgba(52, 73, 94, 0.8);
+            border: 1px solid #4a6b8c;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .clarification-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #00ffff;
+        }
+        
+        .clarification-message {
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .clarification-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .option-button {
+            padding: 10px 15px;
+            background-color: #00476b;
+            color: white;
+            border: 1px solid #0077b3;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            transition: background-color 0.2s ease;
+        }
+        
+        .option-button:hover {
+            background-color: #0077b3;
+        }
+
+        /* STATISTICS BUTTON */
+        .statistics-button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2d6a9a, #0f4c81);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .statistics-button:hover {
+            background: linear-gradient(135deg, #3a7dae, #1b5e91);
+            transform: scale(1.05);
+        }
+
+        /* STATISTICS MODAL */
+        .statistics-content {
+            background: rgba(22, 33, 46, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        .statistics-content h2 {
+            color: #00ffff;
+            margin-top: 0;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+            font-size: 24px;
+        }
+        .stats-chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stats-chart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            width: 120px;
+        }
+        .chart-bar {
+            width: 20px;
+            background: #00ffff;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .chart-label {
+            font-size: 14px;
+            color: #e0e0e0;
+            margin-bottom: 5px;
+        }
+        .chart-value {
+            font-size: 18px;
+            color: #00ffff;
         }
     </style>
 </head>
-<body class="{% if session.get('notfall_mode') %}notfall-active{% endif %}">
-
-    <!-- Name-Eingabe Overlay -->
-    <div class="name-overlay" id="nameOverlay">
-        <div class="name-modal">
-            <p>Wie lautet dein Name?</p>
-            <input type="text" id="userNameInput" placeholder="Dein Name" maxlength="50" />
-            <br>
-            <button id="startBtn" disabled>Los gehts!</button>
+<body>
+    <!-- NAME OVERLAY für Erstnutzer -->
+    <div id="nameOverlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Herzlich Willkommen</h2>
+            <p>Bevor wir beginnen können, benötigen wir deinen Namen:</p>
+            <input type="text" id="userNameInput" placeholder="Dein Name">
+            <button id="startBtn" disabled>Chat starten</button>
         </div>
     </div>
 
-    <!-- Feedback Modal -->
-    <div class="modal-overlay" id="feedbackOverlay">
-        <div class="modal">
-            <h3 id="feedbackTitle">Feedback</h3>
-            <textarea id="feedbackComment" rows="4" style="width: 100%;"></textarea>
-            <br><br>
-            <button id="sendFeedbackBtn">Absenden</button>
-            <button id="cancelFeedbackBtn" style="margin-left: 10px;">Abbrechen</button>
+    <!-- FEEDBACK OVERLAY -->
+    <div id="feedbackOverlay" class="overlay">
+        <div class="overlay-content">
+            <h2 id="feedbackTitle">Feedback geben</h2>
+            <p>Danke, dass du uns hilfst, XORA zu verbessern!</p>
+            <input type="hidden" id="currentFeedbackMessage" />
+            <textarea id="feedbackComment" placeholder="Was ist gut oder schlecht? (optional)" style="width: 100%; min-height: 100px; margin-bottom: 20px; padding: 10px; background: rgba(255,255,255,0.1); color: white; border: none; border-radius: 8px;"></textarea>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+                <button id="cancelFeedbackBtn" style="background: #666; flex: 1;">Abbrechen</button>
+                <button id="sendFeedbackBtn" style="flex: 1;">Senden</button>
+            </div>
         </div>
     </div>
 
     <div class="chat-container">
+        <!-- HAUPTTITEL & UNTERTITEL -->
+        <h1 class="main-title">XORA</h1>
+        <p class="subtitle">Pflegehilfe für Senioren Companion</p>
+
+        <!-- FLASH-NACHRICHTEN -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flashes">
+            {% for category, message in messages %}
+            <li class="flash flash-{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        <!-- HAUPT CHAT-BOX -->
         <div class="chat-box">
+            <!-- NOTFALL-BUTTON (immer sichtbar) -->
+            <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
 
-            <!-- Zweizeiliger Titel -->
-            <div class="title-container">
-                <h1 class="main-title">XORA</h1>
-                <p class="subtitle">Pflegehilfe für Senioren Companion</p>
-            </div>
+            <!-- CHAT-HISTORY (scrollbar) -->
+            <div id="chatHistory" class="chat-history">
+                {% for message in chat_history %}
+                <div class="message {{ message.role }}">
+                    <strong>{% if message.role == 'user' %}Sie{% else %}XORA{% endif %}:</strong>
+                    <span>{{ message.content }}</span>
+                    {% if message.role == 'bot' %}
+                    <div class="feedback-icons">
+                        <span class="thumb-up" data-message-id="{{ loop.index }}" data-type="positive">👍</span>
+                        <span class="thumb-down" data-message-id="{{ loop.index }}" data-type="negative">👎</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
 
-            <!-- Chat-Verlauf -->
-            <div class="chat-history" id="chatHistory">
-                {% if chat_history|length == 0 %}
-                    <!-- Die erste Nachricht wird dynamisch erzeugt, sobald der Name gesetzt ist -->
-                {% else %}
-                    {% for chat in chat_history %}
-                        <div class="message user">
-                            <strong>Sie:</strong>
-                            <span>{{ chat.user }}</span>
-                        </div>
-                        <div class="message bot">
-                            <strong>XORA:</strong>
-                            <span>{{ chat.bot|safe }}</span>
-                            <div class="feedback-icons">
-                                <span class="thumb-up" data-type="positive">👍</span>
-                                <span class="thumb-down" data-type="negative">👎</span>
-                            </div>
-                        </div>
-                    {% endfor %}
+                {% if human_in_loop %}
+                <!-- Text-based clarification is now handled in the regular chat flow -->
+                <div class="message bot">
+                    <strong>XORA:</strong>
+                    <span>{{ human_in_loop.message }}</span>
+                    <div class="feedback-icons">
+                        <span class="thumb-up" data-type="positive">👍</span>
+                        <span class="thumb-down" data-type="negative">👎</span>
+                    </div>
+                </div>
                 {% endif %}
             </div>
 
-            <!-- Chat-Formular -->
-            <form id="chatForm">
+            <!-- NACHRICHTENFORM -->
+            <form id="chatForm" class="chat-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="text" name="message" placeholder="Ihre Nachricht..." required>
-                <button type="submit">Senden</button>
+                <input type="hidden" name="notfallmodus" value="0" id="notfallInput">
+                <input type="hidden" name="notfallart" value="" id="notfallArtInput">
+                <input type="text" name="message" placeholder="Gib deine Nachricht ein..." class="message-input" autocomplete="off">
+                <button type="submit" class="send-button"><span class="send-icon"></span></button>
             </form>
 
-            <!-- 3 BUTTONS Unten Rechts -->
-            <div class="action-buttons">
-                <!-- Chat Leeren (Grün) -->
-                <form method="POST" action="{{ url_for('clear_chat_history') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="clear-chat-button">Chat Leeren</button>
-                </form>
-
-                <!-- Notfall (Rot) -->
-                <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
-
-                <!-- Admin (Gelb) -->
-                <a href="{{ url_for('login') }}" class="admin-button">Admin</a>
-        
+            <!-- Clear Chat Button -->
+            <div class="clear-chat-container">
+                <button id="clearChatBtn" class="clear-chat-button">Chat löschen</button>
             </div>
-
-            <!-- User Guidance -->
-            <div class="user-guidance">
-                <small>
-                    Du chattest mit einer künstlichen Intelligenz, die aus sehr vielen Daten eine Antwort zusammenstellt.<br>
-                    Je ausführlicher und präziser du deine Frage stellst, desto besser wird die Antwort.<br>
-                    Du kannst z.B. Fragen zum CRM, zu weiteren Tools oder zum Umgang mit Kunden, Agenturen und Pflegekräften stellen.
-                </small>
-                <details>
-                    <summary>Tipps für bessere Fragen</summary>
-                    <ul>
-                        <li>
-                            <strong>Statt:</strong> "Wie kann ich eine SA pausieren?"<br>
-                            <strong>Besser:</strong> "Wie kann ich im CRM eine laufende Stellenausschreibung pausieren?"
-                        </li>
-                        <li>
-                            <strong>Statt:</strong> "Eine BK ist nicht angereist, kann ich die Stelle wieder freischalten?"<br>
-                            <strong>Besser:</strong> 
-                            "Eine Betreuungskraft, die morgen hätte anreisen sollen, ist heute Abend nicht eingestiegen. 
-                             Deswegen hat der Kunde morgen keine Pflege. Darf ich die Stellenausschreibung sofort wieder aktivieren?"
-                        </li>
-                    </ul>
-                </details>
-            </div>
-        </div>
-
-        <!-- Stats Container (oben rechts) -->
-        <div class="stats-container">
-            <h3>So viele Fragen hat der Bot schon beantwortet</h3>
-            <p>Gesamt: {{ stats.total }}</p>
-            <p>Dieses Jahr: {{ stats.year }}</p>
-            <p>Diesen Monat: {{ stats.month }}</p>
-            <p>Diesen Tag: {{ stats.today }}</p>
         </div>
     </div>
 
     <script>
+    let pendingSecondMessage = false;
+    let secondMessageTimeout = null;
+
     document.addEventListener("DOMContentLoaded", function() {
         const chatHistory = document.getElementById('chatHistory');
         const chatForm = document.getElementById('chatForm');
@@ -604,6 +702,29 @@
             .catch(err => console.error('Fehler beim Abrufen des Nutzernamens:', err));
         }
 
+        function updateSessionWithChatMessage(userMessage, botResponse) {
+            fetch("{{ url_for('update_stream_chat_history') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    'user_message': userMessage,
+                    'bot_response': botResponse
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Error updating session:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating session:', error);
+            });
+        }
+
         userNameInput.addEventListener('input', () => {
             if (userNameInput.value.trim().length >= 3) {
                 startBtn.disabled = false;
@@ -665,6 +786,7 @@
         forceScrollToBottom();
 
         // CHAT-FORM
+        // Replace the existing form submit listener with this one
         chatForm.addEventListener('submit', function(event) {
             event.preventDefault();
             const userMessageText = new FormData(chatForm).get('message').trim();
@@ -679,60 +801,531 @@
             forceScrollToBottom();
 
             typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                const xoraTyping = showTypingIndicator();
+                // Remove typing class when typing is complete
+                userDiv.classList.remove('typing');
+                    // Create bot message container
+                const botDiv = document.createElement('div');
+                botDiv.className = 'message bot';
+
+                // Wichtige Initialisierung direkt beim Erstellen
+                botDiv.style.display = 'flex';
+                botDiv.style.flexDirection = 'column';
+
+                // Add strong label with proper positioning
+                const strongLabel = document.createElement('strong');
+                strongLabel.textContent = 'XORA:';
+                strongLabel.style.position = 'absolute';
+                strongLabel.style.top = '12px';
+                strongLabel.style.left = '16px';
+                botDiv.appendChild(strongLabel);
+
+                // Add content span with proper styling
+                // Add content span with proper styling
+                const contentSpan = document.createElement('span');
+                contentSpan.style.display = 'block';
+                contentSpan.style.position = 'relative';
+                contentSpan.style.marginTop = '30px';
+                contentSpan.style.marginLeft = '16px';
+                contentSpan.style.padding = '0 10px 0 0';
+                contentSpan.style.minHeight = '20px';
+                contentSpan.style.width = 'calc(100% - 40px)';
+                contentSpan.style.wordBreak = 'break-word';
+                contentSpan.style.whiteSpace = 'pre-wrap';
+                contentSpan.style.visibility = 'visible';
+                contentSpan.style.opacity = '1';
+                contentSpan.style.color = '#ffffff';
+                // Füge einen sichtbaren Initialtext hinzu
+                contentSpan.innerHTML = '<em style="color: #88ccff; font-style: italic;">Erstelle Antwort...</em>';
+                botDiv.appendChild(contentSpan);
+                
+                // Add feedback icons
+                const iconsDiv = document.createElement('div');
+                iconsDiv.className = 'feedback-icons';
+                iconsDiv.innerHTML = `
+                    <span class="thumb-up" data-type="positive">👍</span>
+                    <span class="thumb-down" data-type="negative">👎</span>
+                `;
+                botDiv.appendChild(iconsDiv);
+                
+                // Append to chat history
+                chatHistory.appendChild(botDiv);
+                
+                // Force scroll after creating bubble
+                forceScrollToBottom();
+                
+                // Remaining code uses contentSpan
+                const botResponseSpan = contentSpan;
+    
+                
+                // Setup for either streaming or regular response
                 const isNotfall = notfallActive ? '1' : '0';
                 const joinedNotfallOptions = selectedNotfallOptions.join(', ');
+                
+                // Determine if we should use streaming
+                const useStreaming = true; // Set to true to always use streaming
+                
+                // Hier den alten Code ersetzen - ein sehr vereinfachter Stream-Handler zum Debugging
+                if (useStreaming) {
+                    console.log("Simplified streaming test starting...");
+                    
+                    const payload = new URLSearchParams({
+                        'csrf_token': csrfToken,
+                        'message': userMessageText,
+                        'notfallmodus': isNotfall,
+                        'notfallart': joinedNotfallOptions,
+                        'stream': '1'
+                    });
+                    
+                    fetch("{{ url_for('chat') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/event-stream'
+                        },
+                        body: payload
+                    }).then(response => {
+                        console.log("Response received:", response.status, response.headers.get('content-type'));
+                        
+                        // Check for HTTP errors, including CSRF token errors (status 400)
+                        if (!response.ok) {
+                            // First clone the response so we can read it twice
+                            return response.clone().text().then(text => {
+                                // Check if the response contains CSRF token error messages
+                                if (text.includes('CSRF') || text.includes('csrf') || text.includes('token expired')) {
+                                    throw new Error('CSRF token has expired');
+                                } else {
+                                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                                }
+                            }).catch(e => {
+                                throw e; // Re-throw the error after checking
+                            });
+                        }
+                        
+                        // Extrem einfacher Reader
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        let simpleText = '';
+                        
+                        function readChunk() {
+                            reader.read().then(({done, value}) => {
+                                if (done) {
+                                    console.log("Stream complete");
+                                    return;
+                                }
+                                
+                                // Dekodiere den Chunk
+                                const chunk = decoder.decode(value, {stream: true});
+                                buffer += chunk;
+                                
+                                // Log kompletten Chunk für Debugging
+                                console.log("RAW CHUNK:", chunk);
+                                
+                                // Extrem einfache Event-Verarbeitung
+                                const lines = chunk.split('\n\n');
+                                lines.forEach(line => {
+                                    if (line.startsWith('data: ')) {
+                                        try {
+                                            // Teste nur, ob wir den Text extrahieren können
+                                            const json = JSON.parse(line.substring(6));
+                                            console.log("EVENT TYPE:", json.type);
+                                            
+                                            // Verschiedene Event-Typen verarbeiten
+                                            if (json.type === 'text' && json.content) {
+                                                simpleText += json.content;
+                                                botResponseSpan.innerHTML = simpleText;
+                                                console.log("TEXT UPDATE:", simpleText.length, "characters total");
+                                            } 
+                                            // Human-in-the-Loop Rückfrage
+                                            else if (json.type === 'clarification_start') {
+                                                console.log("Clarification started");
+                                                simpleText = '';
+                                                botResponseSpan.innerHTML = '';
+                                                
+                                                // Container für Rückfrage erstellen mit klarem Design
+                                                const clarificationBox = document.createElement('div');
+                                                clarificationBox.className = 'clarification-box';
+                                                clarificationBox.style.backgroundColor = 'rgba(52, 73, 94, 0.8)';
+                                                clarificationBox.style.border = '1px solid #4a6b8c';
+                                                clarificationBox.style.borderRadius = '10px';
+                                                clarificationBox.style.padding = '15px';
+                                                clarificationBox.style.marginTop = '15px';
+                                                clarificationBox.style.marginBottom = '5px';
+                                                clarificationBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+                                                botDiv.appendChild(clarificationBox);
+                                                
+                                                // Titel für die Rückfrage
+                                                const title = document.createElement('div');
+                                                title.className = 'clarification-title';
+                                                title.style.fontWeight = 'bold';
+                                                title.style.marginBottom = '10px';
+                                                title.style.fontSize = '16px';
+                                                title.style.color = '#00ffff';
+                                                title.textContent = 'Präzisierung erforderlich';
+                                                clarificationBox.appendChild(title);
+                                                
+                                                // Container für die Nachricht
+                                                const messageContainer = document.createElement('div');
+                                                messageContainer.className = 'clarification-message';
+                                                messageContainer.style.marginBottom = '15px';
+                                                messageContainer.style.lineHeight = '1.4';
+                                                clarificationBox.appendChild(messageContainer);
+                                                
+                                                // Container für Buttons
+                                                const optionsContainer = document.createElement('div');
+                                                optionsContainer.className = 'clarification-options';
+                                                optionsContainer.style.display = 'flex';
+                                                optionsContainer.style.flexDirection = 'column';
+                                                optionsContainer.style.gap = '8px';
+                                                optionsContainer.style.marginTop = '10px';
+                                                clarificationBox.appendChild(optionsContainer);
+                                            }
+                                            else if (json.type === 'clarification_message' && json.content) {
+                                                const messageContainer = botDiv.querySelector('.clarification-message');
+                                                if (messageContainer) {
+                                                    messageContainer.textContent = json.content;
+                                                    console.log("CLARIFICATION MESSAGE:", json.content);
+                                                }
+                                            }
+                                            else if (json.type === 'clarification_option') {
+                                                // Bugfix: Wir suchen nach dem richtigen Container
+                                                const optionsContainer = botDiv.querySelector('.clarification-options');
+                                                if (optionsContainer) {
+                                                    // Button erstellen
+                                                    const optionButton = document.createElement('button');
+                                                    optionButton.className = 'option-button';
+                                                    optionButton.textContent = json.text;
+                                                    optionButton.setAttribute('data-option-index', json.index);
+                                                    
+                                                    // Button-Styling
+                                                    optionButton.style.padding = '10px 15px';
+                                                    optionButton.style.backgroundColor = '#00476b';
+                                                    optionButton.style.color = 'white';
+                                                    optionButton.style.border = '1px solid #0077b3';
+                                                    optionButton.style.borderRadius = '5px';
+                                                    optionButton.style.cursor = 'pointer';
+                                                    optionButton.style.width = '100%';
+                                                    optionButton.style.textAlign = 'left';
+                                                    optionButton.style.transition = 'background-color 0.2s ease';
+                                                    
+                                                    // Hover-Effekt
+                                                    optionButton.addEventListener('mouseover', function() {
+                                                        this.style.backgroundColor = '#0077b3';
+                                                    });
+                                                    optionButton.addEventListener('mouseout', function() {
+                                                        this.style.backgroundColor = '#00476b';
+                                                    });
+                                                    
+                                                    // Event-Listener
+                                                    optionButton.addEventListener('click', function() {
+                                                        const optionIndex = this.getAttribute('data-option-index');
+                                                        
+                                                        // Visuelles Feedback
+                                                        this.style.backgroundColor = '#005e8a';
+                                                        this.textContent = 'Wird verarbeitet...';
+                                                        
+                                                        // Alle Option-Buttons deaktivieren
+                                                        const allButtons = botDiv.querySelectorAll('.option-button');
+                                                        allButtons.forEach(btn => {
+                                                            btn.disabled = true;
+                                                            btn.style.opacity = '0.7';
+                                                            btn.style.cursor = 'default';
+                                                        });
+                                                        
+                                                        // Formular erstellen
+                                                        const form = document.createElement('form');
+                                                        form.method = 'post';
+                                                        form.action = "{{ url_for('handle_clarification') }}";
+                                                        
+                                                        // CSRF Token
+                                                        const csrfInput = document.createElement('input');
+                                                        csrfInput.type = 'hidden';
+                                                        csrfInput.name = 'csrf_token';
+                                                        csrfInput.value = csrfToken;
+                                                        
+                                                        // Option Index
+                                                        const optionInput = document.createElement('input');
+                                                        optionInput.type = 'hidden';
+                                                        optionInput.name = 'option_index';
+                                                        optionInput.value = optionIndex;
+                                                        
+                                                        // Formular zusammenbauen
+                                                        form.appendChild(csrfInput);
+                                                        form.appendChild(optionInput);
+                                                        document.body.appendChild(form);
+                                                        
+                                                        // Kleine Verzögerung
+                                                        // Instead of form submission, use fetch API to handle without page refresh
+                                                        fetch(form.action, {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/x-www-form-urlencoded',
+                                                                'X-Requested-With': 'XMLHttpRequest'
+                                                            },
+                                                            body: new URLSearchParams(new FormData(form))
+                                                        })
+                                                        .then(response => response.json())
+                                                        .then(data => {
+                                                            if (data.success) {
+                                                                // Option 1: If we have a direct response, show it immediately
+                                                                if (data.response) {
+                                                                    // Create a new bot message with the response
+                                                                    const botResponse = document.createElement('div');
+                                                                    botResponse.className = 'message bot';
+                                                                    botResponse.innerHTML = `
+                                                                        <strong>XORA:</strong>
+                                                                        <span>${data.response}</span>
+                                                                        <div class="feedback-icons">
+                                                                            <span class="thumb-up" data-type="positive">👍</span>
+                                                                            <span class="thumb-down" data-type="negative">👎</span>
+                                                                        </div>
+                                                                    `;
+                                                                    chatHistory.appendChild(botResponse);
+                                                                    
+                                                                    // Scroll to the new message
+                                                                    forceScrollToBottom();
+                                                                    
+                                                                    // Attach feedback handlers to the new message
+                                                                    attachFeedbackHandlers();
+                                                                }
+                                                                // Option 2: If we need to follow up with another request to get the actual answer
+                                                                else if (data.need_followup) {
+                                                                    console.log("Selected option:", data.selected_option);
+                                                                    
+                                                                    // Add a processing message
+                                                                    const processingMsg = document.createElement('div');
+                                                                    processingMsg.className = 'message bot';
+                                                                    processingMsg.innerHTML = `
+                                                                        <strong>XORA:</strong>
+                                                                        <span>Verarbeite Anfrage...</span>
+                                                                    `;
+                                                                    chatHistory.appendChild(processingMsg);
+                                                                    forceScrollToBottom();
+                                                                    
+                                                                    // Now fetch the actual response using our new endpoint
+                                                                    fetch("{{ url_for('get_clarification_response') }}", {
+                                                                        method: 'GET',
+                                                                        headers: {
+                                                                            'X-Requested-With': 'XMLHttpRequest',
+                                                                            'Accept': 'application/json'
+                                                                        }
+                                                                    })
+                                                                    .then(response => {
+                                                                        if (!response.ok) {
+                                                                            return response.json().then(data => {
+                                                                                throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
+                                                                            });
+                                                                        }
+                                                                        return response.json();
+                                                                    })
+                                                                    .then(followupData => {
+                                                                        // Remove the processing message
+                                                                        processingMsg.remove();
+                                                                        
+                                                                        // Create the actual response message
+                                                                        const botResponse = document.createElement('div');
+                                                                        botResponse.className = 'message bot';
+                                                                        botResponse.innerHTML = `
+                                                                            <strong>XORA:</strong>
+                                                                            <span>${followupData.response || "Ihre Anfrage wurde verarbeitet."}</span>
+                                                                            <div class="feedback-icons">
+                                                                                <span class="thumb-up" data-type="positive">👍</span>
+                                                                                <span class="thumb-down" data-type="negative">👎</span>
+                                                                            </div>
+                                                                        `;
+                                                                        chatHistory.appendChild(botResponse);
+                                                                        forceScrollToBottom();
+                                                                        attachFeedbackHandlers();
+                                                                    })
+                                                                    .catch(error => {
+                                                                        console.error("Followup error:", error);
+                                                                        // Parse the error response if possible
+                                                                        let errorMessage = "Fehler bei der Verarbeitung. Bitte versuchen Sie es erneut.";
+                                                                        
+                                                                        if (error.message && error.message.includes("No data found")) {
+                                                                            errorMessage = "Es wurden keine Daten zu Ihrer Anfrage gefunden.";
+                                                                        } else if (error.message && error.message.includes("customer")) {
+                                                                            errorMessage = "Es wurden keine Kundendaten gefunden.";
+                                                                        }
+                                                                        
+                                                                        // Update the processing message with error
+                                                                        processingMsg.innerHTML = `
+                                                                            <strong>XORA:</strong>
+                                                                            <span>${errorMessage}</span>
+                                                                        `;
+                                                                        
+                                                                        // Try fallback to chat endpoint 
+                                                                        console.log("Trying fallback to chat endpoint");
+                                                                        
+                                                                        // This will refresh the page as a last resort if after 2 seconds
+                                                                        // we still can't get a response via AJAX
+                                                                        setTimeout(() => {
+                                                                            window.location.href = "{{ url_for('chat') }}";
+                                                                        }, 2000);
+                                                                    });
+                                                                }
+                                                            } else {
+                                                                throw new Error(data.error || 'Error processing selection');
+                                                            }
+                                                        })
+                                                        .catch(error => {
+                                                            console.error('Error:', error);
+                                                            // Visual error feedback
+                                                            this.textContent = 'Fehler! Bitte erneut versuchen.';
+                                                            this.style.backgroundColor = '#d32f2f';
+                                                            
+                                                            // Re-enable buttons after timeout
+                                                            setTimeout(() => {
+                                                                const allButtons = document.querySelectorAll('.option-button');
+                                                                allButtons.forEach(btn => {
+                                                                    btn.disabled = false;
+                                                                    btn.style.opacity = '1';
+                                                                    btn.style.cursor = 'pointer';
+                                                                });
+                                                            }, 2000);
+                                                        });
+                                                    });
+                                                    
+                                                    // Button hinzufügen
+                                                    optionsContainer.appendChild(optionButton);
+                                                } else {
+                                                    console.error("Fehler: Options-Container nicht gefunden!");
+                                                }
+                                            }
+                                        } catch (e) {
+                                            console.error("PARSE ERROR:", e);
+                                        }
+                                    }
+                                });
+                                
+                                // Weiter lesen
+                                readChunk();
+                            }).catch(error => {
+                                console.error("READ ERROR:", error);
+                            });
+                        }
+                        
+                        // Starte Lesevorgang
+                        readChunk();
+                    }).catch(error => {
+                        console.error("FETCH ERROR:", error);
+                        
+                        // Check for CSRF token expiration in the error response
+                        if (error.message && error.message.includes('CSRF token') || 
+                            error.message && error.message.includes('csrf') || 
+                            error.message && error.message.includes('token expired')) {
+                            // Create a user-friendly message with reload button for CSRF errors
+                            const refreshButton = document.createElement('button');
+                            refreshButton.textContent = 'Seite aktualisieren';
+                            refreshButton.className = 'refresh-button';
+                            refreshButton.style.backgroundColor = '#3498db';
+                            refreshButton.style.color = 'white';
+                            refreshButton.style.border = 'none';
+                            refreshButton.style.borderRadius = '5px';
+                            refreshButton.style.padding = '8px 16px';
+                            refreshButton.style.margin = '10px 0';
+                            refreshButton.style.cursor = 'pointer';
+                            refreshButton.onclick = function() {
+                                window.location.reload();
+                            };
+                            
+                            botResponseSpan.innerHTML = `
+                                <div style="color: #ff6b6b;">
+                                    <strong>Deine Sitzung ist abgelaufen.</strong><br>
+                                    Bitte aktualisiere die Seite, um fortzufahren.
+                                </div>`;
+                            botResponseSpan.appendChild(refreshButton);
+                        } else {
+                            // Handle other errors
+                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">Fehler: ${error.message}</div>`;
+                        }
+                    });
+                } else {
+                    // Non-streaming code
+                
+                    // Regular, non-streaming approach (fallback)
+                    const xoraTyping = showTypingIndicator();
+                    const payload = new URLSearchParams({
+                        'csrf_token': csrfToken,
+                        'message': userMessageText,
+                        'notfallmodus': isNotfall,
+                        'notfallart': joinedNotfallOptions
+                    });
 
-                const payload = new URLSearchParams({
-                    'csrf_token': csrfToken,
-                    'message': userMessageText,
-                    'notfallmodus': isNotfall,
-                    'notfallart': joinedNotfallOptions
-                });
-
-                fetch("{{ url_for('chat') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: payload
-                })
-                .then(r => r.json())
-                .then(data => {
-                    xoraTyping.remove();
-
-                    if (data.response) {
-                        const botDiv = document.createElement('div');
-                        botDiv.classList.add('message', 'bot');
-                        botDiv.innerHTML = `
-                            <strong>XORA:</strong>
-                            <span>${data.response}</span>
-                            <div class="feedback-icons">
-                                <span class="thumb-up" data-type="positive">👍</span>
-                                <span class="thumb-down" data-type="negative">👎</span>
-                            </div>
-                        `;
-                        chatHistory.appendChild(botDiv);
-                    } else if (data.error) {
-                        const errDiv = document.createElement('div');
-                        errDiv.classList.add('flash', 'flash-danger');
-                        errDiv.textContent = data.error;
-                        chatHistory.appendChild(errDiv);
-                    }
-                    forceScrollToBottom();
-                    attachFeedbackHandlers();
-                })
-                .catch(err => {
-                    xoraTyping.remove();
-                    const errDiv = document.createElement('div');
-                    errDiv.classList.add('flash', 'flash-danger');
-                    errDiv.textContent = "Fehler beim Senden der Nachricht.";
-                    chatHistory.appendChild(errDiv);
-                    forceScrollToBottom();
-                    console.error(err);
-                });
+                    fetch("{{ url_for('chat') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: payload
+                    })
+                    .then(response => {
+                        // Check for HTTP errors, including CSRF token errors (status 400)
+                        if (!response.ok) {
+                            // First clone the response so we can read it twice
+                            return response.clone().text().then(text => {
+                                // Check if the response contains CSRF token error messages
+                                if (text.includes('CSRF') || text.includes('csrf') || text.includes('token expired')) {
+                                    throw new Error('CSRF token has expired');
+                                } else {
+                                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                                }
+                            }).catch(e => {
+                                throw e; // Re-throw the error after checking
+                            });
+                        }
+                        
+                        return response.json();
+                    })
+                    .then(data => {
+                        removeTypingIndicator(xoraTyping);
+                        if (data.error) {
+                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">${data.error}</div>`;
+                        } else if (data.response) {
+                            botResponseSpan.innerHTML = data.response;
+                            // Update session with chat messages
+                            updateSessionWithChatMessage(userMessageText, data.response);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error in non-streaming mode:", error);
+                        removeTypingIndicator(xoraTyping);
+                        
+                        // Check for CSRF token expiration in the error response
+                        if (error.message && error.message.includes('CSRF token') || 
+                            error.message && error.message.includes('csrf') || 
+                            error.message && error.message.includes('token expired')) {
+                            // Create a user-friendly message with reload button for CSRF errors
+                            const refreshButton = document.createElement('button');
+                            refreshButton.textContent = 'Seite aktualisieren';
+                            refreshButton.className = 'refresh-button';
+                            refreshButton.style.backgroundColor = '#3498db';
+                            refreshButton.style.color = 'white';
+                            refreshButton.style.border = 'none';
+                            refreshButton.style.borderRadius = '5px';
+                            refreshButton.style.padding = '8px 16px';
+                            refreshButton.style.margin = '10px 0';
+                            refreshButton.style.cursor = 'pointer';
+                            refreshButton.onclick = function() {
+                                window.location.reload();
+                            };
+                            
+                            botResponseSpan.innerHTML = `
+                                <div style="color: #ff6b6b;">
+                                    <strong>Deine Sitzung ist abgelaufen.</strong><br>
+                                    Bitte aktualisiere die Seite, um fortzufahren.
+                                </div>`;
+                            botResponseSpan.appendChild(refreshButton);
+                        } else {
+                            // Handle other errors
+                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">Fehler: ${error.message}</div>`;
+                        }
+                    });
+                }
             });
 
             chatForm.reset();
@@ -749,7 +1342,8 @@
                 },
                 body: JSON.stringify({
                     feedback_type: currentFeedbackType,
-                    comment: commentVal
+                    comment: commentVal,
+                    message: document.getElementById('currentFeedbackMessage').value
                 })
             })
             .then(r => r.json())
@@ -771,30 +1365,175 @@
             feedbackOverlay.style.display = "none";
         });
 
+        // Simpler and more direct approach to attach feedback handlers
         function attachFeedbackHandlers() {
-            const thumbUps = document.querySelectorAll('.thumb-up');
-            const thumbDowns = document.querySelectorAll('.thumb-down');
-
-            thumbUps.forEach(el => {
-                el.addEventListener('click', () => {
-                    currentFeedbackType = 'positive';
-                    feedbackTitle.textContent = "Positives Feedback geben";
-                    feedbackComment.value = "";
-                    feedbackOverlay.style.display = "flex";
-                });
-            });
-            thumbDowns.forEach(el => {
-                el.addEventListener('click', () => {
-                    currentFeedbackType = 'negative';
-                    feedbackTitle.textContent = "Negatives Feedback geben";
-                    feedbackComment.value = "";
-                    feedbackOverlay.style.display = "flex";
-                });
-            });
+            console.log("Attaching feedback handlers...");
+            
+            // Remove any existing handlers by adding a delegated event handler on the chat container
+            document.getElementById('chatHistory').removeEventListener('click', handleFeedbackClick);
+            document.getElementById('chatHistory').addEventListener('click', handleFeedbackClick);
+            
+            const thumbs = document.querySelectorAll('.thumb-up, .thumb-down');
+            console.log(`Found ${thumbs.length} thumbs buttons`);
         }
-
-        // Initialer Check des Nutzernamens
+        
+        // Separate handler function for better organization
+        function handleFeedbackClick(event) {
+            // Check if a thumb was clicked
+            if (event.target.classList.contains('thumb-up') || event.target.classList.contains('thumb-down')) {
+                const thumb = event.target;
+                console.log(`Thumb clicked: ${thumb.getAttribute('data-type')}`);
+                
+                // Get feedback type (positive/negative)
+                currentFeedbackType = thumb.getAttribute('data-type');
+                
+                // Capture the message content for context
+                const messageElement = thumb.closest('.message');
+                console.log("Found message element:", messageElement);
+                
+                let messageContent = "";
+                
+                // Try multiple selectors to find the message content
+                if (messageElement) {
+                    // First try to get the text content excluding the feedback icons
+                    const messageTextSpan = messageElement.querySelector('span');
+                    if (messageTextSpan) {
+                        messageContent = messageTextSpan.innerText;
+                    } else {
+                        // Fallback to getting all text
+                        messageContent = messageElement.innerText;
+                    }
+                }
+                
+                console.log("Message content found:", messageContent.substring(0, 50) + (messageContent.length > 50 ? "..." : ""));
+                
+                // Store the message we're providing feedback on
+                document.getElementById('currentFeedbackMessage').value = messageContent;
+                
+                // Update modal title based on feedback type
+                feedbackTitle.textContent = currentFeedbackType === 'positive' 
+                    ? "Positives Feedback" 
+                    : "Verbesserungsvorschlag";
+                    
+                // Set appropriate placeholder based on feedback type
+                feedbackComment.placeholder = currentFeedbackType === 'positive' 
+                    ? "Was war besonders hilfreich? (optional)" 
+                    : "Was ist nicht optimal? Was hättest du gerne als Antwort gehört? (optional)";
+                
+                // Clear any previous comment
+                feedbackComment.value = '';
+                
+                // Show the feedback overlay
+                feedbackOverlay.style.display = "flex";
+                
+                // Focus on the comment textarea
+                setTimeout(() => feedbackComment.focus(), 100);
+                
+                // Highlight the clicked button
+                thumb.style.opacity = '1';
+                thumb.style.transform = 'scale(1.2)';
+                
+                // Dim the other button
+                const otherType = currentFeedbackType === 'positive' ? 'thumb-down' : 'thumb-up';
+                const otherThumb = messageElement.querySelector(`.${otherType}`);
+                if (otherThumb) otherThumb.style.opacity = '0.5';
+                
+                // Prevent the event from bubbling up
+                event.stopPropagation();
+            }
+        }
+        
+        // Initialen Status setzen
         checkUserName();
+        forceScrollToBottom();
+
+        // Event-Listener für Clear Chat Button
+        document.getElementById('clearChatBtn').addEventListener('click', function() {
+            if (confirm('Möchten Sie wirklich den gesamten Chatverlauf löschen?')) {
+                fetch("{{ url_for('clear_chat_history') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Clear the chat history display instead of reloading
+                        const chatHistory = document.getElementById('chatHistory');
+                        chatHistory.innerHTML = '';
+                        
+                        // Add a neutral welcome message
+                        const botDiv = document.createElement('div');
+                        botDiv.classList.add('message', 'bot');
+                        botDiv.innerHTML = `
+                            <strong>XORA:</strong>
+                            <span>Hallo ${userName}, wie kann ich dir behilflich sein?</span>
+                        `;
+                        chatHistory.appendChild(botDiv);
+                        forceScrollToBottom();
+                    } else {
+                        console.error('Fehler beim Löschen des Chatverlaufs');
+                    }
+                })
+                .catch(error => {
+                    console.error('Netzwerkfehler:', error);
+                });
+            }
+        });
+
+        // Statistik-Popup anzeigen
+        const showStatsBtn = document.createElement('button');
+        showStatsBtn.innerHTML = 'Statistiken anzeigen';
+        showStatsBtn.classList.add('statistics-button');
+        document.querySelector('.chat-container').appendChild(showStatsBtn);
+
+        // Statistik-Modal erstellen
+        const statsModal = document.createElement('div');
+        statsModal.id = 'statsModal';
+        statsModal.classList.add('overlay');
+        statsModal.innerHTML = `
+            <div class="overlay-content statistics-content">
+                <h2>XORA Nachrichten-Statistiken</h2>
+                <div class="stats-chart-container">
+                    <div class="stats-chart">
+                        <div class="chart-bar" style="height: {{ (stats.today / stats.total * 100) if stats.total else 0 }}%"></div>
+                        <div class="chart-label">Heute</div>
+                        <div class="chart-value">{{ stats.today }}</div>
+                    </div>
+                    <div class="stats-chart">
+                        <div class="chart-bar" style="height: {{ (stats.month / stats.total * 100) if stats.total else 0 }}%"></div>
+                        <div class="chart-label">Monat</div>
+                        <div class="chart-value">{{ stats.month }}</div>
+                    </div>
+                    <div class="stats-chart">
+                        <div class="chart-bar" style="height: {{ (stats.year / stats.total * 100) if stats.total else 0 }}%"></div>
+                        <div class="chart-label">Jahr</div>
+                        <div class="chart-value">{{ stats.year }}</div>
+                    </div>
+                    <div class="stats-chart">
+                        <div class="chart-bar" style="height: 100%"></div>
+                        <div class="chart-label">Gesamt</div>
+                        <div class="chart-value">{{ stats.total }}</div>
+                    </div>
+                </div>
+                <button id="closeStatsBtn">Schließen</button>
+            </div>
+        `;
+        document.body.appendChild(statsModal);
+
+        // Event-Listener für Statistik-Button
+        showStatsBtn.addEventListener('click', function() {
+            statsModal.style.display = 'flex';
+        });
+
+        // Event-Listener für Schließen-Button im Statistik-Modal
+        document.getElementById('closeStatsBtn').addEventListener('click', function() {
+            statsModal.style.display = 'none';
+        });
+        
+        // Feedback-Handlers aktivieren
+        attachFeedbackHandlers();
     });
     </script>
 </body>

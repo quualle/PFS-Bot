@@ -1,0 +1,449 @@
+{
+  "tables": {
+    "agencies": {
+      "description": "Enthält Informationen zu den Vermittlungsagenturen für Pflegekräfte",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID der Agentur"},
+        "name": {"type": "string", "description": "Name der Agentur"},
+        "active": {"type": "string", "description": "Gibt an, ob die Agentur aktiv ist"},
+        "company_type": {"type": "string", "description": "Art des Unternehmens"},
+        "founded": {"type": "string", "description": "Gründungsdatum der Agentur"},
+        "homepage": {"type": "string", "description": "Webseite der Agentur"},
+        "jurisdiction": {"type": "string", "description": "Rechtlicher Standort/Gerichtsbarkeit"},
+        "nationalities": {"type": "string", "description": "Von der Agentur vermittelte Nationalitäten"},
+        "contract_duration": {"type": "string", "description": "Standardlaufzeit für Verträge"},
+        "health_insurance": {"type": "string", "description": "Informationen zur Krankenversicherung"},
+        "liability_insurance": {"type": "string", "description": "Informationen zur Haftpflichtversicherung"},
+        "accident_insurance": {"type": "string", "description": "Informationen zur Unfallversicherung"},
+        "hours_per_week": {"type": "string", "description": "Standardarbeitszeit pro Woche"},
+        "night_care": {"type": "string", "description": "Gibt an, ob Nachtpflege angeboten wird"},
+        "ger_minimum_wage": {"type": "string", "description": "Einhaltung des deutschen Mindestlohns"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "contracts": {"foreign_key": "agency_id", "relationship": "one-to-many", "description": "Eine Agentur kann mehrere Verträge haben"},
+        "care_giver_instances": {"foreign_key": "agency_id", "relationship": "one-to-many", "description": "Eine Agentur kann mehrere Pflegekraft-Instanzen haben"},
+        "visors": {"foreign_key": "agency_id", "relationship": "one-to-many", "description": "Eine Agentur kann mehrere Visoren haben"},
+        "proto_users": {"foreign_key": "agency_id", "relationship": "one-to-many", "description": "Eine Agentur kann mehrere Benutzer haben"}
+      }
+    },
+    "care_giver_instances": {
+      "description": "Repräsentiert konkrete Instanzen/Einsätze von Pflegekräften",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID der Pflegekraft-Instanz"},
+        "care_giver_id": {"type": "string", "description": "Referenz zur Pflegekraft"},
+        "agency_id": {"type": "string", "description": "Referenz zur Agentur"},
+        "birthday": {"type": "string", "description": "Geburtsdatum der Pflegekraft"},
+        "exp": {"type": "string", "description": "Erfahrung der Pflegekraft"},
+        "exp_ger": {"type": "string", "description": "Erfahrung in Deutschland"},
+        "description": {"type": "string", "description": "Beschreibung/Profil der Pflegekraft"},
+        "phone": {"type": "string", "description": "Telefonnummer der Pflegekraft"},
+        "external_id": {"type": "string", "description": "Externe ID der Pflegekraft"},
+        "gs": {"type": "string", "description": "Unbekanntes Feld (möglicherweise Qualifikation oder Status)"},
+        "tracks": {"type": "string", "description": "Tracking-Informationen (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "care_givers": {"foreign_key": "care_giver_id", "relationship": "many-to-one", "description": "Jede Pflegekraft-Instanz gehört zu einer Pflegekraft"},
+        "agencies": {"foreign_key": "agency_id", "relationship": "many-to-one", "description": "Jede Pflegekraft-Instanz gehört zu einer Agentur"},
+        "care_stays": {"foreign_key": "care_giver_instance_id", "relationship": "one-to-many", "description": "Eine Pflegekraft-Instanz kann mehrere Care Stays haben"}
+      }
+    },
+    "care_givers": {
+      "description": "Grundlegende Informationen über Pflegekräfte",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID der Pflegekraft"},
+        "first_name": {"type": "string", "description": "Vorname der Pflegekraft"},
+        "last_name": {"type": "string", "description": "Nachname der Pflegekraft"},
+        "machine_first_name": {"type": "string", "description": "Maschinell lesbarer Vorname"},
+        "machine_last_name": {"type": "string", "description": "Maschinell lesbarer Nachname"},
+        "gender": {"type": "string", "description": "Geschlecht der Pflegekraft"},
+        "salutation": {"type": "string", "description": "Anrede der Pflegekraft"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "care_giver_instances": {"foreign_key": "care_giver_id", "relationship": "one-to-many", "description": "Eine Pflegekraft kann mehrere Instanzen/Einsätze haben"}
+      }
+    },
+    "care_receivers": {
+      "description": "Detaillierte Informationen über Pflegebedürftige mit medizinischen und persönlichen Anforderungen",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Pflegebedürftigen"},
+        "first_name": {"type": "string", "description": "Vorname des Pflegebedürftigen"},
+        "last_name": {"type": "string", "description": "Nachname des Pflegebedürftigen"},
+        "gender": {"type": "string", "description": "Geschlecht des Pflegebedürftigen"},
+        "age": {"type": "string", "description": "Alter des Pflegebedürftigen"},
+        "street": {"type": "string", "description": "Straße des Wohnorts"},
+        "zip_code": {"type": "string", "description": "Postleitzahl"},
+        "location": {"type": "string", "description": "Wohnort"},
+        "care_level": {"type": "string", "description": "Pflegegrad des Pflegebedürftigen"},
+        "applied_care_level": {"type": "string", "description": "Beantragter Pflegegrad"},
+        "arrival_date": {"type": "string", "description": "Gewünschtes Ankunftsdatum der Pflegekraft"},
+        "budget": {"type": "string", "description": "Budget für die Pflege"},
+        "budget_int": {"type": "string", "description": "Budget als Zahl"},
+        "household_id": {"type": "string", "description": "Referenz zum Haushalt"},
+        "email": {"type": "string", "description": "E-Mail-Adresse des Pflegebedürftigen"},
+        "phone": {"type": "string", "description": "Telefonnummer des Pflegebedürftigen"},
+        "active": {"type": "string", "description": "Gibt an, ob der Eintrag aktiv ist"},
+        "bed_bound": {"type": "string", "description": "Gibt an, ob bettlägerig"},
+        "walk": {"type": "string", "description": "Gibt an, ob der Pflegebedürftige gehen kann"},
+        "stand": {"type": "string", "description": "Gibt an, ob der Pflegebedürftige stehen kann"},
+        "hearing": {"type": "string", "description": "Hörfähigkeit"},
+        "seeing": {"type": "string", "description": "Sehfähigkeit"},
+        "speaking": {"type": "string", "description": "Sprachfähigkeit"},
+        "intim_care": {"type": "string", "description": "Benötigt Intimhygiene"},
+        "incontinence": {"type": "string", "description": "Information zur Inkontinenz"},
+        "incontinence_type": {"type": "string", "description": "Art der Inkontinenz"},
+        "mobility_assist": {"type": "string", "description": "Benötigt Mobilitätshilfe"},
+        "care_service": {"type": "string", "description": "Nutzung von Pflegediensten"},
+        "sicknesses": {"type": "string", "description": "Krankheiten (JSON-Array)"},
+        "additional_sicknesses": {"type": "string", "description": "Zusätzliche Krankheiten"},
+        "allergies": {"type": "string", "description": "Allergien"},
+        "night_service": {"type": "string", "description": "Benötigt Nachtpflege"},
+        "night_tasks": {"type": "string", "description": "Aufgaben in der Nachtpflege"},
+        "pets": {"type": "string", "description": "Informationen zu Haustieren"},
+        "internet": {"type": "string", "description": "Internetzugang vorhanden"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"},
+        "contact_first_name": {"type": "string", "description": "Vorname des Ansprechpartners"},
+        "contact_last_name": {"type": "string", "description": "Nachname des Ansprechpartners"},
+        "contact_phone": {"type": "string", "description": "Telefonnummer des Ansprechpartners"},
+        "contact_email": {"type": "string", "description": "E-Mail des Ansprechpartners"}
+      },
+      "relationships": {
+        "households": {"foreign_key": "household_id", "relationship": "many-to-one", "description": "Mehrere Pflegebedürftige können zum selben Haushalt gehören"}
+      }
+    },
+    "care_stays": {
+      "description": "Aufenthalte/Einsätze von Pflegekräften bei Pflegebedürftigen",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Care Stays"},
+        "bill_start": {"type": "string", "description": "Startdatum der Abrechnung"},
+        "bill_end": {"type": "string", "description": "Enddatum der Abrechnung"},
+        "arrival": {"type": "string", "description": "Tatsächliches Ankunftsdatum"},
+        "departure": {"type": "string", "description": "Tatsächliches Abreisedatum"},
+        "contract_id": {"type": "string", "description": "Referenz zum Vertrag"},
+        "care_giver_instance_id": {"type": "string", "description": "Referenz zur Pflegekraft-Instanz"},
+        "stage": {"type": "string", "description": "Status des Care Stays (z.B. 'Bestätigt')"},
+        "price": {"type": "string", "description": "Preis des Care Stays"},
+        "night_care": {"type": "string", "description": "Gibt an, ob Nachtpflege geleistet wird"},
+        "prov_seller": {"type": "string", "description": "Provision für den Verkäufer"},
+        "prov_pfs": {"type": "string", "description": "Provision für PfS (Pflegehilfe Senioren)"},
+        "rejection_reason": {"type": "string", "description": "Grund für Ablehnung"},
+        "presented_at": {"type": "string", "description": "Zeitpunkt der Vorstellung"},
+        "discount_level": {"type": "string", "description": "Rabattstufe"},
+        "discount_seller": {"type": "string", "description": "Rabatt für den Verkäufer"},
+        "travel_cost": {"type": "string", "description": "Reisekosten"},
+        "travel_type": {"type": "string", "description": "Art der Reise"},
+        "travel_options": {"type": "string", "description": "Reiseoptionen"},
+        "dub_cr": {"type": "string", "description": "Duplikat-CR-Flag"},
+        "dub_hh": {"type": "string", "description": "Duplikat-HH-Flag"},
+        "note": {"type": "string", "description": "Notizen zum Care Stay"},
+        "tracks": {"type": "string", "description": "Tracking-Informationen (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "contracts": {"foreign_key": "contract_id", "relationship": "many-to-one", "description": "Jeder Care Stay gehört zu einem Vertrag"},
+        "care_giver_instances": {"foreign_key": "care_giver_instance_id", "relationship": "many-to-one", "description": "Jeder Care Stay wird von einer Pflegekraft-Instanz betreut"},
+        "tickets": {"foreign_key": "ticketable_id", "relationship": "one-to-many", "description": "Ein Care Stay kann mehrere Tickets haben (polymorphisch über ticketable_type='CareStay')"}
+      }
+    },
+    "contracts": {
+      "description": "Verträge zwischen Kunden (Haushalten) und Pflegeagenturen",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Vertrags"},
+        "agency_id": {"type": "string", "description": "Referenz zur Agentur"},
+        "household_id": {"type": "string", "description": "Referenz zum Haushalt"},
+        "active": {"type": "string", "description": "Gibt an, ob der Vertrag aktiv ist"},
+        "termination_reason": {"type": "string", "description": "Grund für Kündigung"},
+        "bill_address_id": {"type": "string", "description": "Referenz zur Rechnungsadresse"},
+        "provision_level": {"type": "string", "description": "Provisionsstufe"},
+        "prov_seller": {"type": "string", "description": "Provision für den Verkäufer"},
+        "prov_pfs": {"type": "string", "description": "Provision für PfS (Pflegehilfe Senioren)"},
+        "discount_level": {"type": "string", "description": "Rabattstufe"},
+        "discount_seller": {"type": "string", "description": "Rabatt für den Verkäufer"},
+        "client_signed": {"type": "string", "description": "Vom Kunden unterschrieben"},
+        "agency_signed": {"type": "string", "description": "Von der Agentur unterschrieben"},
+        "paused_until": {"type": "string", "description": "Pausiert bis zu diesem Datum"},
+        "client_swap": {"type": "string", "description": "Kunde hat Wechseloption"},
+        "agency_swap": {"type": "string", "description": "Agentur hat Wechseloption"},
+        "service_agreement_external_id": {"type": "string", "description": "Externe ID des Serviceabkommens"},
+        "archived": {"type": "string", "description": "Gibt an, ob der Vertrag archiviert ist"},
+        "tracks": {"type": "string", "description": "Tracking-Informationen (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "agencies": {"foreign_key": "agency_id", "relationship": "many-to-one", "description": "Jeder Vertrag gehört zu einer Agentur"},
+        "households": {"foreign_key": "household_id", "relationship": "many-to-one", "description": "Jeder Vertrag gehört zu einem Haushalt"},
+        "care_stays": {"foreign_key": "contract_id", "relationship": "one-to-many", "description": "Ein Vertrag kann mehrere Care Stays haben"},
+        "tickets": {"foreign_key": "ticketable_id", "relationship": "one-to-many", "description": "Ein Vertrag kann mehrere Tickets haben (polymorphisch über ticketable_type='Contract')"}
+      }
+    },
+    "households": {
+      "description": "Haushalte, die Pflegekräfte suchen oder bereits nutzen",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Haushalts"},
+        "lead_id": {"type": "string", "description": "Referenz zum ursprünglichen Lead"},
+        "is_customer": {"type": "string", "description": "Gibt an, ob es sich um einen Kunden handelt"},
+        "designation": {"type": "string", "description": "Bezeichnung des Haushalts"},
+        "archived": {"type": "string", "description": "Gibt an, ob der Haushalt archiviert ist"},
+        "provision_level": {"type": "string", "description": "Proviwwsionsstufe"},
+        "prov_seller": {"type": "string", "description": "Provision für den Verkäufer"},
+        "prov_pfs": {"type": "string", "description": "Provision für PfS (Pflegehilfe Senioren)"},
+        "discount_level": {"type": "string", "description": "Rabattstufe"},
+        "discount_seller": {"type": "string", "description": "Rabatt für den Verkäufer"},
+        "paused_until": {"type": "string", "description": "Pausiert bis zu diesem Datum"},
+        "package_sent": {"type": "string", "description": "Infopaket wurde gesendet"},
+        "package_auto_send": {"type": "string", "description": "Automatische Sendung des Infopakets"},
+        "cancel_reason": {"type": "string", "description": "Grund für Stornierung"},
+        "hot_notes": {"type": "string", "description": "Wichtige Notizen"},
+        "trustpilot": {"type": "string", "description": "Trustpilot-Bewertung angefragt"},
+        "logs": {"type": "string", "description": "Log-Einträge (JSON)"},
+        "tracks": {"type": "string", "description": "Tracking-Informationen (JSON)"},
+        "contact_address_id": {"type": "string", "description": "Referenz zur Kontaktadresse"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "leads": {"foreign_key": "lead_id", "relationship": "many-to-one", "description": "Jeder Haushalt gehört zu einem Lead"},
+        "contracts": {"foreign_key": "household_id", "relationship": "one-to-many", "description": "Ein Haushalt kann mehrere Verträge haben"},
+        "care_receivers": {"foreign_key": "household_id", "relationship": "one-to-many", "description": "Ein Haushalt kann mehrere Pflegebedürftige haben"},
+        "postings": {"foreign_key": "household_id", "relationship": "one-to-many", "description": "Ein Haushalt kann mehrere Stellenanzeigen haben"}
+      }
+    },
+    "lead_orders": {
+      "description": "Bestellungen/Reihenfolge von Leads für Verkäufer",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID der Lead-Order"},
+        "seller_id": {"type": "string", "description": "Referenz zum Verkäufer"},
+        "year": {"type": "string", "description": "Jahr der Lead-Order"},
+        "week_nr": {"type": "string", "description": "Kalenderwoche"},
+        "week_start": {"type": "string", "description": "Startdatum der Woche"},
+        "week_end": {"type": "string", "description": "Enddatum der Woche"},
+        "week_order": {"type": "string", "description": "Reihenfolge innerhalb der Woche"},
+        "original_order": {"type": "string", "description": "Ursprüngliche Reihenfolge"},
+        "first": {"type": "string", "description": "Erster Lead in der Order"},
+        "second": {"type": "string", "description": "Zweiter Lead in der Order"},
+        "third": {"type": "string", "description": "Dritter Lead in der Order"},
+        "fourth": {"type": "string", "description": "Vierter Lead in der Order"},
+        "fifth": {"type": "string", "description": "Fünfter Lead in der Order"},
+        "sixth": {"type": "string", "description": "Sechster Lead in der Order"},
+        "seventh": {"type": "string", "description": "Siebter Lead in der Order"},
+        "broker_first": {"type": "string", "description": "Erster Broker-Lead"},
+        "broker_second": {"type": "string", "description": "Zweiter Broker-Lead"},
+        "broker_third": {"type": "string", "description": "Dritter Broker-Lead"},
+        "broker_fourth": {"type": "string", "description": "Vierter Broker-Lead"},
+        "broker_fifth": {"type": "string", "description": "Fünfter Broker-Lead"},
+        "broker_sixth": {"type": "string", "description": "Sechster Broker-Lead"},
+        "broker_seventh": {"type": "string", "description": "Siebter Broker-Lead"},
+        "broker_original_order": {"type": "string", "description": "Ursprüngliche Broker-Reihenfolge"},
+        "first_comment": {"type": "string", "description": "Kommentar zum ersten Lead"},
+        "tracks": {"type": "string", "description": "Tracking-Informationen (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "proto_users": {"foreign_key": "seller_id", "relationship": "many-to-one", "description": "Jede Lead-Order gehört zu einem Verkäufer"}
+      }
+    },
+    "leads": {
+      "description": "Anfragen/Interessenten für Pflegekräfte",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Leads"},
+        "seller_id": {"type": "string", "description": "Referenz zum Verkäufer"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Leads"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"},
+        "price": {"type": "string", "description": "Preis/Wert des Leads"},
+        "cost": {"type": "string", "description": "Kosten des Leads"},
+        "purchased": {"type": "string", "description": "Wurde der Lead gekauft"},
+        "assigned_at": {"type": "string", "description": "Zeitpunkt der Zuweisung"},
+        "seller_touched_at": {"type": "string", "description": "Zeitpunkt, an dem der Verkäufer den Lead bearbeitet hat"},
+        "contacted": {"type": "string", "description": "Wurde der Lead kontaktiert"},
+        "auto_assigned": {"type": "string", "description": "Wurde der Lead automatisch zugewiesen"},
+        "assign_pooled": {"type": "string", "description": "Ist der Lead im Pool für Zuweisungen"},
+        "archived": {"type": "string", "description": "Ist der Lead archiviert"},
+        "reclaimed": {"type": "string", "description": "Wurde der Lead zurückgefordert"},
+        "reclaim_reason": {"type": "string", "description": "Grund für die Rückforderung"},
+        "reclaimed_at": {"type": "string", "description": "Zeitpunkt der Rückforderung"},
+        "reclaim_confirmed": {"type": "string", "description": "Wurde die Rückforderung bestätigt"},
+        "reclaim_bill_id": {"type": "string", "description": "Rechnungs-ID für die Rückforderung"},
+        "discount_level": {"type": "string", "description": "Rabattstufe"},
+        "discount_seller": {"type": "string", "description": "Rabatt für den Verkäufer"},
+        "prov_seller": {"type": "string", "description": "Provision für den Verkäufer"},
+        "prov_pfs": {"type": "string", "description": "Provision für PfS (Pflegehilfe Senioren)"},
+        "multiplier": {"type": "string", "description": "Multiplikator für die Provision"},
+        "rating_requested": {"type": "string", "description": "Wurde eine Bewertung angefragt"},
+        "rating_auto_request": {"type": "string", "description": "Automatische Anfrage für Bewertung"},
+        "notes": {"type": "string", "description": "Notizen zum Lead"},
+        "hot_notes": {"type": "string", "description": "Wichtige Notizen"},
+        "source_data": {"type": "string", "description": "Quelldaten (JSON)"},
+        "tracks": {"type": "string", "description": "Tracking-Informationen (JSON)"},
+        "logs": {"type": "string", "description": "Log-Einträge (JSON)"},
+        "google_contact": {"type": "string", "description": "Google Kontakt-ID"},
+        "google_etag": {"type": "string", "description": "Google ETag"}
+      },
+      "relationships": {
+        "proto_users": {"foreign_key": "seller_id", "relationship": "many-to-one", "description": "Jeder Lead gehört zu einem Verkäufer"},
+        "households": {"foreign_key": "lead_id", "relationship": "one-to-many", "description": "Ein Lead kann mehrere Haushalte haben"},
+        "tickets": {"foreign_key": "ticketable_id", "relationship": "one-to-many", "description": "Ein Lead kann mehrere Tickets haben (polymorphisch über ticketable_type='Lead')"}
+      }
+    },
+    "postings": {
+      "description": "Stellenanzeigen für Pflegekräfte",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID der Stellenanzeige"},
+        "household_id": {"type": "string", "description": "Referenz zum Haushalt"},
+        "active": {"type": "string", "description": "Gibt an, ob die Stellenanzeige aktiv ist"},
+        "body": {"type": "string", "description": "Inhalt der Stellenanzeige"},
+        "comitted": {"type": "string", "description": "Wurde die Anzeige bestätigt"},
+        "published": {"type": "string", "description": "Wurde die Anzeige veröffentlicht"},
+        "broadcasted": {"type": "string", "description": "Wurde die Anzeige verbreitet"},
+        "nationalities": {"type": "string", "description": "Gewünschte Nationalitäten der Pflegekraft"},
+        "arrival_date": {"type": "string", "description": "Gewünschtes Ankunftsdatum"},
+        "last_activated": {"type": "string", "description": "Zeitpunkt der letzten Aktivierung"},
+        "activation_periods": {"type": "string", "description": "Aktivierungszeiträume (JSON)"},
+        "reset_visors": {"type": "string", "description": "Visoren zurücksetzen"},
+        "agency_budget": {"type": "string", "description": "Budget für die Agentur"},
+        "live_comment": {"type": "string", "description": "Live-Kommentar zur Anzeige"},
+        "logs": {"type": "string", "description": "Log-Einträge (JSON)"},
+        "tracks": {"type": "string", "description": "Tracking-Informationen (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "households": {"foreign_key": "household_id", "relationship": "many-to-one", "description": "Jede Stellenanzeige gehört zu einem Haushalt"},
+        "visors": {"foreign_key": "posting_id", "relationship": "one-to-many", "description": "Eine Stellenanzeige kann mehrere Visoren haben"}
+      }
+    },
+    "proto_users": {
+      "description": "Benutzer der Plattform (Verkäufer, Administratoren, etc.)",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Benutzers"},
+        "email": {"type": "string", "description": "E-Mail-Adresse des Benutzers"},
+        "first_name": {"type": "string", "description": "Vorname des Benutzers"},
+        "last_name": {"type": "string", "description": "Nachname des Benutzers"},
+        "machine_first_name": {"type": "string", "description": "Maschinell lesbarer Vorname"},
+        "machine_last_name": {"type": "string", "description": "Maschinell lesbarer Nachname"},
+        "salutation": {"type": "string", "description": "Anrede des Benutzers"},
+        "gender": {"type": "string", "description": "Geschlecht des Benutzers"},
+        "phone": {"type": "string", "description": "Telefonnummer des Benutzers"},
+        "mobile_phone": {"type": "string", "description": "Mobiltelefonnummer des Benutzers"},
+        "api_email": {"type": "string", "description": "API E-Mail des Benutzers"},
+        "title": {"type": "string", "description": "Titel des Benutzers"},
+        "job_title": {"type": "string", "description": "Berufsbezeichnung des Benutzers"},
+        "agency_id": {"type": "string", "description": "Referenz zur Agentur"},
+        "seller_id": {"type": "string", "description": "Referenz zum Verkäufer"},
+        "active": {"type": "string", "description": "Gibt an, ob der Benutzer aktiv ist"},
+        "_type": {"type": "string", "description": "Typ des Benutzers"},
+        "bill_initials": {"type": "string", "description": "Initialen für Rechnungen"},
+        "contract_start": {"type": "string", "description": "Vertragsbeginn des Benutzers"},
+        "signature_first_name": {"type": "string", "description": "Vorname für Unterschriften"},
+        "signature_last_name": {"type": "string", "description": "Nachname für Unterschriften"},
+        "settings": {"type": "string", "description": "Benutzereinstellungen (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "agencies": {"foreign_key": "agency_id", "relationship": "many-to-one", "description": "Ein Benutzer kann zu einer Agentur gehören"},
+        "leads": {"foreign_key": "seller_id", "relationship": "one-to-many", "description": "Ein Verkäufer kann mehrere Leads haben"},
+        "lead_orders": {"foreign_key": "seller_id", "relationship": "one-to-many", "description": "Ein Verkäufer kann mehrere Lead-Orders haben"}
+      }
+    },
+    "tickets": {
+      "description": "Support-Tickets für verschiedene Entitäten im System",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Tickets"},
+        "subject": {"type": "string", "description": "Betreff des Tickets"},
+        "messages": {"type": "string", "description": "Nachrichten im Ticket (JSON)"},
+        "ticketable_id": {"type": "string", "description": "ID des verknüpften Objekts (polymorphisch)"},
+        "ticketable_type": {"type": "string", "description": "Typ des verknüpften Objekts (z.B. 'Lead', 'Contract', 'CareStay', 'Visor', 'household', 'posting')"},
+        "category": {"type": "string", "description": "Kategorie des Tickets"},
+        "priority": {"type": "string", "description": "Priorität des Tickets"},
+        "archived": {"type": "string", "description": "Gibt an, ob das Ticket archiviert ist"},
+        "logs": {"type": "string", "description": "Log-Einträge (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Tickets"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "polymorphic": {"foreign_key": "ticketable_id", "relationship": "polymorphic", "discriminator": "ticketable_type", "description": "Tickets können sich auf verschiedene Entitäten beziehen (Lead, Contract, CareStay, Visor)"}
+      }
+    },
+    "visors": {
+      "description": "Visoren/Überwacher von Stellenanzeigen",
+      "primary_key": "_id",
+      "columns": {
+        "_id": {"type": "string", "description": "Eindeutige ID des Visors"},
+        "agency_id": {"type": "string", "description": "Referenz zur Agentur"},
+        "posting_id": {"type": "string", "description": "Referenz zur Stellenanzeige"},
+        "active": {"type": "string", "description": "Gibt an, ob der Visor aktiv ist"},
+        "active_time": {"type": "string", "description": "Aktivierungszeit"},
+        "last_activated": {"type": "string", "description": "Zeitpunkt der letzten Aktivierung"},
+        "broadcast": {"type": "string", "description": "Wurde der Visor verbreitet"},
+        "disabled": {"type": "string", "description": "Ist der Visor deaktiviert"},
+        "external_id": {"type": "string", "description": "Externe ID des Visors"},
+        "reject_reason": {"type": "string", "description": "Grund für Ablehnung"},
+        "designation": {"type": "string", "description": "Bezeichnung des Visors"},
+        "info": {"type": "string", "description": "Zusätzliche Informationen"},
+        "arrival_date": {"type": "string", "description": "Ankunftsdatum"},
+        "time_intervals": {"type": "string", "description": "Zeitintervalle (JSON)"},
+        "logs": {"type": "string", "description": "Log-Einträge (JSON)"},
+        "created_at": {"type": "string", "description": "Erstellungszeitpunkt des Datensatzes"},
+        "updated_at": {"type": "string", "description": "Zeitpunkt der letzten Aktualisierung"}
+      },
+      "relationships": {
+        "agencies": {"foreign_key": "agency_id", "relationship": "many-to-one", "description": "Jeder Visor gehört zu einer Agentur"},
+        "postings": {"foreign_key": "posting_id", "relationship": "many-to-one", "description": "Jeder Visor gehört zu einer Stellenanzeige"},
+        "tickets": {"foreign_key": "ticketable_id", "relationship": "one-to-many", "description": "Ein Visor kann mehrere Tickets haben (polymorphisch über ticketable_type='Visor')"}
+      }
+    }
+  },
+  "views": {
+    "leads_and_seller_and_source_with_address": {
+      "description": "View, die Lead-Informationen mit Verkäufer- und Adressdaten anreichert",
+      "base_table": "leads",
+      "joins": ["proto_users (als Verkäufer)"],
+      "important_columns": ["_id", "first_name", "last_name"]
+    },
+    "tickets_creation_end": {
+      "description": "View mit Ticket-Informationen inklusive Erstellungs- und Abschlussdaten",
+      "base_table": "tickets",
+      "important_columns": ["Ticket_ID", "Datum", "seller", "agency"]
+    }
+  },
+  "business_context": {
+    "description": "Das PflegehilfeSeniore_BI-System bildet den gesamten Geschäftsprozess einer Plattform zur Vermittlung von 24-Stunden-Pflegekräften ab. Es führt potenzielle Kunden (Leads) mit Agenturen zusammen, die Pflegekräfte vermitteln. Der Prozess beginnt mit Lead-Generierung, geht über Vertragsabschluss bis hin zur Durchführung von Pflegeeinsätzen (Care Stays).",
+    "core_entities": {
+      "leads": "Potenzielle Kunden mit Pflegebedarf",
+      "care_receivers": "Pflegebedürftige mit detaillierten Pflegeanforderungen",
+      "households": "Organisationseinheit, die Pflegebedürftige enthält",
+      "agencies": "Vermittlungsagenturen für Pflegekräfte",
+      "care_givers": "Personen, die Pflegeleistungen erbringen",
+      "care_stays": "Konkrete Pflegeeinsätze",
+      "contracts": "Rechtliche Vereinbarungen zwischen Kunden und Agenturen"
+    },
+    "workflow": {
+      "lead_management": "Führung und Betreuung potenzieller Kunden durch Verkäufer",
+      "matching": "Zusammenführen von Pflegebedürftigen mit passenden Pflegekräften",
+      "contract_management": "Verwaltung der Verträge zwischen Kunden und Agenturen",
+      "care_management": "Überwachung und Verwaltung der laufenden Pflegeeinsätze",
+      "support": "Ticketsystem zur Unterstützung von Kunden und Agenturen"
+    }
+  }
+}

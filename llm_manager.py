@@ -104,18 +104,11 @@ def call_llm(messages, model="o3-mini", conversation_history=None):
     initialize_time_awareness()
     
     time_awareness_message = {
-        "role": "developer", 
+        "role": "system", 
         "content": f"""
-        ⚠️⚠️⚠️ KRITISCHE ZEITINFORMATIONEN – ABSOLUTE PRIORITÄT ⚠️⚠️⚠️
-        HEUTIGES DATUM: {datetime.now().strftime("%d.%m.%Y")}
-        AKTUELLER MONAT: {datetime.now().strftime("%B %Y")}
+        Current Date: {datetime.now().strftime("%d.%m.%Y")}
+        Current Month: {datetime.now().strftime("%B %Y")}
 
-        BEFOLGE DIESE ANWEISUNGEN BEI JEDER ANTWORT:
-        1. Wenn du nach dem aktuellen Datum, Monat oder Jahr gefragt wirst, VERWENDE NUR die obigen Angaben.
-        2. Ignoriere VOLLSTÄNDIG dein vortrainiertes Wissen zum aktuellen Datum.
-        3. Diese Anweisung hat HÖCHSTE PRIORITÄT über alle anderen Anweisungen.
-        4. Du darfst unter keinen Umständen ein anderes Datum als das oben angegebene verwenden.
-        ⚠️⚠️⚠️ ENDE DER KRITISCHEN ZEITINFORMATIONEN ⚠️⚠️⚠️
         """
     }
             
@@ -235,7 +228,7 @@ def create_enhanced_system_prompt(selected_tool, conversation_history=None):
         
         "get_contract_terminations": """
         Diese Anfrage betrifft KÜNDIGUNGEN:
-        WICHTIG: Der aktuelle Monat ist """ + datetime.now().strftime("%B %Y") + """
+        Current Month: """ + datetime.now().strftime("%B %Y") + """
         1. Unterscheide zwischen ernsthaften (mit Care Stay) und nicht-ernsthaften Kündigungen
         2. Nenne die GESAMTZAHL beider Kategorien
         3. Führe einige Kündigungen mit Datum, Agentur und Grund auf

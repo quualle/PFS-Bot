@@ -1,45 +1,22 @@
-# 1) Alles ignorieren
+# Ignore everything
 *
+*/
 
-# 2) .gitignore nicht ignorieren
-!.gitignore
+# But not these files
+!*.py
+!*.html
+!*.json
 
-# 3) Whiteliste einzelne Dateien
-!app.py
-!notfall_logs.json
-!requirements.txt
-!themen.txt
+# Allow directories to be tracked so we can recurse into them
+!*/
 
-# 4) Templates komplett erlauben
-!templates/
-templates/*
-!templates/**
-
-# 5) Static-Ordner, aber nur styles.css
-!static/
-static/*
-!static/styles.css
-
-# 6) Feedback komplett erlauben
-!feedback/
-feedback/*
-!feedback/**
-
-# 7) Chatlogs komplett erlauben
-!chatlogs/
-chatlogs/*
-!chatlogs/**
-
-# 8) Unerwünschte Sachen explizit ausschließen (meist schon von "*" abgedeckt)
-.cache/
-.ipython/
-.local/
-.virtualenvs/
-.bashrc
-.gitconfig
-.profile
-.pythonstartup.py
-.vimrc
-uploads/
-flask_session/
+# Ignore specific files even if they match the above extensions
+.DS_Store
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+*~
+.vscode/
+.idea/
+frontend/node_modules/

@@ -935,9 +935,10 @@
             <div id="overviewTab" class="tab-content active">
                 <div class="widget-row">
                     <div class="widget">
-                        <div class="widget-header">Aktuelle KPIs</div>
+                        <div class="widget-header">Kundenanzahl</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Ihre wichtigsten KPIs angezeigt...</p>
+                            <div class="customer-count" id="overviewCustomersCount">0</div>
+                            <div class="customer-label">aktive Kunden</div>
                         </div>
                     </div>
                     <div class="widget">
@@ -2079,6 +2080,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         // Funktion zum Laden der aktiven Kunden
         function loadActiveCustomers() {
             const activeCustomersCount = document.getElementById('activeCustomersCount');
+            const overviewCustomersCount = document.getElementById('overviewCustomersCount');
             const activeCustomersList = document.getElementById('activeCustomersList');
             const customerLoadingSpinner = document.getElementById('customerLoadingSpinner');
             
@@ -2098,8 +2100,10 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                     customerLoadingSpinner.style.display = 'none';
                     
                     if (data.status === 'success') {
-                        // Anzahl der aktiven Kunden anzeigen
-                        activeCustomersCount.textContent = data.count || 0;
+                        // Anzahl der aktiven Kunden anzeigen - sowohl in der Übersicht als auch im Kundenbereich
+                        const customerCount = data.count || 0;
+                        activeCustomersCount.textContent = customerCount;
+                        overviewCustomersCount.textContent = customerCount;
                         
                         // Kundenliste leeren
                         activeCustomersList.innerHTML = '';

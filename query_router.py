@@ -47,8 +47,7 @@ except ImportError:
             # Make the API call
             response = openai.chat.completions.create(
                 model=model,
-                messages=messages,
-                temperature=0.1
+                messages=messages
             )
             
             content = response.choices[0].message.content

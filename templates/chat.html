@@ -519,6 +519,170 @@
             font-size: 18px;
             color: #00ffff;
         }
+
+        /* MY BUSINESS BUTTON */
+        .my-business-button {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            padding: 8px 15px;
+            background: linear-gradient(135deg, #1e5799, #207cca);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        .my-business-button:hover {
+            background: linear-gradient(135deg, #2989d8, #207cca);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+        .my-business-button:active {
+            transform: scale(0.97);
+        }
+
+        /* MY BUSINESS DASHBOARD OVERLAY */
+        .business-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            z-index: 100;
+            overflow-y: auto;
+        }
+        
+        /* DASHBOARD CONTENT */
+        .business-content {
+            background: rgba(22, 33, 46, 0.95);
+            margin: 30px auto;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            max-width: 90%;
+            width: 1200px;
+            position: relative;
+            min-height: 80vh;
+        }
+        
+        /* DASHBOARD HEADER */
+        .business-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .business-header h2 {
+            color: #00ffff;
+            margin: 0;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+            font-size: 28px;
+        }
+        
+        .close-business-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .close-business-btn:hover {
+            color: #00ffff;
+            transform: scale(1.1);
+        }
+        
+        /* TAB NAVIGATION */
+        .business-tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        .business-tab {
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: none;
+            border-radius: 8px 8px 0 0;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .business-tab:hover {
+            background: rgba(0, 255, 255, 0.1);
+        }
+        
+        .business-tab.active {
+            background: rgba(0, 255, 255, 0.2);
+            color: #ffffff;
+            font-weight: bold;
+        }
+        
+        /* TAB CONTENT */
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        /* DASHBOARD WIDGETS */
+        .widget-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px;
+        }
+        
+        .widget {
+            flex: 1 1 300px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 10px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .widget:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            transform: translateY(-5px);
+        }
+        
+        .widget-header {
+            font-size: 18px;
+            color: #00ffff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        .widget-content {
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+        }
+        
+        .placeholder-text {
+            color: #aaaaaa;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -546,6 +710,185 @@
         </div>
     </div>
 
+    <!-- MY BUSINESS DASHBOARD OVERLAY -->
+    <div id="businessOverlay" class="business-overlay">
+        <div class="business-content">
+            <div class="business-header">
+                <h2>My Business</h2>
+                <button id="closeBusinessBtn" class="close-business-btn">&times;</button>
+            </div>
+            
+            <div class="business-tabs">
+                <button class="business-tab active" data-tab="overview">Übersicht</button>
+                <button class="business-tab" data-tab="kpis">Meine KPIs</button>
+                <button class="business-tab" data-tab="customers">Meine Kunden</button>
+                <button class="business-tab" data-tab="sales">Meine Verkäufe</button>
+                <button class="business-tab" data-tab="staff">Mein Team</button>
+            </div>
+            
+            <div id="overviewTab" class="tab-content active">
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Aktuelle KPIs</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Ihre wichtigsten KPIs angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Kundenübersicht</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier wird die Kundenübersicht angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Verkaufsperformance</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier wird Ihre Verkaufsperformance angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Team-Updates</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Team-Updates angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Aktuelle Trends</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden aktuelle Trends angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="kpisTab" class="tab-content">
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Umsatz</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Umsatzdaten angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Abschlussquote</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier wird Ihre Abschlussquote angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Termintreue</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Termintreue-Daten angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Kündigungsrate</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier wird Ihre Kündigungsrate angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="customersTab" class="tab-content">
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Aktive Kunden</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Daten zu aktiven Kunden angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Neue Kunden</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Daten zu neuen Kunden angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Kundensegmente</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Kundensegmente angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Kundenzufriedenheit</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Kundenzufriedenheitsdaten angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="salesTab" class="tab-content">
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Verkaufszahlen</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Ihre Verkaufszahlen angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Produktperformance</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier wird die Produktperformance angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Verkaufsprognose</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Verkaufsprognosen angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Verkaufsregionen</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden regionale Verkaufsdaten angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="staffTab" class="tab-content">
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Team-Mitglieder</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Team-Mitglieder angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Team-Performance</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier wird die Team-Performance angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Personalplanung</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Personalplanungsdaten angezeigt...</p>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Training & Entwicklung</div>
+                        <div class="widget-content">
+                            <p class="placeholder-text">Hier werden Trainings- und Entwicklungsdaten angezeigt...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="chat-container">
         <!-- HAUPTTITEL & UNTERTITEL -->
         <h1 class="main-title">XORA</h1>
@@ -566,6 +909,9 @@
         <div class="chat-box">
             <!-- NOTFALL-BUTTON (immer sichtbar) -->
             <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
+
+            <!-- MY BUSINESS BUTTON -->
+            <button id="myBusinessBtn" class="my-business-button">My Business</button>
 
             <!-- CHAT-HISTORY (scrollbar) -->
             <div id="chatHistory" class="chat-history">
@@ -1461,6 +1807,52 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         // Initialen Status setzen
         checkUserName();
         forceScrollToBottom();
+
+        // My Business Dashboard Funktionalität
+        const myBusinessBtn = document.getElementById('myBusinessBtn');
+        const businessOverlay = document.getElementById('businessOverlay');
+        const closeBusinessBtn = document.getElementById('closeBusinessBtn');
+        const businessTabs = document.querySelectorAll('.business-tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // My Business Button Click-Handler
+        myBusinessBtn.addEventListener('click', function() {
+            businessOverlay.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Verhindert das Scrollen im Hintergrund
+        });
+
+        // Close Business Dashboard Button Click-Handler
+        closeBusinessBtn.addEventListener('click', function() {
+            businessOverlay.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Erlaubt wieder das Scrollen
+        });
+
+        // Tab-Wechsel-Funktionalität
+        businessTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // Aktiven Tab-Button umschalten
+                businessTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Aktiven Tab-Inhalt umschalten
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === tabId + 'Tab') {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Close-Funktion durch Klick außerhalb des Dashboards
+        businessOverlay.addEventListener('click', function(event) {
+            if (event.target === businessOverlay) {
+                businessOverlay.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
 
         // Event-Listener für Clear Chat Button
         document.getElementById('clearChatBtn').addEventListener('click', function() {

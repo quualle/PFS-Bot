@@ -39,7 +39,9 @@ from bigquery_functions import (
     get_contracts_for_seller, 
     get_households_for_seller, 
     calculate_kpis_for_seller,
-    get_seller_data)
+    get_seller_data,
+    execute_bigquery_query,
+    format_query_result)
 from tool_manager import load_tool_config, create_tool_description_prompt, select_tool, load_tool_descriptions, load_tool_descriptions, select_optimal_tool_with_reasoning
 try:
     from query_selector import select_query_with_llm, update_selection_feedback, process_clarification_response, process_text_clarification_response

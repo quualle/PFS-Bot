@@ -889,6 +889,145 @@
             background: rgba(255, 0, 0, 0.1);
             border-radius: 5px;
         }
+        
+        /* Business Dashboard Styles */
+        .business-tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        .business-tab {
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: none;
+            border-radius: 8px 8px 0 0;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .business-tab.active {
+            background: rgba(0, 255, 255, 0.2);
+            color: #ffffff;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .widget {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 10px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .widget-header {
+            font-size: 18px;
+            color: #00ffff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        .widget-content {
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+        
+        .metric-label {
+            color: #e0e0e0;
+            font-size: 16px;
+        }
+        
+        .customer-count {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 5px;
+        }
+        
+        .customer-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 20px;
+        }
+        
+        .dual-metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .dual-metric-item {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .month-selector {
+            margin-top: 10px;
+        }
+        
+        .month-select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .date-range-selector {
+            margin-bottom: 20px;
+        }
+        
+        .date-input {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            width: 150px;
+            margin-right: 10px;
+        }
+        
+        .date-range-button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #2d6a9a, #0f4c81);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .date-range-button:hover {
+            background: linear-gradient(135deg, #3a7dae, #1b5e91);
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -928,74 +1067,164 @@
                 <button class="business-tab active" data-tab="overview">Übersicht</button>
                 <button class="business-tab" data-tab="kpis">Meine KPIs</button>
                 <button class="business-tab" data-tab="customers">Meine Kunden</button>
-                <button class="business-tab" data-tab="sales">Meine Verkäufe</button>
-                <button class="business-tab" data-tab="staff">Mein Team</button>
             </div>
             
             <div id="overviewTab" class="tab-content active">
                 <div class="widget-row">
                     <div class="widget">
-                        <div class="widget-header">Kundenanzahl</div>
+                        <div class="widget-header">Kundenzahl</div>
                         <div class="widget-content">
                             <div class="customer-count" id="overviewCustomersCount">0</div>
                             <div class="customer-label">aktive Kunden</div>
                         </div>
                     </div>
                     <div class="widget">
-                        <div class="widget-header">Kundenübersicht</div>
+                        <div class="widget-header">Abschlussquote</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier wird die Kundenübersicht angezeigt...</p>
+                            <div class="metric-value" id="closingRate">0%</div>
+                            <div class="metric-label">Abschlussquote</div>
                         </div>
                     </div>
                     <div class="widget">
-                        <div class="widget-header">Verkaufsperformance</div>
+                        <div class="widget-header">
+                            Umsatz
+                            <div class="month-selector">
+                                <select id="revenueMonthSelector" class="month-select">
+                                    <option value="0">Aktueller Monat</option>
+                                    <option value="1">Letzter Monat</option>
+                                    <option value="2">Vor 2 Monaten</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier wird Ihre Verkaufsperformance angezeigt...</p>
+                            <div class="metric-value" id="monthlyRevenue">0 €</div>
+                            <div class="metric-label">Monatlicher Umsatz</div>
                         </div>
                     </div>
                 </div>
                 <div class="widget-row">
                     <div class="widget">
-                        <div class="widget-header">Team-Updates</div>
+                        <div class="widget-header">Neue Verträge</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Team-Updates angezeigt...</p>
+                            <div class="dual-metric">
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="newContracts">0</div>
+                                    <div class="metric-label">Neu</div>
+                                </div>
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="agencySwitchContracts">0</div>
+                                    <div class="metric-label">Agenturwechsel</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="widget">
-                        <div class="widget-header">Aktuelle Trends</div>
+                        <div class="widget-header">Kündigungen</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier werden aktuelle Trends angezeigt...</p>
+                            <div class="dual-metric">
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="seriousCancellations">0</div>
+                                    <div class="metric-label">Ernst</div>
+                                </div>
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="agencySwitchCancellations">0</div>
+                                    <div class="metric-label">Agenturwechsel</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             
             <div id="kpisTab" class="tab-content">
+                <div class="date-range-selector">
+                    <label for="kpiStartDate">Von:</label>
+                    <input type="date" id="kpiStartDate" class="date-input">
+                    <label for="kpiEndDate">Bis:</label>
+                    <input type="date" id="kpiEndDate" class="date-input">
+                    <button id="applyDateRange" class="date-range-button">Anwenden</button>
+                </div>
+                
                 <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Umsatz</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Umsatzdaten angezeigt...</p>
-                        </div>
-                    </div>
-                    <div class="widget">
+                    <div class="widget wide-widget">
                         <div class="widget-header">Abschlussquote</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier wird Ihre Abschlussquote angezeigt...</p>
+                            <div class="dual-metric large">
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="closingRatePercent">0%</div>
+                                    <div class="metric-label">Prozentual</div>
+                                </div>
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="closingRateAbsolute">0/0</div>
+                                    <div class="metric-label">Absolut</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+                
                 <div class="widget-row">
                     <div class="widget">
-                        <div class="widget-header">Termintreue</div>
+                        <div class="widget-header">Lead zu EB</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Termintreue-Daten angezeigt...</p>
+                            <div class="dual-metric">
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="leadToEbPercent">0%</div>
+                                    <div class="metric-label">Prozentual</div>
+                                </div>
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="leadToEbAbsolute">0/0</div>
+                                    <div class="metric-label">Absolut</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="widget">
-                        <div class="widget-header">Kündigungsrate</div>
+                        <div class="widget-header">EB zu Posting</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier wird Ihre Kündigungsrate angezeigt...</p>
+                            <div class="dual-metric">
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="ebToPostingPercent">0%</div>
+                                    <div class="metric-label">Prozentual</div>
+                                </div>
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="ebToPostingAbsolute">0/0</div>
+                                    <div class="metric-label">Absolut</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="widget-row">
+                    <div class="widget">
+                        <div class="widget-header">Posting zu Vertrag</div>
+                        <div class="widget-content">
+                            <div class="dual-metric">
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="postingToContractPercent">0%</div>
+                                    <div class="metric-label">Prozentual</div>
+                                </div>
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="postingToContractAbsolute">0/0</div>
+                                    <div class="metric-label">Absolut</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">Kündigungsquote</div>
+                        <div class="widget-content">
+                            <div class="dual-metric">
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="cancellationRatePercent">0%</div>
+                                    <div class="metric-label">Prozentual</div>
+                                </div>
+                                <div class="dual-metric-item">
+                                    <div class="metric-value" id="cancellationRateAbsolute">0/0</div>
+                                    <div class="metric-label">Absolut</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1018,85 +1247,35 @@
                         </div>
                     </div>
                     <div class="widget">
-                        <div class="widget-header">Neue Kunden</div>
+                        <div class="widget-header">Neue Kunden (letzte 14 Tage)</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Daten zu neuen Kunden angezeigt...</p>
+                            <div class="customer-count" id="newCustomersCount">0</div>
+                            <div class="customer-label">neue Kunden</div>
+                            <div id="newCustomersList" class="customer-list">
+                                <p class="placeholder-text">Hier werden neue Kunden angezeigt...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="widget-row">
                     <div class="widget">
-                        <div class="widget-header">Kundensegmente</div>
+                        <div class="widget-header">Kunden in Pause</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Kundensegmente angezeigt...</p>
+                            <div class="customer-count" id="pausedCustomersCount">0</div>
+                            <div class="customer-label">pausierte Kunden</div>
+                            <div id="pausedCustomersList" class="customer-list">
+                                <p class="placeholder-text">Hier werden pausierte Kunden mit Pausendauer angezeigt...</p>
+                            </div>
                         </div>
                     </div>
                     <div class="widget">
-                        <div class="widget-header">Kundenzufriedenheit</div>
+                        <div class="widget-header">Am längsten dabei</div>
                         <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Kundenzufriedenheitsdaten angezeigt...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="salesTab" class="tab-content">
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Verkaufszahlen</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Ihre Verkaufszahlen angezeigt...</p>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Produktperformance</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier wird die Produktperformance angezeigt...</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Verkaufsprognose</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Verkaufsprognosen angezeigt...</p>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Verkaufsregionen</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier werden regionale Verkaufsdaten angezeigt...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="staffTab" class="tab-content">
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Team-Mitglieder</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Team-Mitglieder angezeigt...</p>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Team-Performance</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier wird die Team-Performance angezeigt...</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Personalplanung</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Personalplanungsdaten angezeigt...</p>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Training & Entwicklung</div>
-                        <div class="widget-content">
-                            <p class="placeholder-text">Hier werden Trainings- und Entwicklungsdaten angezeigt...</p>
+                            <div class="customer-count" id="longtermCustomersCount">0</div>
+                            <div class="customer-label">langjährige Kunden</div>
+                            <div id="longtermCustomersList" class="customer-list">
+                                <p class="placeholder-text">Hier werden langjährige Kunden angezeigt...</p>
+                            </div>
                         </div>
                     </div>
                 </div>

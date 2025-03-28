@@ -674,9 +674,11 @@
         .widget-content {
             min-height: 150px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             color: #ffffff;
+            padding: 10px;
         }
         
         .placeholder-text {
@@ -685,212 +687,6 @@
         }
         
         /* BUSINESS DASHBOARD */
-        .business-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            overflow-y: auto;
-        }
-        
-        .business-content {
-            width: 90%;
-            max-width: 1200px;
-            background: rgba(31, 28, 44, 0.95);
-            margin: 50px auto;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
-        }
-        
-        .business-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
-            padding-bottom: 15px;
-        }
-        
-        .business-header h2 {
-            color: #00ffff;
-            font-size: 24px;
-            margin: 0;
-        }
-        
-        .close-business-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 30px;
-            cursor: pointer;
-            padding: 0;
-            margin: 0;
-        }
-        
-        /* TABS */
-        .tab-buttons {
-            display: flex;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-            margin-bottom: 20px;
-        }
-        
-        .tab-button {
-            padding: 10px 20px;
-            background: none;
-            border: none;
-            color: #ffffff;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
-        }
-        
-        .tab-button:hover {
-            opacity: 1;
-            background: rgba(0, 255, 255, 0.1);
-        }
-        
-        .tab-button.active {
-            opacity: 1;
-            border-bottom: 3px solid #00ffff;
-            font-weight: bold;
-        }
-        
-        .tab-content {
-            display: none;
-            margin-bottom: 20px;
-        }
-        
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        
-        /* WIDGETS */
-        .widget-row {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 0 -10px;
-        }
-        
-        .widget {
-            flex: 1 1 300px;
-            margin: 10px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-        
-        .widget-header {
-            background: rgba(0, 255, 255, 0.1);
-            padding: 12px 15px;
-            font-weight: bold;
-            color: #00ffff;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-        }
-        
-        .widget-content {
-            padding: 15px;
-            position: relative;
-        }
-        
-        .placeholder-text {
-            color: rgba(255, 255, 255, 0.5);
-            font-style: italic;
-        }
-        
-        /* Dashboard Kundenübersicht */
-        .customer-count {
-            font-size: 36px;
-            font-weight: bold;
-            color: #00ffff;
-            margin-bottom: 5px;
-        }
-        
-        .customer-label {
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 20px;
-        }
-        
-        .customer-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 10px;
-        }
-        
-        .customer-item {
-            padding: 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .customer-item:hover {
-            background: rgba(0, 255, 255, 0.05);
-        }
-        
-        .customer-name {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .customer-agency {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9em;
-            margin-bottom: 5px;
-        }
-        
-        .customer-duration {
-            color: rgba(0, 255, 255, 0.8);
-            font-size: 0.85em;
-        }
-        
-        .no-customers {
-            color: rgba(255, 255, 255, 0.5);
-            font-style: italic;
-            padding: 20px 0;
-            text-align: center;
-        }
-        
-        .loading-spinner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 30px 0;
-        }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(0, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top: 4px solid #00ffff;
-            animation: spin 1s linear infinite;
-            margin-bottom: 15px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .error-message {
-            color: #ff6b6b;
-            padding: 15px;
-            text-align: center;
-            background: rgba(255, 0, 0, 0.1);
-            border-radius: 5px;
-        }
-        
-        /* Business Dashboard Styles */
         .business-tabs {
             display: flex;
             border-bottom: 1px solid rgba(0, 255, 255, 0.3);
@@ -946,18 +742,22 @@
             align-items: center;
             justify-content: center;
             color: #ffffff;
+            padding: 10px;
         }
         
         .metric-value {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             color: #00ffff;
             margin-bottom: 10px;
+            text-align: center;
         }
         
         .metric-label {
             color: #e0e0e0;
             font-size: 16px;
+            text-align: center;
+            margin-bottom: 10px;
         }
         
         .customer-count {
@@ -974,13 +774,16 @@
         
         .dual-metric {
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
+            width: 100%;
             margin-bottom: 20px;
         }
         
         .dual-metric-item {
-            flex: 1;
+            flex: 0 0 40%;
             text-align: center;
+            padding: 0 20px;
+            margin: 0 5px;
         }
         
         .month-selector {
@@ -1027,6 +830,21 @@
         .date-range-button:hover {
             background: linear-gradient(135deg, #3a7dae, #1b5e91);
             transform: scale(1.05);
+        }
+        
+        /* Verbesserung der customer-count und customer-label Stile für bessere Lesbarkeit und Abstand */
+        .customer-count {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .customer-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 20px;
+            text-align: center;
         }
     </style>
 </head>
@@ -1272,7 +1090,7 @@
                         <div class="widget-header">Am längsten dabei</div>
                         <div class="widget-content">
                             <div class="customer-count" id="longtermCustomersCount">0</div>
-                            <div class="customer-label">langjährige Kunden</div>
+                            <div class="customer-label">am längsten dabei</div>
                             <div id="longtermCustomersList" class="customer-list">
                                 <p class="placeholder-text">Hier werden langjährige Kunden angezeigt...</p>
                             </div>

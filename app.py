@@ -824,6 +824,37 @@ def create_function_definitions():
     
     return tools
 
+def create_system_prompt(table_schema):
+    # Bestehendes System-Prompt generieren
+    prompt = "Du bist ein hilfreicher KI-Assistent, der bei der Verwaltung von Pflegedaten hilft."
+    prompt += "\n\nDu hast Zugriff auf eine Datenbank mit folgenden Tabellen:\n"
+    
+    for table_name, table_info in table_schema.get("tables", {}).items():
+        prompt += f"\n- {table_name}: {table_info.get('description', 'Keine Beschreibung')}"
+        prompt += "\n  Felder:"
+        for field_name, field_info in table_info.get("fields", {}).items():
+            prompt += f"\n    - {field_name}: {field_info.get('description', 'Keine Beschreibung')}"
+    
+    # Ergänze das Prompt mit wichtigen Anweisungen zur Funktionsnutzung
+    prompt += """
+    
+    KRITISCH WICHTIG: Du bist ein Assistent, der NIEMALS Fragen zu Datenbank-Daten direkt beantwortet!
+    
+    1. Bei JEDER Frage zu Care Stays, Verträgen, Leads oder anderen Daten MUSST du eine der bereitgestellten Funktionen verwenden.
+    2. Ohne Funktionsaufruf hast du KEINEN Zugriff auf aktuelle Daten.
+    3. Generiere NIEMALS Antworten aus eigenem Wissen, wenn die Information in der Datenbank zu finden ist.
+    4. Bei zeitbezogenen Anfragen (z.B. "im Mai") nutze IMMER die Funktion get_care_stays_by_date_range.
+    
+    Dein Standardverhalten bei Datenabfragen:
+    1. Analysiere die Nutzerfrage
+    2. Wähle die passende Funktion
+    3. Rufe die Funktion mit korrekten Parametern auf
+    4. Warte auf das Ergebnis
+    5. Nutze dieses Ergebnis für deine Antwort
+    """
+    
+    return prompt
+
 def stream_text_response(response_text, user_message, session_data):
     """
     Generiert einen Stream für direkte Textantworten (z.B. Wissensbasis-Antworten)
@@ -2494,36 +2525,116 @@ def test_bigquery():
         """
         return error_output
 
-def create_system_prompt(table_schema):
-    # Bestehendes System-Prompt generieren
-    prompt = "Du bist ein hilfreicher KI-Assistent, der bei der Verwaltung von Pflegedaten hilft."
-    prompt += "\n\nDu hast Zugriff auf eine Datenbank mit folgenden Tabellen:\n"
-    
-    for table_name, table_info in table_schema.get("tables", {}).items():
-        prompt += f"\n- {table_name}: {table_info.get('description', 'Keine Beschreibung')}"
-        prompt += "\n  Felder:"
-        for field_name, field_info in table_info.get("fields", {}).items():
-            prompt += f"\n    - {field_name}: {field_info.get('description', 'Keine Beschreibung')}"
-    
-    # Ergänze das Prompt mit wichtigen Anweisungen zur Funktionsnutzung
-    prompt += """
-    
-    KRITISCH WICHTIG: Du bist ein Assistent, der NIEMALS Fragen zu Datenbank-Daten direkt beantwortet!
-    
-    1. Bei JEDER Frage zu Care Stays, Verträgen, Leads oder anderen Daten MUSST du eine der bereitgestellten Funktionen verwenden.
-    2. Ohne Funktionsaufruf hast du KEINEN Zugriff auf aktuelle Daten.
-    3. Generiere NIEMALS Antworten aus eigenem Wissen, wenn die Information in der Datenbank zu finden ist.
-    4. Bei zeitbezogenen Anfragen (z.B. "im Mai") nutze IMMER die Funktion get_care_stays_by_date_range.
-    
-    Dein Standardverhalten bei Datenabfragen:
-    1. Analysiere die Nutzerfrage
-    2. Wähle die passende Funktion
-    3. Rufe die Funktion mit korrekten Parametern auf
-    4. Warte auf das Ergebnis
-    5. Nutze dieses Ergebnis für deine Antwort
+@app.route('/get_active_care_stays_now', methods=['GET'])
+def get_active_care_stays_now():
     """
+    Liefert die aktiven Care Stays für den Verkäufer als JSON
+    """
+    try:
+        # Seller ID aus der Session holen
+        seller_id = session.get('seller_id')
+        if not seller_id:
+            return jsonify({
+                "error": "Keine Seller ID in der Session gefunden",
+                "status": "error"
+            }), 401
+        
+        # Lade die Abfragemuster
+        with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            query_patterns = json.load(f)
+        
+        # Hole die "get_active_care_stays_now" Abfrage
+        query_name = "get_active_care_stays_now"
+        if query_name not in query_patterns['common_queries']:
+            return jsonify({
+                "error": f"Abfrage {query_name} nicht gefunden",
+                "status": "error"
+            }), 404
+        
+        query_pattern = query_patterns['common_queries'][query_name]
+        
+        # Parameter für die Abfrage vorbereiten
+        parameters = {'seller_id': seller_id, 'limit': 100}
+        
+        # Führe die Abfrage aus
+        result = execute_bigquery_query(
+            query_pattern['sql_template'],
+            parameters
+        )
+        
+        # Formatiere das Ergebnis
+        formatted_result = format_query_result(result, query_pattern.get('result_structure'))
+        
+        return jsonify({
+            "data": formatted_result,
+            "count": len(formatted_result),
+            "status": "success"
+        })
     
-    return prompt
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logging.error(f"Fehler in get_active_care_stays_now: {str(e)}\n{error_trace}")
+        return jsonify({
+            "error": str(e),
+            "trace": error_trace,
+            "status": "error"
+        }), 500
+
+@app.route('/get_dashboard_data', methods=['GET'])
+def get_dashboard_data():
+    """
+    Liefert Daten für das Dashboard, basierend auf dem angegebenen Abfragetyp.
+    Diese Route wird beim Öffnen des Dashboards aufgerufen.
+    """
+    try:
+        # Seller ID aus der Session holen
+        seller_id = session.get('seller_id')
+        if not seller_id:
+            return jsonify({
+                "error": "Keine Seller ID in der Session gefunden",
+                "status": "error"
+            }), 401
+        
+        # Lade die Abfragemuster
+        with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            query_patterns = json.load(f)
+        
+        # Hole die "get_active_care_stays_now" Abfrage
+        query_name = "get_active_care_stays_now"
+        if query_name not in query_patterns['common_queries']:
+            return jsonify({
+                "error": f"Abfrage {query_name} nicht gefunden",
+                "status": "error"
+            }), 404
+        
+        query_pattern = query_patterns['common_queries'][query_name]
+        
+        # Parameter für die Abfrage vorbereiten
+        parameters = {'seller_id': seller_id, 'limit': 100}
+        
+        # Führe die Abfrage aus
+        result = execute_bigquery_query(
+            query_pattern['sql_template'],
+            parameters
+        )
+        
+        # Formatiere das Ergebnis
+        formatted_result = format_query_result(result, query_pattern.get('result_structure'))
+        
+        return jsonify({
+            "data": formatted_result,
+            "count": len(formatted_result),
+            "status": "success"
+        })
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logging.error(f"Fehler in get_dashboard_data: {str(e)}\n{error_trace}")
+        return jsonify({
+            "error": str(e),
+            "trace": error_trace,
+            "status": "error"
+        }), 500
 
 @app.route('/update_stream_chat_history', methods=['POST'])
 def update_stream_chat_history():
@@ -2542,7 +2653,7 @@ def update_stream_chat_history():
         if not user_id or not user_name:
             return jsonify({'success': False, 'error': 'No active session'}), 400
             
-        chat_key = f"chat_history_{user_id}"
+        chat_key = f'chat_history_{user_id}'
         
         # Get current chat history or initialize it
         chat_history = session.get(chat_key, [])

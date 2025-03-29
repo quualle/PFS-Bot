@@ -373,6 +373,9 @@
                             
                             // Neue Verträge aktualisieren
                             if (data.new_contracts) {
+                                // Spinner entfernen
+                                hideLoadingSpinner('new-contracts-widget');
+                                
                                 // Echte neue Verträge
                                 const newContractsCount = data.new_contracts.normal_contracts_count || 0;
                                 setElementText('new-contracts', newContractsCount);
@@ -386,6 +389,9 @@
                             
                             // Aktive neue Verträge aktualisieren
                             if (data.active_new_contracts) {
+                                // Spinner entfernen
+                                hideLoadingSpinner('active-contracts-widget');
+                                
                                 // Echte neue Verträge
                                 const activeNewContractsCount = data.active_new_contracts.normal_contracts_count || 0;
                                 setElementText('active-new-contracts', activeNewContractsCount);
@@ -437,6 +443,19 @@
                 element.textContent = text;
             } else {
                 console.warn(`Element mit ID ${elementId} nicht gefunden`);
+            }
+        }
+        
+        // Hilfsfunktion zum Ausblenden des Loading-Spinners
+        function hideLoadingSpinner(containerId) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                const spinner = container.querySelector('.loading-spinner');
+                if (spinner) {
+                    spinner.style.display = 'none';
+                }
+            } else {
+                console.warn(`Container mit ID ${containerId} nicht gefunden`);
             }
         }
         

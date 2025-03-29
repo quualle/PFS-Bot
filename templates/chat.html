@@ -1396,6 +1396,7 @@
         const chatHistory = document.getElementById('chatHistory');
         const chatForm = document.getElementById('chatForm');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        console.log('DEBUG: CSRF-Token initialisiert:', csrfToken ? 'Vorhanden' : 'Fehlt');
 
         // Name-Overlay-Elemente
         const nameOverlay = document.getElementById('nameOverlay');
@@ -2322,60 +2323,97 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             const activeCustomersListContainer = document.getElementById('active-customers-list-container');
             const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
             
+            console.log('DEBUG: loadActiveCustomers() aufgerufen');
+            
             // Ladeanimationen anzeigen
             if (activeCustomersListContainer) {
+                console.log('DEBUG: activeCustomersListContainer gefunden');
                 activeCustomersListContainer.innerHTML = `
                     <div class="loading-spinner">
                         <div class="spinner"></div>
                         <div>Kundendaten werden geladen...</div>
                     </div>
                 `;
+            } else {
+                console.warn('DEBUG: activeCustomersListContainer nicht gefunden');
             }
             
             if (activeCustomersNowWidget) {
+                console.log('DEBUG: activeCustomersNowWidget gefunden');
                 activeCustomersNowWidget.innerHTML = `
                     <div class="loading-spinner">
                         <div class="spinner"></div>
                         <div>Daten werden geladen...</div>
                     </div>
                 `;
+            } else {
+                console.warn('DEBUG: activeCustomersNowWidget nicht gefunden');
             }
             
             // Standardwerte initialisieren, falls die Daten nicht geladen werden können
+            console.log('DEBUG: Initialisiere Standardwerte');
             initializeEmptyMetrics();
             
             // API-Aufruf zum Laden der aktiven Kunden
-            fetch('/get_dashboard_data')
+            console.log('DEBUG: Starte Fetch-Anfrage an /get_dashboard_data');
+            fetch('/get_dashboard_data', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                }
+            })
                 .then(response => {
+                    console.log('DEBUG: Fetch-Antwort erhalten', response);
+                    console.log('DEBUG: Antwort-Status:', response.status);
+                    console.log('DEBUG: Response OK?', response.ok);
+                    
+                    // Prüfen, ob es ein CSRF-Token-Problem gibt
+                    if (response.status === 403) {
+                        console.error('DEBUG: Mögliches CSRF-Token-Problem (403 Forbidden)');
+                        throw new Error('Möglicherweise ist Ihre Sitzung abgelaufen. Bitte laden Sie die Seite neu.');
+                    }
+                    
                     if (!response.ok) {
-                        throw new Error('Netzwerkantwort war nicht ok');
+                        throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Dashboard-Daten geladen:', data);
+                    console.log('DEBUG: Dashboard-Daten geladen:', data);
+                    console.log('DEBUG: Datentyp:', typeof data);
+                    console.log('DEBUG: Datenstruktur Schlüssel:', Object.keys(data));
                     
-                    // Aktive Kunden anzeigen - Verwende die count aus der API-Antwort
+                    // Aktive Kunden anzeigen
                     if (activeCustomersNowWidget) {
+                        console.log('DEBUG: Aktualisiere activeCustomersNowWidget');
+                        console.log('DEBUG: Anzahl Kunden:', data.count);
                         activeCustomersNowWidget.innerHTML = `<div class="customer-count">${data.count || 0}</div>`;
                     }
                     
                     // Weitere Dashboard-Felder aktualisieren
                     if (data.status === 'success' && data.data) {
+                        console.log('DEBUG: Erfolgreicher Status und Daten vorhanden');
+                        console.log('DEBUG: Anzahl der Kunden in data.data:', data.data.length);
+                        
                         // Beispielhafte Berechnung des Gesamtumsatzes (falls verfügbar)
                         let totalRevenue = 0;
                         data.data.forEach(customer => {
                             if (customer.prov_seller) {
+                                console.log('DEBUG: Provision für Kunde:', customer.prov_seller);
                                 totalRevenue += parseFloat(customer.prov_seller) || 0;
                             }
                         });
+                        console.log('DEBUG: Berechneter Gesamtumsatz:', totalRevenue);
                         document.getElementById('total-revenue').textContent = `${totalRevenue.toFixed(2)} €`;
                         
                         // Liste der aktiven Kunden aktualisieren
                         if (activeCustomersListContainer && data.data.length > 0) {
+                            console.log('DEBUG: Aktualisiere Kundenliste');
                             let customerHTML = `<div class="customer-list">`;
                             
-                            data.data.forEach(customer => {
+                            data.data.forEach((customer, index) => {
+                                console.log(`DEBUG: Verarbeite Kunde ${index}:`, customer);
                                 customerHTML += `
                                     <div class="customer-item">
                                         <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
@@ -2388,8 +2426,11 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                             customerHTML += `</div>`;
                             activeCustomersListContainer.innerHTML = customerHTML;
                         } else if (activeCustomersListContainer) {
+                            console.log('DEBUG: Keine Kunden gefunden');
                             activeCustomersListContainer.innerHTML = `<div class="no-data">Keine aktiven Kunden gefunden</div>`;
                         }
+                    } else {
+                        console.warn('DEBUG: Keine Erfolgsantwort oder keine Daten:', data.status);
                     }
                 })
                 .catch(error => {
@@ -2430,25 +2471,10 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             document.getElementById('serious-terminations').textContent = '0';
             document.getElementById('agency-change-terminations').textContent = '0';
             
-            // Meine KPIs-Tab Metriken
-            document.getElementById('closing-rate-percent').textContent = '0%';
-            document.getElementById('closing-rate-absolute').textContent = '0/0';
-            document.getElementById('lead-eb-percent').textContent = '0%';
-            document.getElementById('lead-eb-absolute').textContent = '0/0';
-            document.getElementById('eb-posting-percent').textContent = '0%';
-            document.getElementById('eb-posting-absolute').textContent = '0/0';
-            document.getElementById('posting-contract-percent').textContent = '0%';
-            document.getElementById('posting-contract-absolute').textContent = '0/0';
-            document.getElementById('termination-rate-percent').textContent = '0%';
-            document.getElementById('termination-rate-absolute').textContent = '0/0';
-            
-            // Meine Kunden-Tab Metriken
-            document.getElementById('new-customers-container').innerHTML = '<div class="customer-count">0</div>';
-            document.getElementById('paused-customers-container').innerHTML = '<div class="customer-count">0</div>';
-            document.getElementById('longest-customers-container').innerHTML = '<div class="customer-count">0</div>';
+            // Hier können später weitere Dashboard-Felder initialisiert werden
         }
         
-        // Lade die Dashboard-Daten auch automatisch beim Seitenstart
+        // Funktion zum Laden der Dashboard-Daten auch automatisch beim Seitenstart
         document.addEventListener('DOMContentLoaded', function() {
             // Verzögerung, damit die Sitzungsdaten zuerst vollständig geladen werden können
             setTimeout(() => {

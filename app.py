@@ -2655,7 +2655,7 @@ def update_stream_chat_history():
         if not user_id or not user_name:
             return jsonify({'success': False, 'error': 'No active session'}), 400
             
-        chat_key = f"chat_history_{user_id}"
+        chat_key = f'chat_history_{user_id}'
         
         # Get current chat history or initialize it
         chat_history = session.get(chat_key, [])
@@ -2715,9 +2715,68 @@ def reset_session():
     session.modified = True
     return redirect('/check_login')
 
-###########################################
-# Flask-Routen
-###########################################
+@app.route('/debug_dashboard', methods=['GET'])
+def debug_dashboard():
+    """
+    Debug-Route für das Dashboard, die alle relevanten Informationen zurückgibt
+    und in der Session gespeicherte Daten anzeigt.
+    """
+    debug_info = {
+        "session_data": {
+            "seller_id": session.get('seller_id'),
+            "user_name": session.get('user_name'),
+            "all_session_keys": list(session.keys())
+        },
+        "request_info": {
+            "method": request.method,
+            "headers": dict(request.headers),
+            "endpoint": request.endpoint,
+        }
+    }
+    
+    # Lade die Abfragemuster und teste den Zugriff
+    try:
+        with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            debug_info["query_patterns_loaded"] = True
+            query_patterns = json.load(f)
+            
+            # Prüfe, ob die benötigte Abfrage vorhanden ist
+            query_name = "get_active_care_stays_now"
+            if query_name in query_patterns.get('common_queries', {}):
+                debug_info["query_exists"] = True
+                debug_info["query_name"] = query_name
+                debug_info["query_desc"] = query_patterns['common_queries'][query_name].get('description')
+            else:
+                debug_info["query_exists"] = False
+    except Exception as e:
+        debug_info["query_patterns_loaded"] = False
+        debug_info["query_patterns_error"] = str(e)
+    
+    # HTML-Ausgabe für leichtere Lesbarkeit
+    html_output = "<h1>Dashboard Debug-Informationen</h1>"
+    html_output += "<pre>" + json.dumps(debug_info, indent=4) + "</pre>"
+    
+    # Button zum Testen des eigentlichen Endpunkts
+    html_output += """
+    <script>
+    function testEndpoint() {
+        fetch('/get_dashboard_data')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('result').textContent = 'Fehler: ' + error;
+            });
+    }
+    </script>
+    
+    <button onclick="testEndpoint()">Test /get_dashboard_data</button>
+    <pre id="result">Klicken Sie auf den Button, um den Endpunkt zu testen...</pre>
+    """
+    
+    return html_output
+
 @app.route('/toggle_notfall_mode', methods=['POST'])
 def toggle_notfall_mode():
     try:

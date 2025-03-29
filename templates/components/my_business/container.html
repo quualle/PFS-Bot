@@ -364,7 +364,7 @@
                             // Abschlussquote aktualisieren
                             const conversionRateWidget = document.getElementById('conversion-rate-widget');
                             if (conversionRateWidget && data.conversion_rate) {
-                                const rate = data.conversion_rate.overall_conversion_rate || 0;
+                                const rate = data.conversion_rate.conversion_rate || 0;
                                 conversionRateWidget.innerHTML = `<div class="customer-count">${rate}%</div>`;
                                 console.log('Abschlussquote aktualisiert:', rate);
                             } else if (conversionRateWidget) {

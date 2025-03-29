@@ -10,7 +10,124 @@
         <button class="business-tab" data-tab="performance">Performance</button>
     </div>
 
-    {% include 'components/my_business/tabs/overview.html' %}
-    {% include 'components/my_business/tabs/clients.html' %}
-    {% include 'components/my_business/tabs/performance.html' %}
+    <div id="overview-tab" class="tab-content active">
+        <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">Aktive Kunden (Heute)</div>
+                <div class="widget-content" id="active-customers-now-widget">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Daten werden geladen...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="widget">
+                <div class="widget-header">Aktive Kunden (Monat)</div>
+                <div class="widget-content" id="active-customers-month-widget">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Daten werden geladen...</div>
+                    </div>
+                    <div class="month-selector">
+                        <select id="month-select" class="month-select">
+                            <option value="0">Aktueller Monat</option>
+                            <option value="1">Letzter Monat</option>
+                            <option value="2">Vor 2 Monaten</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget-row">
+            <div class="wide-widget">
+                <div class="widget-header">Performance-Übersicht</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="total-revenue">-</div>
+                            <div class="metric-label">Gesamtumsatz</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="avg-stay-duration">-</div>
+                            <div class="metric-label">Durchschnittliche Aufenthaltsdauer</div>
+                        </div>
+                    </div>
+                    <div class="date-range-selector">
+                        <input type="date" class="date-input" id="start-date">
+                        <input type="date" class="date-input" id="end-date">
+                        <button class="date-range-button" id="update-range-btn">Aktualisieren</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="clients-tab" class="tab-content">
+        <div class="widget-row">
+            <div class="wide-widget">
+                <div class="widget-header">Aktive Kunden (Liste)</div>
+                <div class="widget-content">
+                    <div id="active-customers-list-container">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <div>Kundendaten werden geladen...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="performance-tab" class="tab-content">
+        <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">Abschlusszahlen</div>
+                <div class="widget-content">
+                    <div class="dual-metric">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="total-deals">-</div>
+                            <div class="metric-label">Gesamtabschlüsse</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="deal-rate">-</div>
+                            <div class="metric-label">Abschlussrate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="widget">
+                <div class="widget-header">Vertragswert</div>
+                <div class="widget-content">
+                    <div class="dual-metric">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="avg-contract-value">-</div>
+                            <div class="metric-label">Durchschn. Vertragswert</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="highest-contract">-</div>
+                            <div class="metric-label">Höchster Vertragswert</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget-row">
+            <div class="wide-widget">
+                <div class="widget-header">Zeitliche Entwicklung</div>
+                <div class="widget-content">
+                    <div class="placeholder-text">Hier würde ein Chart zur zeitlichen Entwicklung angezeigt werden.</div>
+                    <div class="month-selector">
+                        <select id="performance-period-select" class="month-select">
+                            <option value="month">Monatlich</option>
+                            <option value="quarter">Quartalsweise</option>
+                            <option value="year">Jährlich</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

@@ -2717,7 +2717,7 @@ def get_dashboard_data():
             # Zeitraum: Letzte 30 Tage
             end_date = datetime.now().date().isoformat()
             start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
-            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
+            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date, 'limit': 500}
             logging.info(f"Dashboard: Parameter für Kündigungen: {parameters}")
             
             # Führe die Abfrage aus

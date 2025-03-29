@@ -47,7 +47,7 @@
             </div>
             
             <div class="widget">
-                <div class="widget-header">Neue Verträge</div>
+                <div class="widget-header">Neue Verträge (letzte 14 Tage)</div>
                 <div class="widget-content">
                     <div class="dual-metric large">
                         <div class="dual-metric-item">
@@ -268,6 +268,13 @@
                 `;
             }
             
+            // Weitere Widgets mit Ladeanzeige aktualisieren
+            document.getElementById('conversion-rate-widget').innerHTML = '<div class="loading-spinner"><div class="spinner"></div><div>Laden...</div></div>';
+            setElementText('new-contracts', '...');
+            setElementText('agency-changes', '...');
+            setElementText('serious-terminations', '...');
+            setElementText('agency-change-terminations', '...');
+            
             // Direkte XHR-Anfrage
             const xhr = new XMLHttpRequest();
             const timestamp = new Date().getTime();
@@ -328,6 +335,42 @@
                                 console.log('Gesamtumsatz aktualisiert:', totalRevenue.toFixed(2));
                             }
                             
+                            // Abschlussquote aktualisieren
+                            const conversionRateWidget = document.getElementById('conversion-rate-widget');
+                            if (conversionRateWidget && data.conversion_rate) {
+                                const rate = data.conversion_rate.overall_conversion_rate || 0;
+                                conversionRateWidget.innerHTML = `<div class="customer-count">${rate}%</div>`;
+                                console.log('Abschlussquote aktualisiert:', rate);
+                            } else if (conversionRateWidget) {
+                                conversionRateWidget.innerHTML = `<div class="customer-count">0%</div>`;
+                            }
+                            
+                            // Neue Verträge aktualisieren
+                            if (data.new_contracts) {
+                                // Echte neue Verträge
+                                const newContractsCount = data.new_contracts.normal_contracts_count || 0;
+                                setElementText('new-contracts', newContractsCount);
+                                
+                                // Agenturwechsel
+                                const agencyChangesCount = data.new_contracts.agency_change_contracts_count || 0;
+                                setElementText('agency-changes', agencyChangesCount);
+                                
+                                console.log('Neue Verträge aktualisiert:', newContractsCount, 'neu,', agencyChangesCount, 'Agenturwechsel');
+                            }
+                            
+                            // Kündigungen aktualisieren
+                            if (data.terminations) {
+                                // Ernsthafte Kündigungen
+                                const seriousTerminations = data.terminations.serious_terminations_count || 0;
+                                setElementText('serious-terminations', seriousTerminations);
+                                
+                                // Agenturwechsel
+                                const agencyChangeTerminations = data.terminations.agency_switch_count || 0;
+                                setElementText('agency-change-terminations', agencyChangeTerminations);
+                                
+                                console.log('Kündigungen aktualisiert:', seriousTerminations, 'ernsthaft,', agencyChangeTerminations, 'Agenturwechsel');
+                            }
+                            
                         } catch (e) {
                             console.error('Fehler beim Parsen der JSON-Antwort:', e);
                             showErrorMessage('Fehler beim Parsen der Daten: ' + e.message);
@@ -346,6 +389,16 @@
             
             xhr.send();
             console.log('XHR-Anfrage gesendet');
+        }
+        
+        // Hilfsfunktion zur Textaktualisierung von Elementen
+        function setElementText(elementId, text) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = text;
+            } else {
+                console.warn(`Element mit ID ${elementId} nicht gefunden`);
+            }
         }
         
         // Hilfsfunktion zur Fehleranzeige

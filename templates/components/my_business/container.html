@@ -6,8 +6,8 @@
 
     <div class="business-tabs">
         <button class="business-tab active" data-tab="overview">Übersicht</button>
-        <button class="business-tab" data-tab="clients">Aktive Kunden</button>
-        <button class="business-tab" data-tab="performance">Performance</button>
+        <button class="business-tab" data-tab="kpi">Meine KPIs</button>
+        <button class="business-tab" data-tab="customers">Meine Kunden</button>
     </div>
 
     <div id="overview-tab" class="tab-content active">
@@ -23,12 +23,18 @@
             </div>
             
             <div class="widget">
-                <div class="widget-header">Aktive Kunden (Monat)</div>
-                <div class="widget-content" id="active-customers-month-widget">
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <div>Daten werden geladen...</div>
-                    </div>
+                <div class="widget-header">Abschlussquote</div>
+                <div class="widget-content" id="conversion-rate-widget">
+                    <div class="customer-count">0%</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">Umsatz</div>
+                <div class="widget-content">
+                    <div class="customer-count" id="total-revenue">0 €</div>
                     <div class="month-selector">
                         <select id="month-select" class="month-select">
                             <option value="0">Aktueller Monat</option>
@@ -38,36 +44,141 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="widget-row">
-            <div class="wide-widget">
-                <div class="widget-header">Performance-Übersicht</div>
+            
+            <div class="widget">
+                <div class="widget-header">Neue Verträge</div>
                 <div class="widget-content">
                     <div class="dual-metric large">
                         <div class="dual-metric-item">
-                            <div class="metric-value" id="total-revenue">-</div>
-                            <div class="metric-label">Gesamtumsatz</div>
+                            <div class="metric-value" id="new-contracts">0</div>
+                            <div class="metric-label">Neu</div>
                         </div>
                         <div class="dual-metric-item">
-                            <div class="metric-value" id="avg-stay-duration">-</div>
-                            <div class="metric-label">Durchschnittliche Aufenthaltsdauer</div>
+                            <div class="metric-value" id="agency-changes">0</div>
+                            <div class="metric-label">Agenturwechsel</div>
                         </div>
                     </div>
-                    <div class="date-range-selector">
-                        <input type="date" class="date-input" id="start-date">
-                        <input type="date" class="date-input" id="end-date">
-                        <button class="date-range-button" id="update-range-btn">Aktualisieren</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">Kündigungen</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="serious-terminations">0</div>
+                            <div class="metric-label">Ernst</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="agency-change-terminations">0</div>
+                            <div class="metric-label">Agenturwechsel</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="clients-tab" class="tab-content">
+    <div id="kpi-tab" class="tab-content">
+        <div class="date-range-selector" style="margin-bottom: 15px;">
+            <input type="date" class="date-input" id="kpi-start-date">
+            <input type="date" class="date-input" id="kpi-end-date">
+            <button class="date-range-button" id="update-kpi-range-btn">Aktualisieren</button>
+        </div>
+        
+        <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">Abschlussquote</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="closing-rate-percent">0%</div>
+                            <div class="metric-label">Prozentual</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="closing-rate-absolute">0/0</div>
+                            <div class="metric-label">Absolut</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="widget">
+                <div class="widget-header">Lead zu EB Conversion</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="lead-eb-percent">0%</div>
+                            <div class="metric-label">Prozentual</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="lead-eb-absolute">0/0</div>
+                            <div class="metric-label">Absolut</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">EB zu Posting Conversion</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="eb-posting-percent">0%</div>
+                            <div class="metric-label">Prozentual</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="eb-posting-absolute">0/0</div>
+                            <div class="metric-label">Absolut</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="widget">
+                <div class="widget-header">Posting zu Vertrag Conversion</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="posting-contract-percent">0%</div>
+                            <div class="metric-label">Prozentual</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="posting-contract-absolute">0/0</div>
+                            <div class="metric-label">Absolut</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">Kündigungsquote</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="termination-rate-percent">0%</div>
+                            <div class="metric-label">Prozentual</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="termination-rate-absolute">0/0</div>
+                            <div class="metric-label">Absolut</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="customers-tab" class="tab-content">
         <div class="widget-row">
             <div class="wide-widget">
-                <div class="widget-header">Aktive Kunden (Liste)</div>
+                <div class="widget-header">Aktive Kunden</div>
                 <div class="widget-content">
                     <div id="active-customers-list-container">
                         <div class="loading-spinner">
@@ -78,54 +189,28 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <div id="performance-tab" class="tab-content">
+        
         <div class="widget-row">
             <div class="widget">
-                <div class="widget-header">Abschlusszahlen</div>
-                <div class="widget-content">
-                    <div class="dual-metric">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="total-deals">-</div>
-                            <div class="metric-label">Gesamtabschlüsse</div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="deal-rate">-</div>
-                            <div class="metric-label">Abschlussrate</div>
-                        </div>
-                    </div>
+                <div class="widget-header">Neue Kunden (14 Tage)</div>
+                <div class="widget-content" id="new-customers-container">
+                    <div class="customer-count">0</div>
                 </div>
             </div>
+            
             <div class="widget">
-                <div class="widget-header">Vertragswert</div>
-                <div class="widget-content">
-                    <div class="dual-metric">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="avg-contract-value">-</div>
-                            <div class="metric-label">Durchschn. Vertragswert</div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="highest-contract">-</div>
-                            <div class="metric-label">Höchster Vertragswert</div>
-                        </div>
-                    </div>
+                <div class="widget-header">Kunden in Pause</div>
+                <div class="widget-content" id="paused-customers-container">
+                    <div class="customer-count">0</div>
                 </div>
             </div>
         </div>
         
         <div class="widget-row">
-            <div class="wide-widget">
-                <div class="widget-header">Zeitliche Entwicklung</div>
-                <div class="widget-content">
-                    <div class="placeholder-text">Hier würde ein Chart zur zeitlichen Entwicklung angezeigt werden.</div>
-                    <div class="month-selector">
-                        <select id="performance-period-select" class="month-select">
-                            <option value="month">Monatlich</option>
-                            <option value="quarter">Quartalsweise</option>
-                            <option value="year">Jährlich</option>
-                        </select>
-                    </div>
+            <div class="widget">
+                <div class="widget-header">Am längsten dabei</div>
+                <div class="widget-content" id="longest-customers-container">
+                    <div class="customer-count">0</div>
                 </div>
             </div>
         </div>

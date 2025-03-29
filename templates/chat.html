@@ -2319,17 +2319,30 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         
         // Funktion zum Laden der aktiven Kunden
         function loadActiveCustomers() {
-            const activeCustomersCount = document.getElementById('activeCustomersCount');
-            const overviewCustomersCount = document.getElementById('overviewCustomersCount');
-            const activeCustomersList = document.getElementById('activeCustomersList');
-            const customerLoadingSpinner = document.getElementById('customerLoadingSpinner');
             const activeCustomersListContainer = document.getElementById('active-customers-list-container');
             const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
             
             // Ladeanimationen anzeigen
-            if (customerLoadingSpinner) {
-                customerLoadingSpinner.style.display = 'flex';
+            if (activeCustomersListContainer) {
+                activeCustomersListContainer.innerHTML = `
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Kundendaten werden geladen...</div>
+                    </div>
+                `;
             }
+            
+            if (activeCustomersNowWidget) {
+                activeCustomersNowWidget.innerHTML = `
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Daten werden geladen...</div>
+                    </div>
+                `;
+            }
+            
+            // Standardwerte initialisieren, falls die Daten nicht geladen werden können
+            initializeEmptyMetrics();
             
             // API-Aufruf zum Laden der aktiven Kunden
             fetch('/get_dashboard_data')
@@ -2340,158 +2353,48 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                     return response.json();
                 })
                 .then(data => {
-                    // Ladeanimationen ausblenden
-                    if (customerLoadingSpinner) {
-                        customerLoadingSpinner.style.display = 'none';
+                    console.log('Dashboard-Daten geladen:', data);
+                    
+                    // Aktive Kunden anzeigen
+                    if (activeCustomersNowWidget) {
+                        activeCustomersNowWidget.innerHTML = `<div class="customer-count">${data.active_customers || 0}</div>`;
                     }
                     
-                    if (data.status === 'success') {
-                        // Anzahl der aktiven Kunden anzeigen - sowohl in der Übersicht als auch im Kundenbereich
-                        const customerCount = data.count || 0;
+                    // Weitere Dashboard-Felder aktualisieren
+                    document.getElementById('total-revenue').textContent = `${data.total_revenue || 0} €`;
+                    
+                    // Liste der aktiven Kunden aktualisieren
+                    if (activeCustomersListContainer && data.customer_list && data.customer_list.length > 0) {
+                        let customerHTML = `<div class="customer-list">`;
                         
-                        // Setze Werte im Übersicht-Tab
-                        if (activeCustomersNowWidget) {
-                            activeCustomersNowWidget.innerHTML = '<div class="customer-count">' + customerCount + '</div>';
-                        }
-                        
-                        // Setze Werte falls die anderen Elemente existieren
-                        if (activeCustomersCount) activeCustomersCount.textContent = customerCount;
-                        if (overviewCustomersCount) overviewCustomersCount.textContent = customerCount;
-                        
-                        // Kundenliste in der Client-Tab anzeigen
-                        if (activeCustomersListContainer) {
-                            if (!data.data || data.data.length === 0) {
-                                activeCustomersListContainer.innerHTML = '<div class="no-customers">Keine aktiven Kunden gefunden.</div>';
-                                return;
-                            }
-                            
-                            // Kundenliste erstellen
-                            let customersHtml = '<div class="customers-list">';
-                            
-                            data.data.forEach(customer => {
-                                // Formatiere Datum für bessere Lesbarkeit
-                                const formatDate = (dateStr) => {
-                                    if (!dateStr) return '';
-                                    const date = new Date(dateStr);
-                                    return date.toLocaleDateString('de-DE');
-                                };
-                                
-                                const startDate = formatDate(customer.bill_start);
-                                const endDate = formatDate(customer.bill_end);
-                                
-                                customersHtml += `
-                                    <div class="customer-item">
-                                        <span class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</span>
-                                        <span class="customer-agency">${customer.agency_name || 'Keine Agentur'}</span>
-                                        <span class="customer-duration">${startDate} - ${endDate}</span>
-                                    </div>
-                                `;
-                            });
-                            
-                            customersHtml += '</div>';
-                            activeCustomersListContainer.innerHTML = customersHtml;
-                        }
-                        
-                        // Gleiche Logik für den alten Kunden-Container, falls er existiert
-                        if (activeCustomersList) {
-                            // Kundenliste leeren
-                            activeCustomersList.innerHTML = '';
-                            
-                            // Wenn keine Daten vorhanden, Hinweis anzeigen
-                            if (!data.data || data.data.length === 0) {
-                                const noDataDiv = document.createElement('div');
-                                noDataDiv.className = 'no-customers';
-                                noDataDiv.textContent = 'Keine aktiven Kunden gefunden.';
-                                activeCustomersList.appendChild(noDataDiv);
-                                return;
-                            }
-                            
-                            // Kundendaten anzeigen
-                            data.data.forEach(customer => {
-                                const customerDiv = document.createElement('div');
-                                customerDiv.className = 'customer-item';
-                                
-                                // Kundenname
-                                const nameSpan = document.createElement('span');
-                                nameSpan.className = 'customer-name';
-                                nameSpan.textContent = `${customer.first_name || ''} ${customer.last_name || ''}`;
-                                
-                                // Agenturname
-                                const agencySpan = document.createElement('span');
-                                agencySpan.className = 'customer-agency';
-                                agencySpan.textContent = customer.agency_name || 'Keine Agentur';
-                                
-                                // Zeitraum
-                                const durationSpan = document.createElement('span');
-                                durationSpan.className = 'customer-duration';
-                                
-                                // Formatiere Datum für bessere Lesbarkeit
-                                const formatDate = (dateStr) => {
-                                    if (!dateStr) return '';
-                                    const date = new Date(dateStr);
-                                    return date.toLocaleDateString('de-DE');
-                                };
-                                
-                                const startDate = formatDate(customer.bill_start);
-                                const endDate = formatDate(customer.bill_end);
-                                durationSpan.textContent = `${startDate} - ${endDate}`;
-                                
-                                // Zusammenbauen
-                                customerDiv.appendChild(nameSpan);
-                                customerDiv.appendChild(agencySpan);
-                                customerDiv.appendChild(durationSpan);
-                                
-                                activeCustomersList.appendChild(customerDiv);
-                            });
-                        }
-                    } else {
-                        // Fehlermeldung anzeigen
-                        if (activeCustomersListContainer) {
-                            activeCustomersListContainer.innerHTML = `
-                                <div class="error-message">
-                                    Fehler beim Laden der Kundendaten: ${data.error || 'Unbekannter Fehler'}
+                        data.customer_list.forEach(customer => {
+                            customerHTML += `
+                                <div class="customer-item">
+                                    <div class="customer-name">${customer.name}</div>
+                                    <div class="customer-agency">${customer.agency || 'Keine Agentur'}</div>
+                                    <div class="customer-since">Kunde seit: <span>${customer.since || 'unbekannt'}</span></div>
                                 </div>
                             `;
-                        }
+                        });
                         
-                        if (activeCustomersList) {
-                            activeCustomersList.innerHTML = `
-                                <div class="error-message">
-                                    Fehler beim Laden der Kundendaten: ${data.error || 'Unbekannter Fehler'}
-                                </div>
-                            `;
-                        }
-                        
-                        if (activeCustomersNowWidget) {
-                            activeCustomersNowWidget.innerHTML = `
-                                <div class="error-message">
-                                    Fehler beim Laden der Kundendaten: ${data.error || 'Unbekannter Fehler'}
-                                </div>
-                            `;
-                        }
+                        customerHTML += `</div>`;
+                        activeCustomersListContainer.innerHTML = customerHTML;
+                    } else if (activeCustomersListContainer) {
+                        activeCustomersListContainer.innerHTML = `<div class="no-data">Keine aktiven Kunden gefunden</div>`;
                     }
                 })
                 .catch(error => {
-                    // Fehlerbehandlung
-                    console.error('Error loading customer data:', error);
-                    
-                    // Ladeanimationen ausblenden und Fehlermeldung anzeigen
-                    if (customerLoadingSpinner) {
-                        customerLoadingSpinner.style.display = 'none';
-                    }
+                    console.error('Fehler beim Laden der Kundendaten:', error);
                     
                     const errorMessage = `
                         <div class="error-message">
-                            Fehler beim Laden der Kundendaten: ${error.message || 'Unbekannter Fehler'}
+                            <div>Fehler beim Laden der Daten</div>
+                            <div class="error-details">${error.message}</div>
                         </div>
                     `;
                     
                     if (activeCustomersListContainer) {
                         activeCustomersListContainer.innerHTML = errorMessage;
-                    }
-                    
-                    if (activeCustomersList) {
-                        activeCustomersList.innerHTML = errorMessage;
                     }
                     
                     if (activeCustomersNowWidget) {
@@ -2503,15 +2406,30 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         // Funktion zum Initialisieren leerer Metrik-Felder mit Standardwerten
         function initializeEmptyMetrics() {
             // Übersicht-Tab Metriken
-            document.getElementById('active-customers-month-widget').innerHTML = '<div class="customer-count">0</div>';
+            document.getElementById('active-customers-now-widget').innerHTML = '<div class="customer-count">0</div>';
+            document.getElementById('conversion-rate-widget').innerHTML = '<div class="customer-count">0%</div>';
             document.getElementById('total-revenue').textContent = '0 €';
-            document.getElementById('avg-stay-duration').textContent = '0 Tage';
+            document.getElementById('new-contracts').textContent = '0';
+            document.getElementById('agency-changes').textContent = '0';
+            document.getElementById('serious-terminations').textContent = '0';
+            document.getElementById('agency-change-terminations').textContent = '0';
             
-            // Performance-Tab Metriken
-            document.getElementById('total-deals').textContent = '0';
-            document.getElementById('deal-rate').textContent = '0%';
-            document.getElementById('avg-contract-value').textContent = '0 €';
-            document.getElementById('highest-contract').textContent = '0 €';
+            // Meine KPIs-Tab Metriken
+            document.getElementById('closing-rate-percent').textContent = '0%';
+            document.getElementById('closing-rate-absolute').textContent = '0/0';
+            document.getElementById('lead-eb-percent').textContent = '0%';
+            document.getElementById('lead-eb-absolute').textContent = '0/0';
+            document.getElementById('eb-posting-percent').textContent = '0%';
+            document.getElementById('eb-posting-absolute').textContent = '0/0';
+            document.getElementById('posting-contract-percent').textContent = '0%';
+            document.getElementById('posting-contract-absolute').textContent = '0/0';
+            document.getElementById('termination-rate-percent').textContent = '0%';
+            document.getElementById('termination-rate-absolute').textContent = '0/0';
+            
+            // Meine Kunden-Tab Metriken
+            document.getElementById('new-customers-container').innerHTML = '<div class="customer-count">0</div>';
+            document.getElementById('paused-customers-container').innerHTML = '<div class="customer-count">0</div>';
+            document.getElementById('longest-customers-container').innerHTML = '<div class="customer-count">0</div>';
         }
         
         // Lade die Dashboard-Daten auch automatisch beim Seitenstart

@@ -2356,104 +2356,122 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             
             // API-Aufruf zum Laden der aktiven Kunden
             console.log('DEBUG: Starte Fetch-Anfrage an /get_dashboard_data');
-            fetch('/get_dashboard_data', {
+            fetch('/get_dashboard_data?t=' + new Date().getTime(), {
                 method: 'GET',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': csrfToken
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                 }
             })
-                .then(response => {
-                    console.log('DEBUG: Fetch-Antwort erhalten', response);
-                    console.log('DEBUG: Antwort-Status:', response.status);
-                    console.log('DEBUG: Response OK?', response.ok);
+            .then(response => {
+                console.log('DEBUG: Fetch-Antwort erhalten', response);
+                console.log('DEBUG: Antwort-Status:', response.status);
+                console.log('DEBUG: Response OK?', response.ok);
+                
+                // Prüfen, ob es ein CSRF-Token-Problem gibt
+                if (response.status === 403) {
+                    console.error('DEBUG: Mögliches CSRF-Token-Problem (403 Forbidden)');
+                    throw new Error('Möglicherweise ist Ihre Sitzung abgelaufen. Bitte laden Sie die Seite neu.');
+                }
+                
+                if (!response.ok) {
+                    throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
+                }
+                return response.text(); // Erst als Text holen
+            })
+            .then(text => {
+                console.log('DEBUG: Response Text:', text.substring(0, 200) + '...'); // Zeige die ersten 200 Zeichen
+                try {
+                    return JSON.parse(text); // Dann parsen
+                } catch (e) {
+                    console.error('DEBUG: JSON-Parse-Fehler:', e);
+                    console.error('DEBUG: Response konnte nicht als JSON geparst werden:', text);
+                    throw new Error('Antwort konnte nicht als JSON geparst werden');
+                }
+            })
+            .then(data => {
+                console.log('DEBUG: Dashboard-Daten geladen:', data);
+                console.log('DEBUG: Datentyp:', typeof data);
+                console.log('DEBUG: Datenstruktur Schlüssel:', Object.keys(data));
+                
+                // Aktive Kunden anzeigen
+                if (activeCustomersNowWidget) {
+                    console.log('DEBUG: Aktualisiere activeCustomersNowWidget');
+                    console.log('DEBUG: Anzahl Kunden:', data.count);
+                    activeCustomersNowWidget.innerHTML = `<div class="customer-count">${data.count || 0}</div>`;
+                }
+                
+                // Weitere Dashboard-Felder aktualisieren
+                if (data.status === 'success' && data.data && data.data.length > 0) {
+                    console.log('DEBUG: Erfolgreicher Status und Daten vorhanden');
+                    console.log('DEBUG: Anzahl der Kunden in data.data:', data.data.length);
                     
-                    // Prüfen, ob es ein CSRF-Token-Problem gibt
-                    if (response.status === 403) {
-                        console.error('DEBUG: Mögliches CSRF-Token-Problem (403 Forbidden)');
-                        throw new Error('Möglicherweise ist Ihre Sitzung abgelaufen. Bitte laden Sie die Seite neu.');
-                    }
-                    
-                    if (!response.ok) {
-                        throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('DEBUG: Dashboard-Daten geladen:', data);
-                    console.log('DEBUG: Datentyp:', typeof data);
-                    console.log('DEBUG: Datenstruktur Schlüssel:', Object.keys(data));
-                    
-                    // Aktive Kunden anzeigen
-                    if (activeCustomersNowWidget) {
-                        console.log('DEBUG: Aktualisiere activeCustomersNowWidget');
-                        console.log('DEBUG: Anzahl Kunden:', data.count);
-                        activeCustomersNowWidget.innerHTML = `<div class="customer-count">${data.count || 0}</div>`;
-                    }
-                    
-                    // Weitere Dashboard-Felder aktualisieren
-                    if (data.status === 'success' && data.data) {
-                        console.log('DEBUG: Erfolgreicher Status und Daten vorhanden');
-                        console.log('DEBUG: Anzahl der Kunden in data.data:', data.data.length);
-                        
-                        // Beispielhafte Berechnung des Gesamtumsatzes (falls verfügbar)
-                        let totalRevenue = 0;
-                        data.data.forEach(customer => {
-                            if (customer.prov_seller) {
-                                console.log('DEBUG: Provision für Kunde:', customer.prov_seller);
-                                totalRevenue += parseFloat(customer.prov_seller) || 0;
-                            }
-                        });
-                        console.log('DEBUG: Berechneter Gesamtumsatz:', totalRevenue);
-                        document.getElementById('total-revenue').textContent = `${totalRevenue.toFixed(2)} €`;
-                        
-                        // Liste der aktiven Kunden aktualisieren
-                        if (activeCustomersListContainer && data.data.length > 0) {
-                            console.log('DEBUG: Aktualisiere Kundenliste');
-                            let customerHTML = `<div class="customer-list">`;
-                            
-                            data.data.forEach((customer, index) => {
-                                console.log(`DEBUG: Verarbeite Kunde ${index}:`, customer);
-                                customerHTML += `
-                                    <div class="customer-item">
-                                        <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
-                                        <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
-                                        <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
-                                    </div>
-                                `;
-                            });
-                            
-                            customerHTML += `</div>`;
-                            activeCustomersListContainer.innerHTML = customerHTML;
-                        } else if (activeCustomersListContainer) {
-                            console.log('DEBUG: Keine Kunden gefunden');
-                            activeCustomersListContainer.innerHTML = `<div class="no-data">Keine aktiven Kunden gefunden</div>`;
+                    // Beispielhafte Berechnung des Gesamtumsatzes
+                    let totalRevenue = 0;
+                    data.data.forEach(customer => {
+                        if (customer.prov_seller) {
+                            totalRevenue += parseFloat(customer.prov_seller) || 0;
                         }
-                    } else {
-                        console.warn('DEBUG: Keine Erfolgsantwort oder keine Daten:', data.status);
+                    });
+                    
+                    // Umsatz anzeigen, falls das Element existiert
+                    const totalRevenueElement = document.getElementById('total-revenue');
+                    if (totalRevenueElement) {
+                        console.log('DEBUG: Berechneter Gesamtumsatz:', totalRevenue);
+                        totalRevenueElement.textContent = `${totalRevenue.toFixed(2)} €`;
                     }
-                })
-                .catch(error => {
-                    console.error('Fehler beim Laden der Kundendaten:', error);
                     
-                    const errorMessage = `
-                        <div class="error-message">
-                            <div>Fehler beim Laden der Daten</div>
-                            <div class="error-details">${error.message}</div>
-                        </div>
-                    `;
-                    
+                    // Liste der aktiven Kunden aktualisieren
                     if (activeCustomersListContainer) {
-                        activeCustomersListContainer.innerHTML = errorMessage;
+                        console.log('DEBUG: Aktualisiere Kundenliste');
+                        let customerHTML = `<div class="customer-list">`;
+                        
+                        data.data.forEach((customer, index) => {
+                            console.log(`DEBUG: Verarbeite Kunde ${index < 3 ? index : '...'}`);
+                            customerHTML += `
+                                <div class="customer-item">
+                                    <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
+                                    <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
+                                    <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
+                                </div>
+                            `;
+                        });
+                        
+                        customerHTML += `</div>`;
+                        activeCustomersListContainer.innerHTML = customerHTML;
                     }
+                } else {
+                    console.warn('DEBUG: Keine Erfolgsantwort oder keine Daten:', data.status);
                     
-                    if (activeCustomersNowWidget) {
-                        activeCustomersNowWidget.innerHTML = errorMessage;
+                    // Leere Container anzeigen, falls keine Daten
+                    if (activeCustomersListContainer) {
+                        activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
                     }
-                });
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Kundendaten:', error);
+                
+                const errorMessage = `
+                    <div class="error-message">
+                        <div>Fehler beim Laden der Daten</div>
+                        <div class="error-details">${error.message}</div>
+                    </div>
+                `;
+                
+                if (activeCustomersListContainer) {
+                    activeCustomersListContainer.innerHTML = errorMessage;
+                }
+                
+                if (activeCustomersNowWidget) {
+                    activeCustomersNowWidget.innerHTML = errorMessage;
+                }
+            });
         }
         
-        // Hilfsfunktion zum Formatieren des Datums
+        // Funktion zum Formatieren des Datums
         function formatDate(dateString) {
             if (!dateString) return '';
             const date = new Date(dateString);

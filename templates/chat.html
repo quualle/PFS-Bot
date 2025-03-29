@@ -1295,6 +1295,12 @@
             color: #ff6b6b;
             text-decoration: none;
             display: inline-block;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            z-index: 10;
         }
         
         .logout-btn:hover {
@@ -1357,7 +1363,7 @@
             <button id="myBusinessBtn" class="my-business-button">My Business</button>
             
             <!-- LOGOUT BUTTON (im gleichen Stil wie My Business Button) -->
-            <a href="/logout" class="my-business-button logout-btn">Ausloggen</a>
+            <a href="/logout" class="logout-btn">Ausloggen</a>
 
             <!-- CHAT-HISTORY (scrollbar) -->
             <div id="chatHistory" class="chat-history">

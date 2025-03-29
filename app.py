@@ -3153,6 +3153,36 @@ def clear_chat_history():
 ###########################################
 # Login / Logout
 ###########################################
+@app.route('/logout')
+def logout():
+    # Check if user is admin and handle accordingly
+    if session.get('admin_logged_in'):
+        session.pop('admin_logged_in', None)
+        flash('Erfolgreich ausgeloggt.', 'success')
+        return redirect(url_for('login'))
+    
+    # Clear specific user session data
+    keys_to_remove = [
+        'user_name', 'email', 'google_user_email', 
+        'seller_id', 'is_logged_via_google', 'access_token'
+    ]
+    
+    for key in keys_to_remove:
+        if key in session:
+            session.pop(key)
+    
+    # Completely clear Flask session to force a new Google login
+    session.clear()
+    
+    # Setze den Session-Cookie zurück, um einen neuen Login zu erzwingen
+    response = redirect(url_for('chat'))
+    if 'session' in request.cookies:
+        response.delete_cookie('session')
+    
+    flash('Erfolgreich ausgeloggt. Bitte melden Sie sich erneut an.', 'success')
+    
+    return response
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -3169,29 +3199,6 @@ def login():
             
     # Render login template mit Google-Login-Option
     return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    # Check if user is admin and handle accordingly
-    if session.get('admin_logged_in'):
-        session.pop('admin_logged_in', None)
-        flash('Erfolgreich ausgeloggt.', 'success')
-        return redirect(url_for('login'))
-    
-    # Clear specific user session data
-    keys_to_remove = [
-        'user_name', 'email', 'google_user_email', 
-        'seller_id', 'is_logged_via_google'
-    ]
-    
-    for key in keys_to_remove:
-        if key in session:
-            session.pop(key)
-    
-    # Keep user_id for tracking purposes
-    
-    flash('Erfolgreich ausgeloggt.', 'success')
-    return redirect(url_for('login'))
 
 ###########################################
 # Lade Themen

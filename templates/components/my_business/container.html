@@ -48,14 +48,18 @@
             
             <div class="widget">
                 <div class="widget-header">Neue Verträge (letzte 14 Tage)</div>
-                <div class="widget-content">
+                <div class="widget-content" id="new-contracts-widget">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Daten werden geladen...</div>
+                    </div>
                     <div class="dual-metric large">
                         <div class="dual-metric-item">
                             <div class="metric-value" id="new-contracts">0</div>
                             <div class="metric-label">Neu</div>
                         </div>
                         <div class="dual-metric-item">
-                            <div class="metric-value" id="agency-changes">0</div>
+                            <div class="metric-value" id="agency-switches">0</div>
                             <div class="metric-label">Agenturwechsel</div>
                         </div>
                     </div>
@@ -64,6 +68,26 @@
         </div>
         
         <div class="widget-row">
+            <div class="widget">
+                <div class="widget-header">Neue Verträge (noch aktiv)</div>
+                <div class="widget-content" id="active-contracts-widget">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Daten werden geladen...</div>
+                    </div>
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="active-new-contracts">0</div>
+                            <div class="metric-label">Neu</div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="active-agency-switches">0</div>
+                            <div class="metric-label">Agenturwechsel</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="widget">
                 <div class="widget-header">Kündigungen</div>
                 <div class="widget-content">
@@ -271,9 +295,11 @@
             // Weitere Widgets mit Ladeanzeige aktualisieren
             document.getElementById('conversion-rate-widget').innerHTML = '<div class="loading-spinner"><div class="spinner"></div><div>Laden...</div></div>';
             setElementText('new-contracts', '...');
-            setElementText('agency-changes', '...');
+            setElementText('agency-switches', '...');
             setElementText('serious-terminations', '...');
             setElementText('agency-change-terminations', '...');
+            setElementText('active-new-contracts', '...');
+            setElementText('active-agency-switches', '...');
             
             // Direkte XHR-Anfrage
             const xhr = new XMLHttpRequest();
@@ -353,9 +379,22 @@
                                 
                                 // Agenturwechsel
                                 const agencyChangesCount = data.new_contracts.agency_change_contracts_count || 0;
-                                setElementText('agency-changes', agencyChangesCount);
+                                setElementText('agency-switches', agencyChangesCount);
                                 
                                 console.log('Neue Verträge aktualisiert:', newContractsCount, 'neu,', agencyChangesCount, 'Agenturwechsel');
+                            }
+                            
+                            // Aktive neue Verträge aktualisieren
+                            if (data.active_new_contracts) {
+                                // Echte neue Verträge
+                                const activeNewContractsCount = data.active_new_contracts.normal_contracts_count || 0;
+                                setElementText('active-new-contracts', activeNewContractsCount);
+                                
+                                // Agenturwechsel
+                                const activeAgencyChangesCount = data.active_new_contracts.agency_change_contracts_count || 0;
+                                setElementText('active-agency-switches', activeAgencyChangesCount);
+                                
+                                console.log('Aktive neue Verträge aktualisiert:', activeNewContractsCount, 'neu,', activeAgencyChangesCount, 'Agenturwechsel');
                             }
                             
                             // Kündigungen aktualisieren

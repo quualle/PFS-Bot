@@ -217,3 +217,167 @@
         </div>
     </div>
 </div>
+
+<!-- Inline-JavaScript direkt im Overlay -->
+<script>
+    // Sofort ausgeführtes JavaScript für das Overlay
+    (function() {
+        console.log('My Business Overlay: JavaScript wird initialisiert');
+        
+        // Element-Referenzen
+        const testButton = document.getElementById('test-dashboard-btn');
+        const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
+        const activeCustomersListContainer = document.getElementById('active-customers-list-container');
+        
+        console.log('Test-Button gefunden:', testButton !== null);
+        console.log('Active Customers Widget gefunden:', activeCustomersNowWidget !== null);
+        console.log('Active Customers List Container gefunden:', activeCustomersListContainer !== null);
+        
+        // Handler für den Test-Button
+        if (testButton) {
+            testButton.addEventListener('click', function() {
+                console.log('Test-Button wurde geklickt');
+                loadDashboardDataDirectly();
+            });
+            console.log('Event-Handler für Test-Button wurde hinzugefügt');
+        }
+        
+        // Sofort Daten laden, wenn das Overlay geöffnet wird
+        setTimeout(loadDashboardDataDirectly, 500);
+        
+        // Funktion zum direkten Laden der Dashboard-Daten
+        function loadDashboardDataDirectly() {
+            console.log('Direktes Laden der Dashboard-Daten wird gestartet');
+            
+            // Loading-Status anzeigen
+            if (activeCustomersNowWidget) {
+                activeCustomersNowWidget.innerHTML = `
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Direktes Laden...</div>
+                    </div>
+                `;
+            }
+            
+            if (activeCustomersListContainer) {
+                activeCustomersListContainer.innerHTML = `
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Direktes Laden der Kundendaten...</div>
+                    </div>
+                `;
+            }
+            
+            // Direkte XHR-Anfrage
+            const xhr = new XMLHttpRequest();
+            const timestamp = new Date().getTime();
+            xhr.open('GET', '/get_dashboard_data?t=' + timestamp, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            
+            xhr.onreadystatechange = function() {
+                if (this.readyState === 4) {
+                    console.log('XHR Status:', this.status);
+                    console.log('XHR Response Anfang:', this.responseText.substring(0, 100));
+                    
+                    if (this.status === 200) {
+                        try {
+                            const data = JSON.parse(this.responseText);
+                            console.log('Dashboard-Daten erfolgreich geladen:', data);
+                            
+                            // Kundenzahl aktualisieren
+                            if (activeCustomersNowWidget) {
+                                activeCustomersNowWidget.innerHTML = `
+                                    <div class="customer-count">${data.count || 0}</div>
+                                `;
+                                console.log('Kundenzahl aktualisiert:', data.count);
+                            }
+                            
+                            // Kundenliste aktualisieren
+                            if (activeCustomersListContainer && data.data && data.data.length > 0) {
+                                let customersHtml = '<div class="customer-list">';
+                                
+                                data.data.forEach(function(customer) {
+                                    customersHtml += `
+                                        <div class="customer-item">
+                                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
+                                            <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
+                                            <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
+                                        </div>
+                                    `;
+                                });
+                                
+                                customersHtml += '</div>';
+                                activeCustomersListContainer.innerHTML = customersHtml;
+                                console.log('Kundenliste aktualisiert mit', data.data.length, 'Kunden');
+                            } else if (activeCustomersListContainer) {
+                                activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
+                            }
+                            
+                            // Umsatz aktualisieren
+                            const totalRevenueElement = document.getElementById('total-revenue');
+                            if (totalRevenueElement && data.data) {
+                                let totalRevenue = 0;
+                                data.data.forEach(function(customer) {
+                                    if (customer.prov_seller) {
+                                        totalRevenue += parseFloat(customer.prov_seller) || 0;
+                                    }
+                                });
+                                
+                                totalRevenueElement.textContent = `${totalRevenue.toFixed(2)} €`;
+                                console.log('Gesamtumsatz aktualisiert:', totalRevenue.toFixed(2));
+                            }
+                            
+                        } catch (e) {
+                            console.error('Fehler beim Parsen der JSON-Antwort:', e);
+                            showErrorMessage('Fehler beim Parsen der Daten: ' + e.message);
+                        }
+                    } else {
+                        console.error('XHR-Fehler:', this.status);
+                        showErrorMessage('Server-Fehler: ' + this.status);
+                    }
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('Netzwerkfehler bei der XHR-Anfrage');
+                showErrorMessage('Netzwerkfehler bei der Anfrage');
+            };
+            
+            xhr.send();
+            console.log('XHR-Anfrage gesendet');
+        }
+        
+        // Hilfsfunktion zur Fehleranzeige
+        function showErrorMessage(message) {
+            const errorHtml = `
+                <div class="error-message">
+                    <div>Fehler</div>
+                    <div class="error-details">${message}</div>
+                </div>
+            `;
+            
+            if (activeCustomersNowWidget) {
+                activeCustomersNowWidget.innerHTML = errorHtml;
+            }
+            
+            if (activeCustomersListContainer) {
+                activeCustomersListContainer.innerHTML = errorHtml;
+            }
+        }
+        
+        // Hilfsfunktion zum Formatieren des Datums
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            
+            const date = new Date(dateString);
+            if (isNaN(date)) return '';
+            
+            return date.toLocaleDateString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+    })();
+</script>

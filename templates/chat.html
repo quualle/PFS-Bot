@@ -1284,6 +1284,23 @@
             background: rgba(255, 0, 0, 0.1);
             border-radius: 5px;
         }
+        
+        /* Logout Button Styles */
+        .logout-btn {
+            position: fixed;
+            right: 20px;
+            bottom: 130px;
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 107, 107, 0.2);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -1331,13 +1348,16 @@
         {% endif %}
         {% endwith %}
 
-        <!-- HAUPT CHAT-BOX -->
+        <!-- CHAT-BOX -->
         <div class="chat-box">
             <!-- NOTFALL-BUTTON (immer sichtbar) -->
             <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
 
             <!-- MY BUSINESS BUTTON -->
             <button id="myBusinessBtn" class="my-business-button">My Business</button>
+            
+            <!-- LOGOUT BUTTON (im gleichen Stil wie My Business Button) -->
+            <a href="/logout" class="my-business-button logout-btn">Ausloggen</a>
 
             <!-- CHAT-HISTORY (scrollbar) -->
             <div id="chatHistory" class="chat-history">
@@ -1396,8 +1416,7 @@
         const chatHistory = document.getElementById('chatHistory');
         const chatForm = document.getElementById('chatForm');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        console.log('DEBUG: CSRF-Token initialisiert:', csrfToken ? 'Vorhanden' : 'Fehlt');
-
+        
         // Name-Overlay-Elemente
         const nameOverlay = document.getElementById('nameOverlay');
         const userNameInput = document.getElementById('userNameInput');
@@ -2424,23 +2443,27 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                     }
                     
                     // Liste der aktiven Kunden aktualisieren
-                    if (activeCustomersListContainer) {
+                    if (activeCustomersListContainer && data.data && data.data.length > 0) {
                         console.log('DEBUG: Aktualisiere Kundenliste');
-                        let customerHTML = `<div class="customer-list">`;
+                        let customerHTML = '<div class="customer-list">';
                         
                         data.data.forEach((customer, index) => {
                             console.log(`DEBUG: Verarbeite Kunde ${index < 3 ? index : '...'}`);
                             customerHTML += `
                                 <div class="customer-item">
                                     <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
-                                    <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
-                                    <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
+                                    <div class="customer-details">
+                                        <div class="detail-item">Seit: ${formatDate(customer.since) || 'n/a'}</div>
+                                        <div class="detail-item">Status: ${customer.state || 'Aktiv'}</div>
+                                    </div>
                                 </div>
                             `;
                         });
                         
                         customerHTML += `</div>`;
                         activeCustomersListContainer.innerHTML = customerHTML;
+                    } else if (activeCustomersListContainer) {
+                        activeCustomersListContainer.innerHTML = '<div class="no-data">Keine Kunden gefunden</div>';
                     }
                 } else {
                     console.warn('DEBUG: Keine Erfolgsantwort oder keine Daten:', data.status);
@@ -2657,6 +2680,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                             
                             // Direkte Anzeige der Kundenzahl
                             if (activeCustomersNowWidget) {
+                                console.log('DEBUG: Berechneter Gesamtumsatz:', data.count);
                                 activeCustomersNowWidget.innerHTML = `
                                     <div class="customer-count">${data.count || 0}</div>
                                 `;
@@ -2667,21 +2691,23 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                                 let html = '<div class="customer-list">';
                                 
                                 data.data.forEach(customer => {
+                                    console.log(`DEBUG: Verarbeite Kunde ${customer.first_name || ''} ${customer.last_name || ''}`);
                                     html += `
                                         <div class="customer-item">
                                             <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
-                                            <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
-                                            <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
+                                            <div class="customer-details">
+                                                <div class="detail-item">Seit: ${formatDate(customer.since) || 'n/a'}</div>
+                                                <div class="detail-item">Status: ${customer.state || 'Aktiv'}</div>
+                                            </div>
                                         </div>
                                     `;
                                 });
                                 
-                                html += '</div>';
+                                html += `</div>`;
                                 activeCustomersListContainer.innerHTML = html;
                             } else if (activeCustomersListContainer) {
                                 activeCustomersListContainer.innerHTML = '<div class="no-data">Keine Kunden gefunden</div>';
                             }
-                            
                         } catch (e) {
                             console.error('Fehler beim Parsen der Antwort:', e);
                             

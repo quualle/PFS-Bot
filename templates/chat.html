@@ -2340,6 +2340,9 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             // Aktive Kunden laden
             loadActiveCustomers();
             
+            // Vertragsdaten laden
+            loadContractData();
+            
             // Hier können später weitere Dashboard-Daten geladen werden
         }
         
@@ -2514,7 +2517,9 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             document.getElementById('conversion-rate-widget').innerHTML = '<div class="customer-count">0%</div>';
             document.getElementById('total-revenue').textContent = '0 €';
             document.getElementById('new-contracts').textContent = '0';
-            document.getElementById('agency-changes').textContent = '0';
+            document.getElementById('agency-switches').textContent = '0';
+            document.getElementById('active-new-contracts').textContent = '0';
+            document.getElementById('active-agency-switches').textContent = '0';
             document.getElementById('serious-terminations').textContent = '0';
             document.getElementById('agency-change-terminations').textContent = '0';
             
@@ -2528,6 +2533,128 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                 loadDashboardData();
             }, 1000);
         });
+        
+        // Funktion zum Laden der Vertragsdaten
+        function loadContractData() {
+            const newContractsWidget = document.getElementById('new-contracts-widget');
+            const activeContractsWidget = document.getElementById('active-contracts-widget');
+            
+            console.log('DEBUG: loadContractData() aufgerufen');
+            
+            // Ladeanimationen anzeigen
+            if (newContractsWidget) {
+                console.log('DEBUG: newContractsWidget gefunden');
+                newContractsWidget.querySelector('.loading-spinner').style.display = 'flex';
+                newContractsWidget.querySelector('.dual-metric').style.display = 'none';
+            } else {
+                console.warn('DEBUG: newContractsWidget nicht gefunden');
+            }
+            
+            if (activeContractsWidget) {
+                console.log('DEBUG: activeContractsWidget gefunden');
+                activeContractsWidget.querySelector('.loading-spinner').style.display = 'flex';
+                activeContractsWidget.querySelector('.dual-metric').style.display = 'none';
+            } else {
+                console.warn('DEBUG: activeContractsWidget nicht gefunden');
+            }
+            
+            // API-Aufruf zum Laden der Dashboard-Daten
+            console.log('DEBUG: Starte Fetch-Anfrage an /get_dashboard_data');
+            fetch('/get_dashboard_data?t=' + new Date().getTime(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            })
+            .then(response => {
+                console.log('DEBUG: Fetch-Antwort erhalten', response);
+                if (!response.ok) {
+                    throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('DEBUG: Dashboard-Daten geladen:', data);
+                
+                // Vertragsdaten aktualisieren
+                if (data.new_contracts) {
+                    console.log('DEBUG: Neue Verträge Daten:', data.new_contracts);
+                    
+                    // Widget für neue Verträge aktualisieren
+                    if (newContractsWidget) {
+                        const newContractsElement = document.getElementById('new-contracts');
+                        const agencySwitchesElement = document.getElementById('agency-switches');
+                        
+                        if (newContractsElement && data.new_contracts.Alle_neuen_Verträge) {
+                            newContractsElement.textContent = data.new_contracts.Alle_neuen_Verträge || '0';
+                        }
+                        
+                        if (agencySwitchesElement && data.new_contracts.davon_Agenturwechsel) {
+                            agencySwitchesElement.textContent = data.new_contracts.davon_Agenturwechsel || '0';
+                        }
+                        
+                        newContractsWidget.querySelector('.loading-spinner').style.display = 'none';
+                        newContractsWidget.querySelector('.dual-metric').style.display = 'flex';
+                    }
+                    
+                    // Widget für aktive neue Verträge aktualisieren
+                    if (activeContractsWidget) {
+                        const activeNewContractsElement = document.getElementById('active-new-contracts');
+                        const activeAgencySwitchesElement = document.getElementById('active-agency-switches');
+                        
+                        if (activeNewContractsElement && data.new_contracts.neue_Verträge_noch_aktiv) {
+                            activeNewContractsElement.textContent = data.new_contracts.neue_Verträge_noch_aktiv || '0';
+                        }
+                        
+                        if (activeAgencySwitchesElement && data.new_contracts.davon_Agenturwechsel_noch_aktiv) {
+                            activeAgencySwitchesElement.textContent = data.new_contracts.davon_Agenturwechsel_noch_aktiv || '0';
+                        }
+                        
+                        activeContractsWidget.querySelector('.loading-spinner').style.display = 'none';
+                        activeContractsWidget.querySelector('.dual-metric').style.display = 'flex';
+                    }
+                } else {
+                    console.warn('DEBUG: Keine Vertragsdaten gefunden');
+                    
+                    // Fehlerbehandlung für neue Verträge Widget
+                    if (newContractsWidget) {
+                        document.getElementById('new-contracts').textContent = '0';
+                        document.getElementById('agency-switches').textContent = '0';
+                        newContractsWidget.querySelector('.loading-spinner').style.display = 'none';
+                        newContractsWidget.querySelector('.dual-metric').style.display = 'flex';
+                    }
+                    
+                    // Fehlerbehandlung für aktive neue Verträge Widget
+                    if (activeContractsWidget) {
+                        document.getElementById('active-new-contracts').textContent = '0';
+                        document.getElementById('active-agency-switches').textContent = '0';
+                        activeContractsWidget.querySelector('.loading-spinner').style.display = 'none';
+                        activeContractsWidget.querySelector('.dual-metric').style.display = 'flex';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Vertragsdaten:', error);
+                
+                // Fehlerbehandlung für beide Widgets
+                if (newContractsWidget) {
+                    document.getElementById('new-contracts').textContent = '0';
+                    document.getElementById('agency-switches').textContent = '0';
+                    newContractsWidget.querySelector('.loading-spinner').style.display = 'none';
+                    newContractsWidget.querySelector('.dual-metric').style.display = 'flex';
+                }
+                
+                if (activeContractsWidget) {
+                    document.getElementById('active-new-contracts').textContent = '0';
+                    document.getElementById('active-agency-switches').textContent = '0';
+                    activeContractsWidget.querySelector('.loading-spinner').style.display = 'none';
+                    activeContractsWidget.querySelector('.dual-metric').style.display = 'flex';
+                }
+            });
+        }
         
         // Event-Listener für Clear Chat Button
         document.getElementById('clearChatBtn').addEventListener('click', function() {

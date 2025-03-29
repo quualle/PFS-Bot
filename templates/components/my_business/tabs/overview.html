@@ -29,6 +29,48 @@
     </div>
     
     <div class="widget-row">
+        <div class="widget">
+            <div class="widget-header">Neue Verträge (letzte 14 Tage)</div>
+            <div class="widget-content" id="new-contracts-widget">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <div>Daten werden geladen...</div>
+                </div>
+                <div class="dual-metric">
+                    <div class="dual-metric-item">
+                        <div class="metric-value" id="new-contracts">-</div>
+                        <div class="metric-label">Neuverträge</div>
+                    </div>
+                    <div class="dual-metric-item">
+                        <div class="metric-value" id="agency-switches">-</div>
+                        <div class="metric-label">Agenturwechsel</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget">
+            <div class="widget-header">Neue Verträge (noch aktiv)</div>
+            <div class="widget-content" id="active-contracts-widget">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <div>Daten werden geladen...</div>
+                </div>
+                <div class="dual-metric">
+                    <div class="dual-metric-item">
+                        <div class="metric-value" id="active-new-contracts">-</div>
+                        <div class="metric-label">Neuverträge</div>
+                    </div>
+                    <div class="dual-metric-item">
+                        <div class="metric-value" id="active-agency-switches">-</div>
+                        <div class="metric-label">Agenturwechsel</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="widget-row">
         <div class="wide-widget">
             <div class="widget-header">Performance-Übersicht</div>
             <div class="widget-content">

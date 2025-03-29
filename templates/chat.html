@@ -2355,32 +2355,41 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                 .then(data => {
                     console.log('Dashboard-Daten geladen:', data);
                     
-                    // Aktive Kunden anzeigen
+                    // Aktive Kunden anzeigen - Verwende die count aus der API-Antwort
                     if (activeCustomersNowWidget) {
-                        activeCustomersNowWidget.innerHTML = `<div class="customer-count">${data.active_customers || 0}</div>`;
+                        activeCustomersNowWidget.innerHTML = `<div class="customer-count">${data.count || 0}</div>`;
                     }
                     
                     // Weitere Dashboard-Felder aktualisieren
-                    document.getElementById('total-revenue').textContent = `${data.total_revenue || 0} €`;
-                    
-                    // Liste der aktiven Kunden aktualisieren
-                    if (activeCustomersListContainer && data.customer_list && data.customer_list.length > 0) {
-                        let customerHTML = `<div class="customer-list">`;
-                        
-                        data.customer_list.forEach(customer => {
-                            customerHTML += `
-                                <div class="customer-item">
-                                    <div class="customer-name">${customer.name}</div>
-                                    <div class="customer-agency">${customer.agency || 'Keine Agentur'}</div>
-                                    <div class="customer-since">Kunde seit: <span>${customer.since || 'unbekannt'}</span></div>
-                                </div>
-                            `;
+                    if (data.status === 'success' && data.data) {
+                        // Beispielhafte Berechnung des Gesamtumsatzes (falls verfügbar)
+                        let totalRevenue = 0;
+                        data.data.forEach(customer => {
+                            if (customer.prov_seller) {
+                                totalRevenue += parseFloat(customer.prov_seller) || 0;
+                            }
                         });
+                        document.getElementById('total-revenue').textContent = `${totalRevenue.toFixed(2)} €`;
                         
-                        customerHTML += `</div>`;
-                        activeCustomersListContainer.innerHTML = customerHTML;
-                    } else if (activeCustomersListContainer) {
-                        activeCustomersListContainer.innerHTML = `<div class="no-data">Keine aktiven Kunden gefunden</div>`;
+                        // Liste der aktiven Kunden aktualisieren
+                        if (activeCustomersListContainer && data.data.length > 0) {
+                            let customerHTML = `<div class="customer-list">`;
+                            
+                            data.data.forEach(customer => {
+                                customerHTML += `
+                                    <div class="customer-item">
+                                        <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
+                                        <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
+                                        <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
+                                    </div>
+                                `;
+                            });
+                            
+                            customerHTML += `</div>`;
+                            activeCustomersListContainer.innerHTML = customerHTML;
+                        } else if (activeCustomersListContainer) {
+                            activeCustomersListContainer.innerHTML = `<div class="no-data">Keine aktiven Kunden gefunden</div>`;
+                        }
                     }
                 })
                 .catch(error => {
@@ -2401,6 +2410,13 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         activeCustomersNowWidget.innerHTML = errorMessage;
                     }
                 });
+        }
+        
+        // Hilfsfunktion zum Formatieren des Datums
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('de-DE');
         }
         
         // Funktion zum Initialisieren leerer Metrik-Felder mit Standardwerten

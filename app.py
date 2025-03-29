@@ -2591,19 +2591,26 @@ def get_dashboard_data():
     try:
         # Seller ID aus der Session holen
         seller_id = session.get('seller_id')
+        logging.info(f"Dashboard: Seller ID aus Session: {seller_id}")
+        
         if not seller_id:
+            logging.error("Dashboard: Keine Seller ID in der Session gefunden")
             return jsonify({
                 "error": "Keine Seller ID in der Session gefunden",
                 "status": "error"
             }), 401
         
         # Lade die Abfragemuster
+        logging.info("Dashboard: Lade Abfragemuster")
         with open('query_patterns.json', 'r', encoding='utf-8') as f:
             query_patterns = json.load(f)
         
         # Hole die "get_active_care_stays_now" Abfrage
         query_name = "get_active_care_stays_now"
+        logging.info(f"Dashboard: Verwende Abfrage {query_name}")
+        
         if query_name not in query_patterns['common_queries']:
+            logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             return jsonify({
                 "error": f"Abfrage {query_name} nicht gefunden",
                 "status": "error"
@@ -2613,21 +2620,27 @@ def get_dashboard_data():
         
         # Parameter für die Abfrage vorbereiten
         parameters = {'seller_id': seller_id, 'limit': 100}
+        logging.info(f"Dashboard: Parameter: {parameters}")
         
         # Führe die Abfrage aus
+        logging.info("Dashboard: Führe BigQuery-Abfrage aus")
         result = execute_bigquery_query(
             query_pattern['sql_template'],
             parameters
         )
+        logging.info(f"Dashboard: Abfrage abgeschlossen, {len(result)} Ergebnisse")
         
         # Formatiere das Ergebnis
         formatted_result = format_query_result(result, query_pattern.get('result_structure'))
+        logging.info(f"Dashboard: Ergebnis formatiert, {len(formatted_result)} Einträge")
         
-        return jsonify({
+        response = {
             "data": formatted_result,
             "count": len(formatted_result),
             "status": "success"
-        })
+        }
+        logging.info("Dashboard: Sende Antwort")
+        return jsonify(response)
     
     except Exception as e:
         error_trace = traceback.format_exc()

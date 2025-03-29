@@ -300,6 +300,7 @@
             setElementText('agency-change-terminations', '...');
             setElementText('active-new-contracts', '...');
             setElementText('active-agency-switches', '...');
+            hideLoadingSpinner('active-contracts-widget');
             
             // Direkte XHR-Anfrage
             const xhr = new XMLHttpRequest();
@@ -388,16 +389,17 @@
                             }
                             
                             // Aktive neue Verträge aktualisieren
-                            if (data.active_new_contracts) {
+                            if (data.active_new_contracts || data.new_contracts) {
+                                const activeData = data.active_new_contracts ? data.active_new_contracts : data.new_contracts;
                                 // Spinner entfernen
                                 hideLoadingSpinner('active-contracts-widget');
                                 
                                 // Echte neue Verträge
-                                const activeNewContractsCount = data.active_new_contracts.normal_contracts_count || 0;
+                                const activeNewContractsCount = activeData.normal_contracts_count || 0;
                                 setElementText('active-new-contracts', activeNewContractsCount);
                                 
                                 // Agenturwechsel
-                                const activeAgencyChangesCount = data.active_new_contracts.agency_change_contracts_count || 0;
+                                const activeAgencyChangesCount = activeData.agency_change_contracts_count || 0;
                                 setElementText('active-agency-switches', activeAgencyChangesCount);
                                 
                                 console.log('Aktive neue Verträge aktualisiert:', activeNewContractsCount, 'neu,', activeAgencyChangesCount, 'Agenturwechsel');

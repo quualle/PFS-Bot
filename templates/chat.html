@@ -6,7 +6,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 
     <!-- Google Fonts: Falls du noch eine andere Schriftart willst, hier anpassen -->
-    <link href="https://fonts.googleapis.com/css2?family=Arial:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- My Business Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='components/my_business/styles.css') }}">
 
     <!-- CSRF-Token Meta-Tag -->
     <meta name="csrf-token" content="{{ csrf_token }}">
@@ -14,7 +19,7 @@
     <style>
         /* GRUNDLEGENDE STILE FÜR DAS GESAMTE DOKUMENT */
         body {
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Inter', sans-serif; 
             background: radial-gradient(circle at top left, #1f1c2c, #928dab, #1f1c2c);
             color: #ffffff;
             margin: 0;
@@ -59,7 +64,7 @@
 
         /* TITEL (XORA) */
         h1.main-title {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Inter', sans-serif;
             text-align: center;
             color: #00ffff;
             margin-bottom: 0px;
@@ -71,7 +76,7 @@
         p.subtitle {
             color: #00ffff;
             text-shadow: 0 0 10px #00ffff;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Inter', sans-serif;
             font-style: italic;
             margin-top: 0px; 
             margin-bottom: 20px;
@@ -935,10 +940,9 @@
     </div>
 
     <!-- FEEDBACK OVERLAY -->
-    <div id="feedbackOverlay" class="overlay">
+    <div id="feedbackOverlay" class="overlay" style="display: none;">
         <div class="overlay-content">
-            <h2 id="feedbackTitle">Feedback geben</h2>
-            <p>Danke, dass du uns hilfst, XORA zu verbessern!</p>
+            <h2 id="feedbackTitle">Feedback</h2>
             <input type="hidden" id="currentFeedbackMessage" />
             <textarea id="feedbackComment" placeholder="Was ist gut oder schlecht? (optional)" style="width: 100%; min-height: 100px; margin-bottom: 20px; padding: 10px; background: rgba(255,255,255,0.1); color: white; border: none; border-radius: 8px;"></textarea>
             <div style="display: flex; justify-content: space-between; gap: 10px;">
@@ -948,232 +952,9 @@
         </div>
     </div>
 
-    <!-- MY BUSINESS DASHBOARD OVERLAY -->
-    <div id="businessOverlay" class="business-overlay">
-        <div class="business-content">
-            <div class="business-header">
-                <h2>My Business</h2>
-                <button id="closeBusinessBtn" class="close-business-btn">&times;</button>
-            </div>
-            
-            <div class="business-tabs">
-                <button class="business-tab active" data-tab="overview">Übersicht</button>
-                <button class="business-tab" data-tab="kpis">Meine KPIs</button>
-                <button class="business-tab" data-tab="customers">Meine Kunden</button>
-            </div>
-            
-            <div id="overviewTab" class="tab-content active">
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Kundenzahl</div>
-                        <div class="widget-content">
-                            <div class="customer-count" id="overviewCustomersCount">0</div>
-                            <div class="customer-label">aktive Kunden</div>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Abschlussquote</div>
-                        <div class="widget-content">
-                            <div class="metric-value" id="closingRate">0%</div>
-                            <div class="metric-label">Abschlussquote</div>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">
-                            Umsatz
-                            <div class="month-selector">
-                                <select id="revenueMonthSelector" class="month-select">
-                                    <option value="0">Aktueller Monat</option>
-                                    <option value="1">Letzter Monat</option>
-                                    <option value="2">Vor 2 Monaten</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="widget-content">
-                            <div class="metric-value" id="monthlyRevenue">0 €</div>
-                            <div class="metric-label">Monatlicher Umsatz</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Neue Verträge</div>
-                        <div class="widget-content">
-                            <div class="dual-metric">
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="newContracts">0</div>
-                                    <div class="metric-label">Neu</div>
-                                </div>
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="agencySwitchContracts">0</div>
-                                    <div class="metric-label">Agenturwechsel</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Kündigungen</div>
-                        <div class="widget-content">
-                            <div class="dual-metric">
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="seriousCancellations">0</div>
-                                    <div class="metric-label">Ernst</div>
-                                </div>
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="agencySwitchCancellations">0</div>
-                                    <div class="metric-label">Agenturwechsel</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="kpisTab" class="tab-content">
-                <div class="date-range-selector">
-                    <label for="kpiStartDate">Von:</label>
-                    <input type="date" id="kpiStartDate" class="date-input">
-                    <label for="kpiEndDate">Bis:</label>
-                    <input type="date" id="kpiEndDate" class="date-input">
-                    <button id="applyDateRange" class="date-range-button">Anwenden</button>
-                </div>
-                
-                <div class="widget-row">
-                    <div class="widget wide-widget">
-                        <div class="widget-header">Abschlussquote</div>
-                        <div class="widget-content">
-                            <div class="dual-metric large">
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="closingRatePercent">0%</div>
-                                    <div class="metric-label">Prozentual</div>
-                                </div>
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="closingRateAbsolute">0/0</div>
-                                    <div class="metric-label">Absolut</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Lead zu EB</div>
-                        <div class="widget-content">
-                            <div class="dual-metric">
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="leadToEbPercent">0%</div>
-                                    <div class="metric-label">Prozentual</div>
-                                </div>
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="leadToEbAbsolute">0/0</div>
-                                    <div class="metric-label">Absolut</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">EB zu Posting</div>
-                        <div class="widget-content">
-                            <div class="dual-metric">
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="ebToPostingPercent">0%</div>
-                                    <div class="metric-label">Prozentual</div>
-                                </div>
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="ebToPostingAbsolute">0/0</div>
-                                    <div class="metric-label">Absolut</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Posting zu Vertrag</div>
-                        <div class="widget-content">
-                            <div class="dual-metric">
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="postingToContractPercent">0%</div>
-                                    <div class="metric-label">Prozentual</div>
-                                </div>
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="postingToContractAbsolute">0/0</div>
-                                    <div class="metric-label">Absolut</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Kündigungsquote</div>
-                        <div class="widget-content">
-                            <div class="dual-metric">
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="cancellationRatePercent">0%</div>
-                                    <div class="metric-label">Prozentual</div>
-                                </div>
-                                <div class="dual-metric-item">
-                                    <div class="metric-value" id="cancellationRateAbsolute">0/0</div>
-                                    <div class="metric-label">Absolut</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="customersTab" class="tab-content">
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Aktive Kunden</div>
-                        <div class="widget-content">
-                            <div class="customer-count" id="activeCustomersCount">0</div>
-                            <div class="customer-label">aktive Kunden</div>
-                            <div id="activeCustomersList" class="customer-list">
-                                <!-- Hier werden die aktiven Kunden dynamisch eingefügt -->
-                                <div class="loading-spinner" id="customerLoadingSpinner">
-                                    <div class="spinner"></div>
-                                    <span>Lade Kundendaten...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Neue Kunden (letzte 14 Tage)</div>
-                        <div class="widget-content">
-                            <div class="customer-count" id="newCustomersCount">0</div>
-                            <div class="customer-label">neue Kunden</div>
-                            <div id="newCustomersList" class="customer-list">
-                                <p class="placeholder-text">Hier werden neue Kunden angezeigt...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="widget-row">
-                    <div class="widget">
-                        <div class="widget-header">Kunden in Pause</div>
-                        <div class="widget-content">
-                            <div class="customer-count" id="pausedCustomersCount">0</div>
-                            <div class="customer-label">pausierte Kunden</div>
-                            <div id="pausedCustomersList" class="customer-list">
-                                <p class="placeholder-text">Hier werden pausierte Kunden mit Pausendauer angezeigt...</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget">
-                        <div class="widget-header">Am längsten dabei</div>
-                        <div class="widget-content">
-                            <div class="customer-count" id="longtermCustomersCount">0</div>
-                            <div class="customer-label">am längsten dabei</div>
-                            <div id="longtermCustomersList" class="customer-list">
-                                <p class="placeholder-text">Hier werden langjährige Kunden angezeigt...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- MY BUSINESS OVERLAY - Neue modulare Struktur -->
+    <div id="myBusinessOverlay" class="my-business-overlay">
+        {% include 'components/my_business/container.html' %}
     </div>
 
     <div class="chat-container">
@@ -1398,7 +1179,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                     botDiv.classList.add('message', 'bot');
                     botDiv.innerHTML = `
                         <strong>XORA:</strong>
-                        <span>Hi ${userName}, wie kann ich dir heute helfen?<br><br>
+                        <span>Hi ${userName}, wie kann ich dir behilflich sein?<br><br>
 Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
 - Wie war meine Abschlussquote im Januar 2024?<br>
 - Wie viele Kündigungen und Agenturwechsel hatte ich im Januar 2024?<br>
@@ -2097,7 +1878,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
 
         // Dashboard-Funktionalität
         const myBusinessBtn = document.getElementById('myBusinessBtn');
-        const businessOverlay = document.getElementById('businessOverlay');
+        const businessOverlay = document.getElementById('myBusinessOverlay');
         const closeBusinessBtn = document.getElementById('closeBusinessBtn');
         const businessTabs = document.querySelectorAll('.business-tab');
         const tabContents = document.querySelectorAll('.tab-content');

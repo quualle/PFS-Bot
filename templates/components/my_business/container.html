@@ -1,0 +1,16 @@
+<div class="business-content">
+    <div class="business-header">
+        <h2>XORA - My PfS Assistant</h2>
+        <button id="close-business-btn" class="close-business-btn">&times;</button>
+    </div>
+
+    <div class="business-tabs">
+        <button class="business-tab active" data-tab="overview">Übersicht</button>
+        <button class="business-tab" data-tab="clients">Aktive Kunden</button>
+        <button class="business-tab" data-tab="performance">Performance</button>
+    </div>
+
+    {% include 'components/my_business/tabs/overview.html' %}
+    {% include 'components/my_business/tabs/clients.html' %}
+    {% include 'components/my_business/tabs/performance.html' %}
+</div>

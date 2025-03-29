@@ -2655,7 +2655,7 @@ def update_stream_chat_history():
         if not user_id or not user_name:
             return jsonify({'success': False, 'error': 'No active session'}), 400
             
-        chat_key = f'chat_history_{user_id}'
+        chat_key = f"chat_history_{user_id}"
         
         # Get current chat history or initialize it
         chat_history = session.get(chat_key, [])

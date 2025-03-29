@@ -2594,6 +2594,128 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         attachFeedbackHandlers();
         
         // Der doppelte Tab-Wechsel-Code wurde entfernt
+        
+        // Lade die Dashboard-Daten auch automatisch beim Seitenstart
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verzögerung, damit die Sitzungsdaten zuerst vollständig geladen werden können
+            setTimeout(() => {
+                loadDashboardData();
+            }, 1000);
+            
+            // Test-Button für direktes Laden hinzufügen
+            const testDashboardBtn = document.getElementById('test-dashboard-btn');
+            if (testDashboardBtn) {
+                testDashboardBtn.addEventListener('click', testDashboardLoading);
+            }
+        });
+        
+        // Direkte Testfunktion, die den Server-Endpunkt aufruft und die Ergebnisse anzeigt
+        function testDashboardLoading() {
+            console.log('Test-Dashboard-Funktion wird ausgeführt');
+            
+            // Aktuelle IDs anzeigen zur Fehlerbehebung
+            const containers = [
+                'active-customers-now-widget',
+                'active-customers-list-container',
+                'total-revenue'
+            ];
+            
+            console.log('Überprüfe existierende Container:');
+            containers.forEach(id => {
+                const element = document.getElementById(id);
+                console.log(`- ${id}: ${element ? 'Gefunden' : 'NICHT GEFUNDEN'}`);
+            });
+            
+            // Direkte Anzeige in allen beteiligten Elementen
+            const spinner = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <div>Direkter Test - Daten werden geladen...</div>
+                </div>
+            `;
+            
+            const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
+            const activeCustomersListContainer = document.getElementById('active-customers-list-container');
+            
+            if (activeCustomersNowWidget) activeCustomersNowWidget.innerHTML = spinner;
+            if (activeCustomersListContainer) activeCustomersListContainer.innerHTML = spinner;
+            
+            // Direkte XMLHttpRequest ohne kompliziertes Fehlerhandling
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/get_dashboard_data?' + new Date().getTime(), true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onreadystatechange = function() {
+                if (this.readyState === 4) {
+                    console.log('XHR Status:', this.status);
+                    console.log('XHR Response Text:', this.responseText.substring(0, 200) + '...');
+                    
+                    if (this.status === 200) {
+                        try {
+                            const data = JSON.parse(this.responseText);
+                            console.log('Daten erfolgreich geladen:', data);
+                            
+                            // Direkte Anzeige der Kundenzahl
+                            if (activeCustomersNowWidget) {
+                                activeCustomersNowWidget.innerHTML = `
+                                    <div class="customer-count">${data.count || 0}</div>
+                                `;
+                            }
+                            
+                            // Direktes Anzeigen der Kundenliste
+                            if (activeCustomersListContainer && data.data && data.data.length > 0) {
+                                let html = '<div class="customer-list">';
+                                
+                                data.data.forEach(customer => {
+                                    html += `
+                                        <div class="customer-item">
+                                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
+                                            <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
+                                            <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
+                                        </div>
+                                    `;
+                                });
+                                
+                                html += '</div>';
+                                activeCustomersListContainer.innerHTML = html;
+                            } else if (activeCustomersListContainer) {
+                                activeCustomersListContainer.innerHTML = '<div class="no-data">Keine Kunden gefunden</div>';
+                            }
+                            
+                        } catch (e) {
+                            console.error('Fehler beim Parsen der Antwort:', e);
+                            
+                            // Fehler anzeigen
+                            const errorHtml = `
+                                <div class="error-message">
+                                    <div>Fehler beim Parsen der Daten</div>
+                                    <div class="error-details">${e.message}</div>
+                                </div>
+                            `;
+                            
+                            if (activeCustomersNowWidget) activeCustomersNowWidget.innerHTML = errorHtml;
+                            if (activeCustomersListContainer) activeCustomersListContainer.innerHTML = errorHtml;
+                        }
+                    } else {
+                        console.error('Fehler bei der Anfrage:', this.status);
+                        
+                        // Fehler anzeigen
+                        const errorHtml = `
+                            <div class="error-message">
+                                <div>Fehler beim Laden der Daten</div>
+                                <div class="error-details">Status: ${this.status}</div>
+                            </div>
+                        `;
+                        
+                        if (activeCustomersNowWidget) activeCustomersNowWidget.innerHTML = errorHtml;
+                        if (activeCustomersListContainer) activeCustomersListContainer.innerHTML = errorHtml;
+                    }
+                }
+            };
+            
+            xhr.send();
+            console.log('XHR-Anfrage gesendet');
+        }
     });
     </script>
 </body>

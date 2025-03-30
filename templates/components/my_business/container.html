@@ -33,7 +33,11 @@
         
         <div class="widget-row">
             <div class="widget">
-                <div class="widget-header">Umsatz</div>
+                <div class="widget-header">Umsatz
+                    <select id="revenue-month-select" style="margin-left: 10px; font-size: 0.8em;">
+                        <!-- Optionen werden per JS gefüllt -->
+                    </select>
+                </div>
                 <div class="widget-content">
                     <div class="customer-count" id="total-revenue">0 €</div>
                     <div class="month-selector">
@@ -244,7 +248,6 @@
 
 <!-- Inline-JavaScript direkt im Overlay -->
 <script>
-    // Sofort ausgeführtes JavaScript für das Overlay
     (function() {
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
@@ -252,6 +255,7 @@
         const testButton = document.getElementById('test-dashboard-btn');
         const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
         const activeCustomersListContainer = document.getElementById('active-customers-list-container');
+        const revenueMonthSelect = document.getElementById('revenue-month-select');
         
         console.log('Test-Button gefunden:', testButton !== null);
         console.log('Active Customers Widget gefunden:', activeCustomersNowWidget !== null);
@@ -270,7 +274,7 @@
         setTimeout(loadDashboardDataDirectly, 500);
         
         // Funktion zum direkten Laden der Dashboard-Daten
-        function loadDashboardDataDirectly() {
+        function loadDashboardDataDirectly(selectedMonth = null) {
             console.log('Direktes Laden der Dashboard-Daten wird gestartet');
             
             // Loading-Status anzeigen
@@ -303,8 +307,11 @@
             
             // Direkte XHR-Anfrage
             const xhr = new XMLHttpRequest();
-            const timestamp = new Date().getTime();
-            xhr.open('GET', '/get_dashboard_data?t=' + timestamp, true);
+            let url = '/get_dashboard_data';
+            if (selectedMonth) {
+                url += '?month=' + selectedMonth; // Füge Monatsparameter hinzu
+            }
+            xhr.open('GET', url, true);
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             
@@ -494,5 +501,38 @@
                 activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
             }
         }
+        
+        // Funktion zum Füllen des Monats-Dropdowns
+        function populateMonthDropdown() {
+            if (!revenueMonthSelect) return;
+            
+            const currentMonth = new Date();
+            const endMonth = new Date(2023, 6, 1); // Juli 2023 (Monat ist 0-basiert)
+            
+            let month = currentMonth;
+            while (month >= endMonth) {
+                const option = document.createElement('option');
+                const monthValue = month.toISOString().substring(0, 7); // YYYY-MM
+                const monthLabel = month.toLocaleDateString('de-DE', { year: 'numeric', month: 'long' });
+                
+                option.value = monthValue;
+                option.textContent = monthLabel;
+                revenueMonthSelect.appendChild(option);
+                
+                // Zum Vormonat wechseln
+                month.setMonth(month.getMonth() - 1);
+            }
+            // Setze den aktuellen Monat als Standardauswahl
+            revenueMonthSelect.value = currentMonth.toISOString().substring(0, 7);
+        }
+        
+        // Event Listener für Monatsauswahl
+        if (revenueMonthSelect) {
+            revenueMonthSelect.addEventListener('change', function() {
+                loadDashboardDataDirectly(this.value); // Lade Daten für ausgewählten Monat
+            });
+        }
+        
+        populateMonthDropdown();
     })();
 </script>

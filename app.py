@@ -3,10 +3,10 @@ import json
 import re
 import time
 import logging
-import logging
-import datetime
-from functools import wraps
 import traceback
+from datetime import datetime, timedelta, date
+import calendar # Import für Monatsberechnungen
+from functools import wraps
 import uuid
 import tempfile
 import requests  # Added import for requests
@@ -14,7 +14,9 @@ from datetime import datetime, timedelta
 import dateparser
 from conversation_manager import ConversationManager
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
+from flask import (
+    Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
+)
 from flask_wtf import CSRFProtect
 from flask_session import Session
 from dotenv import load_dotenv
@@ -2622,17 +2624,19 @@ def get_dashboard_data():
         
         query_pattern = query_patterns['common_queries'][query_name]
         
-        # Parameter für die Abfrage vorbereiten
-        parameters = {'seller_id': seller_id, 'limit': 100}
+        # Parameter dynamisch setzen
+        parameters = {
+            'seller_id': seller_id,
+            'start_of_month': datetime.now().date().replace(day=1).isoformat(),
+            'end_of_month': datetime.now().date().isoformat(),
+            'days_in_month': calendar.monthrange(datetime.now().year, datetime.now().month)[1]
+        }
         logging.info(f"Dashboard: Parameter: {parameters}")
-        
-        # Führe die Abfrage aus
-        logging.info("Dashboard: Führe BigQuery-Abfrage aus")
+
         result = execute_bigquery_query(
             query_pattern['sql_template'],
             parameters
         )
-        logging.info(f"Dashboard: Abfrage abgeschlossen, {len(result)} Ergebnisse")
         
         # Formatiere das Ergebnis
         formatted_result = format_query_result(result, query_pattern.get('result_structure'))
@@ -2754,7 +2758,12 @@ def get_dashboard_data():
         logging.info(f"Dashboard: Verwende Abfrage {query_name_revenue}")
         if query_name_revenue in query_patterns['common_queries']:
             query_pattern_revenue = query_patterns['common_queries'][query_name_revenue]
-            parameters_revenue = {'seller_id': seller_id}
+            parameters_revenue = {
+                'seller_id': seller_id,
+                'start_of_month': datetime.now().date().replace(day=1).isoformat(),
+                'end_of_month': datetime.now().date().isoformat(),
+                'days_in_month': calendar.monthrange(datetime.now().year, datetime.now().month)[1]
+            }
             logging.info(f"Dashboard: Parameter für Umsatz Pro Rata: {parameters_revenue}")
 
             revenue_result = execute_bigquery_query(
@@ -3004,6 +3013,7 @@ def set_username():
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
+        # Behalten Sie die bestehende Admin-Login-Logik bei
         password = request.form.get('password', '')
         admin_password = os.getenv('ADMIN_PASSWORD', '')
         if password == admin_password:

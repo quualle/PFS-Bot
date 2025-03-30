@@ -342,10 +342,10 @@
     },
     
     "get_revenue_current_month_pro_rata": {
-      "description": "Berechnet den anteiligen Umsatz für den laufenden Monat basierend auf betreuten Tagen.",
-      "required_parameters": ["seller_id"],
+      "description": "Berechnet den anteiligen Umsatz für einen ausgewählten Monat basierend auf betreuten Tagen.",
+      "required_parameters": ["seller_id", "start_of_month", "end_of_month", "days_in_month"],
       "optional_parameters": [],
-      "sql_template": "WITH params AS ( SELECT @seller_id AS seller_id, DATE_TRUNC(CURRENT_DATE(), MONTH) AS start_of_month, CURRENT_DATE() AS today, EXTRACT(DAY FROM LAST_DAY(CURRENT_DATE(), MONTH)) AS days_in_month ) SELECT ROUND(SUM( CASE WHEN p.days_in_month > 0 THEN (COALESCE(CAST(cs.prov_seller AS FLOAT64), 0) / p.days_in_month) * GREATEST(0, DATE_DIFF( LEAST(DATE(TIMESTAMP(cs.bill_end)), p.today), GREATEST(DATE(TIMESTAMP(cs.bill_start)), p.start_of_month), DAY ) + 1) ELSE 0 END ), 2) AS total_monthly_pro_rata_revenue FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id CROSS JOIN params p WHERE l.seller_id = p.seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) <= p.today AND DATE(TIMESTAMP(cs.bill_end)) >= p.start_of_month",
+      "sql_template": "SELECT ROUND(SUM( CASE WHEN @days_in_month > 0 THEN (COALESCE(CAST(cs.prov_seller AS FLOAT64), 0) / @days_in_month) * GREATEST(0, DATE_DIFF( LEAST(DATE(TIMESTAMP(cs.bill_end)), DATE(@end_of_month)), GREATEST(DATE(TIMESTAMP(cs.bill_start)), DATE(@start_of_month)), DAY ) + 1) ELSE 0 END ), 2) AS total_monthly_pro_rata_revenue FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id WHERE l.seller_id = @seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) <= DATE(@end_of_month) AND DATE(TIMESTAMP(cs.bill_end)) >= DATE(@start_of_month)",
       "default_values": {},
       "result_structure": {
         "total_monthly_pro_rata_revenue": "Summe der anteiligen Provisionen im laufenden Monat"

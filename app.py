@@ -186,9 +186,9 @@ def configure_google_auth(app):
 
             # --- Sonderbehandlung für den Chef ---
             marco_id = "62d00b56a384fd908f7f5a6c" # Marco
-            chef_email = "gf@pflegehilfe-senioren.de"
+            norman_email = "gf@pflegehilfe-senioren.de"
 
-            if email == chef_email:
+            if email == norman_email:
                 logging.warning(f"Sonderbehandlung aktiv: Logged in als {email}. Überschreibe user_id mit Test-ID {marco_id}")
                 session['user_id'] = marco_id
             # --- Ende Sonderbehandlung ---

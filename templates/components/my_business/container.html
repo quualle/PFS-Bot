@@ -24,7 +24,7 @@
             </div>
             
             <div class="widget">
-                <div class="widget-header">Abschlussquote</div>
+                <div class="widget-header">Abschlussquote (letzte 30 Tage)</div>
                 <div class="widget-content" id="conversion-rate-widget">
                     <div class="customer-count">0%</div>
                 </div>
@@ -115,7 +115,7 @@
         
         <div class="widget-row">
             <div class="widget">
-                <div class="widget-header">Abschlussquote</div>
+                <div class="widget-header">Abschlussquote (letzte 30 Tage)</div>
                 <div class="widget-content">
                     <div class="dual-metric large">
                         <div class="dual-metric-item">
@@ -327,38 +327,18 @@
                             }
                             
                             // Kundenliste aktualisieren
-                            if (activeCustomersListContainer && data.data && data.data.length > 0) {
-                                let customersHtml = '<div class="customer-list">';
-                                
-                                data.data.forEach(function(customer) {
-                                    customersHtml += `
-                                        <div class="customer-item">
-                                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
-                                            <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
-                                            <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
-                                        </div>
-                                    `;
-                                });
-                                
-                                customersHtml += '</div>';
-                                activeCustomersListContainer.innerHTML = customersHtml;
-                                console.log('Kundenliste aktualisiert mit', data.data.length, 'Kunden');
-                            } else if (activeCustomersListContainer) {
-                                activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
-                            }
+                            updateCustomerList(data.data);
                             
-                            // Umsatz aktualisieren
-                            const totalRevenueElement = document.getElementById('total-revenue');
-                            if (totalRevenueElement && data.data) {
-                                let totalRevenue = 0;
-                                data.data.forEach(function(customer) {
-                                    if (customer.prov_seller) {
-                                        totalRevenue += parseFloat(customer.prov_seller) || 0;
-                                    }
-                                });
-                                
-                                totalRevenueElement.textContent = `${totalRevenue.toFixed(2)} €`;
-                                console.log('Gesamtumsatz aktualisiert:', totalRevenue.toFixed(2));
+                            // Gesamtumsatz Pro Rata (NEUE METHODE)
+                            const totalRevenueElementNew = document.getElementById('total-revenue');
+                            if (totalRevenueElementNew && data.pro_rata_revenue !== undefined) {
+                                const proRataRevenue = parseFloat(data.pro_rata_revenue) || 0;
+                                totalRevenueElementNew.textContent = `${proRataRevenue.toFixed(2)} €`;
+                                console.log('Gesamtumsatz aktualisiert (Pro Rata Methode):', proRataRevenue.toFixed(2));
+                            } else if (totalRevenueElementNew) {
+                                // Fallback, falls Wert nicht vorhanden
+                                totalRevenueElementNew.textContent = '0.00 €';
+                                console.log('Gesamtumsatz Pro Rata konnte nicht geladen werden');
                             }
                             
                             // Abschlussquote aktualisieren
@@ -490,6 +470,29 @@
                 month: '2-digit',
                 year: 'numeric'
             });
+        }
+        
+        // Funktion zum Aktualisieren der Kundenliste
+        function updateCustomerList(customers) {
+            if (activeCustomersListContainer && customers && customers.length > 0) {
+                let customersHtml = '<div class="customer-list">';
+                
+                customers.forEach(function(customer) {
+                    customersHtml += `
+                        <div class="customer-item">
+                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
+                            <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
+                            <div class="customer-since">Kunde seit: <span>${formatDate(customer.bill_start) || 'unbekannt'}</span></div>
+                        </div>
+                    `;
+                });
+                
+                customersHtml += '</div>';
+                activeCustomersListContainer.innerHTML = customersHtml;
+                console.log('Kundenliste aktualisiert mit', customers.length, 'Kunden');
+            } else if (activeCustomersListContainer) {
+                activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
+            }
         }
     })();
 </script>

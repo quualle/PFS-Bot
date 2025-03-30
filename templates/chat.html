@@ -1365,80 +1365,85 @@
     </div>
 
     <!-- MY BUSINESS OVERLAY - Neue modulare Struktur -->
-    <div id="myBusinessOverlay" class="my-business-overlay">
+    <div class="main-container">
         {% include 'components/my_business/container.html' %}
     </div>
 
-    <div class="chat-container">
-        <!-- HAUPTTITEL & UNTERTITEL -->
-        <h1 class="main-title">XORA</h1>
-        <p class="subtitle">Pflegehilfe für Senioren Companion</p>
+    <!-- BUTTON ZUM ÖFFNEN DES CHAT-OVERLAYS -->
+    <button id="openChatBtn" class="open-chat-button" title="Chat öffnen">💬</button>
 
-        <!-- FLASH-NACHRICHTEN -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <ul class="flashes">
-            {% for category, message in messages %}
-            <li class="flash flash-{{ category }}">{{ message }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-        {% endwith %}
+    <!-- CHAT OVERLAY -->
+    <div id="chatOverlay" class="overlay" style="display: none;">
+        <div class="chat-container">
+            <button id="closeChatBtn" class="close-chat-btn" title="Chat schließen">&times;</button>
 
-        <!-- CHAT-BOX -->
-        <div class="chat-box">
-            <!-- NOTFALL-BUTTON (immer sichtbar) -->
-            <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
+            <!-- HAUPTTITEL & UNTERTITEL -->
+            <h1 class="main-title">XORA</h1>
+            <p class="subtitle">Pflegehilfe für Senioren Companion</p>
 
-            <!-- MY BUSINESS BUTTON -->
-            <button id="myBusinessBtn" class="my-business-button">My Business</button>
-            
-            <!-- CHAT-HISTORY (scrollbar) -->
-            <div id="chatHistory" class="chat-history">
-                {% for message in chat_history %}
-                <div class="message {{ message.role }}">
-                    <strong>{% if message.role == 'user' %}Sie{% else %}XORA{% endif %}:</strong>
-                    <span>{{ message.content }}</span>
-                    {% if message.role == 'bot' %}
-                    <div class="feedback-icons">
-                        <span class="thumb-up" data-message-id="{{ loop.index }}" data-type="positive">👍</span>
-                        <span class="thumb-down" data-message-id="{{ loop.index }}" data-type="negative">👎</span>
+            <!-- FLASH-NACHRICHTEN -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                <li class="flash flash-{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% endwith %}
+
+            <!-- CHAT-BOX -->
+            <div class="chat-box">
+                <!-- NOTFALL-BUTTON (immer sichtbar) -->
+                <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
+
+                <!-- CHAT-HISTORY (scrollbar) -->
+                <div id="chatHistory" class="chat-history">
+                    {% for message in chat_history %}
+                    <div class="message {{ message.role }}">
+                        <strong>{% if message.role == 'user' %}Sie{% else %}XORA{% endif %}:</strong>
+                        <span>{{ message.content }}</span>
+                        {% if message.role == 'bot' %}
+                        <div class="feedback-icons">
+                            <span class="thumb-up" data-message-id="{{ loop.index }}" data-type="positive">👍</span>
+                            <span class="thumb-down" data-message-id="{{ loop.index }}" data-type="negative">👎</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    {% if human_in_loop %}
+                    <!-- Text-based clarification is now handled in the regular chat flow -->
+                    <div class="message bot">
+                        <strong>XORA:</strong>
+                        <span>{{ human_in_loop.message }}</span>
+                        <div class="feedback-icons">
+                            <span class="thumb-up" data-type="positive">👍</span>
+                            <span class="thumb-down" data-type="negative">👎</span>
+                        </div>
                     </div>
                     {% endif %}
                 </div>
-                {% endfor %}
 
-                {% if human_in_loop %}
-                <!-- Text-based clarification is now handled in the regular chat flow -->
-                <div class="message bot">
-                    <strong>XORA:</strong>
-                    <span>{{ human_in_loop.message }}</span>
-                    <div class="feedback-icons">
-                        <span class="thumb-up" data-type="positive">👍</span>
-                        <span class="thumb-down" data-type="negative">👎</span>
-                    </div>
+                <!-- NACHRICHTENFORM -->
+                <form id="chatForm" class="chat-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="notfallmodus" value="0" id="notfallInput">
+                    <input type="hidden" name="notfallart" value="" id="notfallArtInput">
+                    <input type="text" name="message" placeholder="Gib deine Nachricht ein (bitte Zeitraum angeben)..." class="message-input" autocomplete="off">
+                    <button type="submit" class="send-button"><span class="send-icon"></span></button>
+                </form>
+
+                <!-- Hinweis zur Zeitraumangabe -->
+                <div class="timeframe-hint" style="text-align: center; font-size: 12px; color: #88ccff; margin-top: 5px; margin-bottom: 5px;">
+                    Für bessere Antworten bitte immer einen Zeitraum angeben (z.B. "März 2025", "4.Quartal 2024")
                 </div>
-                {% endif %}
-            </div>
 
-            <!-- NACHRICHTENFORM -->
-            <form id="chatForm" class="chat-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="notfallmodus" value="0" id="notfallInput">
-                <input type="hidden" name="notfallart" value="" id="notfallArtInput">
-                <input type="text" name="message" placeholder="Gib deine Nachricht ein (bitte Zeitraum angeben)..." class="message-input" autocomplete="off">
-                <button type="submit" class="send-button"><span class="send-icon"></span></button>
-            </form>
-            
-            <!-- Hinweis zur Zeitraumangabe -->
-            <div class="timeframe-hint" style="text-align: center; font-size: 12px; color: #88ccff; margin-top: 5px; margin-bottom: 5px;">
-                Für bessere Antworten bitte immer einen Zeitraum angeben (z.B. "März 2025", "4.Quartal 2024")
-            </div>
-
-            <!-- AKTION-BUTTONS UNTER DEM FORMULAR -->
-            <div class="action-buttons">
-                <button id="clearChatBtn" class="action-btn">Chat löschen</button>
-                <a href="/logout" class="logout-btn action-btn">Ausloggen</a>
+                <!-- AKTION-BUTTONS UNTER DEM FORMULAR -->
+                <div class="action-buttons">
+                    <button id="clearChatBtn" class="action-btn">Chat löschen</button>
+                    <a href="/logout" class="logout-btn action-btn">Ausloggen</a>
+                </div>
             </div>
         </div>
     </div>
@@ -2290,9 +2295,9 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         forceScrollToBottom();
 
         // Dashboard-Funktionalität
-        const myBusinessBtn = document.getElementById('myBusinessBtn');
-        const businessOverlay = document.getElementById('myBusinessOverlay');
-        const closeBusinessBtn = document.getElementById('close-business-btn');
+        const openChatBtn = document.getElementById('openChatBtn');
+        const chatOverlay = document.getElementById('chatOverlay');
+        const closeChatBtn = document.getElementById('closeChatBtn');
         const businessTabs = document.querySelectorAll('.business-tab');
         const tabContents = document.querySelectorAll('.tab-content');
         
@@ -2321,47 +2326,26 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             console.warn('Keine Tab-Elemente gefunden');
         }
         
-        // Business-Button Klick-Event
-        if (myBusinessBtn) {
-            myBusinessBtn.addEventListener('click', function() {
-                businessOverlay.style.display = 'block';
-                // Verzögerung, damit die Animation flüssig ist
-                setTimeout(() => {
-                    businessOverlay.classList.add('active');
-                }, 10);
-                
-                // Scrollen des Hauptbereichs verhindern, wenn Overlay aktiv ist
-                document.body.style.overflow = 'hidden';
+        // Chat Overlay öffnen/schließen
+        if (openChatBtn && chatOverlay && closeChatBtn) {
+            openChatBtn.addEventListener('click', () => {
+                chatOverlay.style.display = 'flex';
+                forceScrollToBottom(); // Scrollen, wenn Chat geöffnet wird
             });
-        }
-
-        // Event-Listener für Schließen-Button
-        if (closeBusinessBtn) {
-            closeBusinessBtn.addEventListener('click', function() {
-                businessOverlay.classList.remove('active');
-                
-                // Kurze Verzögerung, bevor das Overlay ausgeblendet wird (für die Animation)
-                setTimeout(() => {
-                    businessOverlay.style.display = 'none';
-                    // Scrollen wieder ermöglichen
-                    document.body.style.overflow = 'auto';
-                }, 300);
+            
+            closeChatBtn.addEventListener('click', () => {
+                chatOverlay.style.display = 'none';
             });
-        }
-        
-        // Overlay auch schließen können, wenn außerhalb des Inhalts geklickt wird
-        if (businessOverlay) {
-            businessOverlay.addEventListener('click', function(event) {
-                if (event.target === businessOverlay) {
-                    businessOverlay.classList.remove('active');
-                    
-                    // Kurze Verzögerung, bevor das Overlay ausgeblendet wird
-                    setTimeout(() => {
-                        businessOverlay.style.display = 'none';
-                        document.body.style.overflow = 'auto';
-                    }, 300);
+            
+            // Optional: Schließen, wenn außerhalb geklickt wird
+            chatOverlay.addEventListener('click', (event) => {
+                 if (event.target === chatOverlay) { // Nur wenn auf den Hintergrund geklickt wird
+                    chatOverlay.style.display = 'none';
                 }
             });
+            
+        } else {
+            console.error('Chat-Öffnen Button, Chat-Overlay oder Schließen-Button nicht gefunden!');
         }
         
         // Funktion zum Laden der Dashboard-Daten

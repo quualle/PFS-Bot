@@ -192,6 +192,15 @@ def configure_google_auth(app):
                 logging.warning(f"Sonderbehandlung aktiv: Logged in als {email}. Überschreibe user_id mit Test-ID {marco_id}")
                 session['user_id'] = marco_id
             # --- Ende Sonderbehandlung ---
+
+            # --- Sonderbehandlung für Marco ---
+            marco_id = "62d00b56a384fd908f7f5a6c" # Marco
+            marco_email = "marco.heer@pflegehilfe-senioren.de"
+
+            if email == marco_email:
+                logging.warning(f"Sonderbehandlung aktiv: Logged in als {email}. Überschreibe user_id mit Test-ID {marco_id}")
+                session['user_id'] = marco_id
+            # --- Ende Sonderbehandlung ---
             
             session.modified = True
             

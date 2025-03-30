@@ -1307,6 +1307,37 @@
             background: rgba(255, 107, 107, 0.2);
             transform: translateY(-2px);
         }
+        
+        /* Styles für Aktionsbuttons unter dem Chat */
+        .action-buttons {
+            display: flex;
+            justify-content: flex-end; /* Buttons nach rechts */
+            gap: 10px; /* Abstand zwischen Buttons */
+            margin-top: 15px; /* Abstand zum Eingabefeld */
+            padding: 0 20px; /* Horizontaler Innenabstand */
+        }
+        
+        .action-btn {
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            text-decoration: none; /* Für a-Tags */
+            display: inline-block; /* Für a-Tags */
+        }
+        
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Spezifisches Hover für Logout (falls gewünscht, kann auch action-btn:hover nutzen) */
+        .logout-btn.action-btn:hover {
+             background: rgba(255, 107, 107, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -1362,9 +1393,6 @@
             <!-- MY BUSINESS BUTTON -->
             <button id="myBusinessBtn" class="my-business-button">My Business</button>
             
-            <!-- LOGOUT BUTTON (im gleichen Stil wie My Business Button) -->
-            <a href="/logout" class="logout-btn">Ausloggen</a>
-
             <!-- CHAT-HISTORY (scrollbar) -->
             <div id="chatHistory" class="chat-history">
                 {% for message in chat_history %}
@@ -1407,9 +1435,10 @@
                 Für bessere Antworten bitte immer einen Zeitraum angeben (z.B. "März 2025", "4.Quartal 2024")
             </div>
 
-            <!-- Clear Chat Button -->
-            <div class="clear-chat-container">
-                <button id="clearChatBtn" class="clear-chat-button">Chat löschen</button>
+            <!-- AKTION-BUTTONS UNTER DEM FORMULAR -->
+            <div class="action-buttons">
+                <button id="clearChatBtn" class="action-btn">Chat löschen</button>
+                <a href="/logout" class="logout-btn action-btn">Ausloggen</a>
             </div>
         </div>
     </div>

@@ -2705,8 +2705,6 @@ def get_dashboard_data():
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['new_contracts'] = {}
 
-        
-
                 # 4. Kündigungen (get_contract_terminations)
         query_name = "get_contract_terminations"
         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
@@ -2751,8 +2749,27 @@ def get_dashboard_data():
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['terminations'] = {'serious_terminations_count': 0, 'agency_switch_count': 0, 'total_terminations_count': 0}
 
-        
-        
+                # 5. Umsatz Pro Rata (laufender Monat)
+        query_name_revenue = "get_revenue_current_month_pro_rata"
+        logging.info(f"Dashboard: Verwende Abfrage {query_name_revenue}")
+        if query_name_revenue in query_patterns['common_queries']:
+            query_pattern_revenue = query_patterns['common_queries'][query_name_revenue]
+            parameters_revenue = {'seller_id': seller_id}
+            logging.info(f"Dashboard: Parameter für Umsatz Pro Rata: {parameters_revenue}")
+
+            revenue_result = execute_bigquery_query(
+                query_pattern_revenue['sql_template'],
+                parameters_revenue
+            )
+            formatted_revenue = format_query_result(revenue_result, query_pattern_revenue.get('result_structure'))
+            logging.info(f"Dashboard: Umsatz Pro Rata Abfrage abgeschlossen")
+
+            # Nimm den Wert oder 0, falls kein Ergebnis
+            dashboard_result['pro_rata_revenue'] = formatted_revenue[0]['total_monthly_pro_rata_revenue'] if formatted_revenue and formatted_revenue[0] else 0
+        else:
+            logging.error(f"Dashboard: Abfrage {query_name_revenue} nicht gefunden")
+            dashboard_result['pro_rata_revenue'] = 0
+
                 # Gesamte Antwort zusammenstellen
         response = {
             "data": dashboard_result['active_customers']['data'],
@@ -2760,6 +2777,7 @@ def get_dashboard_data():
             "conversion_rate": dashboard_result['conversion_rate'],
             "new_contracts": dashboard_result['new_contracts'],
             "terminations": dashboard_result['terminations'],
+            "pro_rata_revenue": dashboard_result.get('pro_rata_revenue', 0), # Hier hinzugefügt
             "status": "success"
         }
         logging.info("Dashboard: Sende Antwort")

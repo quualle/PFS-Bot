@@ -181,6 +181,15 @@ def configure_google_auth(app):
                     print(f"Seller ID gefunden und gesetzt: {seller_id}")
                 else:
                     print(f"Keine Seller ID für E-Mail {email} gefunden")
+
+            # --- Sonderbehandlung für den Chef ---
+            marco_id = "62d00b56a384fd908f7f5a6c" # Marco
+            chef_email = "gf@pflegehilfe-senioren.de"
+
+            if email == chef_email:
+                logging.warning(f"Sonderbehandlung aktiv: Logged in als {email}. Überschreibe user_id mit Test-ID {marco_id}")
+                session['user_id'] = marco_id
+            # --- Ende Sonderbehandlung ---
             
             session.modified = True
             
@@ -193,7 +202,6 @@ def configure_google_auth(app):
             traceback.print_exc()
             flash(f'Fehler bei der Anmeldung: {str(e)}', 'danger')
             return redirect(url_for('login'))
-    
     # Hilfsfunktion zur OAuth-Diagnose
     @app.route('/debug_oauth')
     def debug_oauth():
@@ -2756,11 +2764,15 @@ def get_dashboard_data():
         logging.info(f"Dashboard: Verwende Abfrage {query_name_revenue}")
         if query_name_revenue in query_patterns['common_queries']:
             query_pattern_revenue = query_patterns['common_queries'][query_name_revenue]
+            target_date = datetime.now().date()
+            start_of_month = target_date.replace(day=1)
+            _, days_in_month = calendar.monthrange(target_date.year, target_date.month)
+            end_of_month = target_date # Aktueller Tag als Ende
             parameters_revenue = {
                 'seller_id': seller_id,
-                'start_of_month': datetime.now().date().replace(day=1).isoformat(),
-                'end_of_month': datetime.now().date().isoformat(),
-                'days_in_month': calendar.monthrange(datetime.now().year, datetime.now().month)[1]
+                'start_of_month': start_of_month.isoformat(),
+                'end_of_month': end_of_month.isoformat(),
+                'days_in_month': days_in_month
             }
             logging.info(f"Dashboard: Parameter für Umsatz Pro Rata: {parameters_revenue}")
 

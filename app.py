@@ -121,6 +121,8 @@ def configure_google_auth(app):
     @app.route('/google_callback')
     def google_callback():
         """Callback für den direkten Google-Login"""
+        logging.warning(">>> /google_callback wurde aufgerufen!") # NEU
+        print(">>> /google_callback wurde aufgerufen!") # NEU
         code = request.args.get('code')
         
         if not code:

@@ -2627,8 +2627,7 @@ def get_dashboard_data():
         # Parameter nur für diese Abfrage (aktive Kunden)
         parameters = {
             'seller_id': seller_id,
-            # Optional: Füge hier ein Limit hinzu, falls benötigt wurde
-            # 'limit': 100 
+            'limit': 100  # Standardlimit wieder hinzufügen
         }
         logging.info(f"Dashboard: Parameter für {query_name}: {parameters}")
 

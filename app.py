@@ -2624,14 +2624,13 @@ def get_dashboard_data():
         
         query_pattern = query_patterns['common_queries'][query_name]
         
-        # Parameter dynamisch setzen
+        # Parameter nur für diese Abfrage (aktive Kunden)
         parameters = {
             'seller_id': seller_id,
-            'start_of_month': datetime.now().date().replace(day=1).isoformat(),
-            'end_of_month': datetime.now().date().isoformat(),
-            'days_in_month': calendar.monthrange(datetime.now().year, datetime.now().month)[1]
+            # Optional: Füge hier ein Limit hinzu, falls benötigt wurde
+            # 'limit': 100 
         }
-        logging.info(f"Dashboard: Parameter: {parameters}")
+        logging.info(f"Dashboard: Parameter für {query_name}: {parameters}")
 
         result = execute_bigquery_query(
             query_pattern['sql_template'],

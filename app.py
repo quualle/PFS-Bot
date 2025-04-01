@@ -663,8 +663,8 @@ def speichere_wissensbasis(eintrag):
 # Kontakt mit OpenAI
 ###########################################
 def contact_openai(messages, model=None):
-    model = 'o3-mini'  # Changed from o3-mini-preview to o3-mini to match the model used in the chat route
-    debug_print("API Calls", "contact_openai wurde aufgerufen – jetzt auf o3-mini gesetzt.")
+    model = 'gpt-4o'  # Changed from gpt-4o-preview to gpt-4o to match the model used in the chat route
+    debug_print("API Calls", "contact_openai wurde aufgerufen – jetzt auf gpt-4o gesetzt.")
     try:
         # Create the tool definitions first
         tools = create_function_definitions()
@@ -703,7 +703,7 @@ def contact_openai(messages, model=None):
         return None, None
 
 def count_tokens(messages, model=None):
-    model = 'o3-mini'
+    model = 'gpt-4o'
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -973,7 +973,7 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
 
         debug_print("API Calls", f"Streaming-Anfrage an OpenAI mit Function Calling")
         response = openai.chat.completions.create(
-            model="o3-mini",
+            model="gpt-4o",
             messages=messages,
             tools=tools,
             tool_choice=tool_choice,
@@ -1083,7 +1083,7 @@ def stream_response(messages, tools, tool_choice, seller_id, extracted_args, use
                 
                 try:
                     final_response = openai.chat.completions.create(
-                        model="o3-mini",
+                        model="gpt-4o",
                         messages=second_messages,
                         stream=True
                     )
@@ -1511,7 +1511,7 @@ def chat():
                             ]
                             
                             response = openai.chat.completions.create(
-                                model="o3-mini",  # Capabilities for knowledge-based queries
+                                model="gpt-4o",  # Capabilities for knowledge-based queries
                                 messages=wissensbasis_messages
                             )
                             
@@ -1551,7 +1551,7 @@ def chat():
                             ]
                             
                             response = openai.chat.completions.create(
-                                model="o3-mini",
+                                model="gpt-4o",
                                 messages=direct_messages
                             )
                             
@@ -1586,7 +1586,7 @@ def chat():
                     # Legacy-Ansatz (für Debug-Modus)
                     debug_print("API Calls", f"Legacy-Ansatz mit explizitem Function Calling: {debug_force}")
                     response = openai.chat.completions.create(
-                        model="o3-mini",
+                        model="gpt-4o",
                         messages=messages,
                         tools=tools,
                         tool_choice=tool_choice
@@ -1641,7 +1641,7 @@ def chat():
                         # Second call to OpenAI with function results
                         second_messages = messages + [assistant_message.model_dump(exclude_unset=True)] + function_responses
                         debug_print("API Calls", f"Zweiter Aufruf an OpenAI mit {len(function_responses)} Funktionsantworten")
-                        second_response = openai.chat.completions.create(model="o3-mini", messages=second_messages)
+                        second_response = openai.chat.completions.create(model="gpt-4o", messages=second_messages)
                         final_message = second_response.choices[0].message
                         antwort = final_message.content
                         debug_print("API Calls", f"Finale Antwort: {antwort[:100]}...")
@@ -3139,14 +3139,14 @@ def get_clarification_response():
             ]
             
             # Generate response with LLM
-            # o3-mini doesn't support function role, so we'll convert the function message to a user message
+            # gpt-4o doesn't support function role, so we'll convert the function message to a user message
             adjusted_messages = [
                 {"role": "developer", "content": system_prompt},
                 {"role": "user", "content": f"User question: {pending_query}\n\nQuery result: {tool_result}"}
             ]
             
             response = openai.chat.completions.create(
-                model="o3-mini",
+                model="gpt-4o",
                 messages=adjusted_messages
             )
             
@@ -3283,7 +3283,7 @@ def admin():
                     {"role": "user", "content": "Du bist ein Experte, der aus Transkripten Wissen extrahiert..."},
                     {"role": "user", "content": f"Extrahiere ohne Verluste:\n'''{eingabe_text}'''"}
                 ]
-                extraktion_response = contact_openai(extraktion_messages, model="o3-mini")
+                extraktion_response = contact_openai(extraktion_messages, model="gpt-4o")
                 if not extraktion_response:
                     flash("Fehler bei der Wissensextraktion durch die KI.", 'danger')
                     return redirect(url_for('admin'))
@@ -3308,7 +3308,7 @@ def admin():
                     {"role": "user",
                      "content": f"Hier die Themenhierarchie:\n\n{themen_hierarchie}\n\nText:\n{extraktion_text}"}
                 ]
-                kategorisierung_response = contact_openai(kategorisierung_messages, model="o3-mini")
+                kategorisierung_response = contact_openai(kategorisierung_messages, model="gpt-4o")
                 if not kategorisierung_response:
                     flash("Fehler bei der Themenkategorisierung.", 'danger')
                     return redirect(url_for('admin'))
@@ -3394,7 +3394,7 @@ def verarbeite_eintrag(eingabe_text, ausgewähltes_thema, ausgewähltes_unterthe
         {"role": "user", "content": "Du bist ein Experte, der aus Transkripten Wissen extrahiert..."},
         {"role": "user", "content": f"Extrahiere ohne Verluste:\n'''{eingabe_text}'''"}
     ]
-    response = contact_openai(messages, model="o3-mini")
+    response = contact_openai(messages, model="gpt-4o")
     if not response:
         flash("Fehler bei der Zusammenfassung.", 'danger')
         return
@@ -3666,7 +3666,7 @@ def process_file_ai():
             {"role": "user", "content": "Du bist ein Assistent, der Texte in vorgegebene Themen..."},
             {"role": "user", "content": f"Hier die Themenhierarchie:\n\n{themen_hierarchie}\n\nText:\n{extracted_text}"}
         ]
-        kategorisierung_response = contact_openai(kategorisierung_messages, model="o3-mini")
+        kategorisierung_response = contact_openai(kategorisierung_messages, model="gpt-4o")
         if not kategorisierung_response:
             file_entry['status'] = 'Fehler: Kategorisierung fehlgeschlagen'
             session.modified = True

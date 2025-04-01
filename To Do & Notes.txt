@@ -2,6 +2,5 @@ schreibe das einmal ordentlich auf und füge statt der variablen ein,
 seller_id = "62d00b56a384fd908f7f5a6c"
 start_date = "2025-01-01T00:00:00.000Z"
 end_date = "2025-01-31T00:00:00.000Z"
+limit = 1000
 
-
-ich möchte jetzt eine Sonderbehandlung: Wenn sich der chef einloggt (gf@pflegehilfe-senioren.de) , dann wird er keine daten zum testen haben. Deswegen soll dieser für alle abfragen die seller_id "62d00b56a384fd908f7f5a6c" bekommen. Dieser seller_id inhaber meldet sich freiwillig, damit der chef das system anahand von echten verkäuferdaten testen kann.

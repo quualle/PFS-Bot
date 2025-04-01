@@ -8,8 +8,9 @@ import traceback
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from functools import wraps
+from routes.utils import login_required
 from app import (
-    login_required, contact_openai, download_wissensbasis, upload_wissensbasis, 
+    contact_openai, download_wissensbasis, upload_wissensbasis, 
     lade_themen, aktualisiere_themen, get_next_thema_number, 
     speichere_wissensbasis, debug_print, themen_datei
 )

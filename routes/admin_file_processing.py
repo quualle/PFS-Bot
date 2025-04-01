@@ -10,8 +10,9 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app
 from werkzeug.utils import secure_filename
 from functools import wraps
+from routes.utils import login_required
 from app import (
-    login_required, contact_openai, speichere_wissensbasis, themen_datei
+    contact_openai, speichere_wissensbasis, themen_datei
 )
 
 try:

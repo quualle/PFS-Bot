@@ -2,22 +2,12 @@
 
 from flask import Blueprint, jsonify, request, session, current_app
 import logging
+from routes.utils import login_required
 from functools import wraps
 
 # Placeholder for dependencies (to be imported/moved later)
 # from .. import db # Example
-# from ..utils import login_required # Assuming login_required decorator exists
 # from ..bigquery_functions import handle_function_call 
-
-# --- Placeholder Decorator --- 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session: # Basic check, improve as needed
-             logging.warning("Access denied: User not logged in.")
-             return jsonify({"error": "Authentication required", "status": "error"}), 401
-        return f(*args, **kwargs)
-    return decorated_function
 
 # --- Placeholder Function (Replace with actual import) ---
 def handle_function_call(query_name, parameters):

@@ -8,22 +8,12 @@ import calendar
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session, current_app
 from functools import wraps
+from routes.utils import login_required
 
 # Placeholder for dependencies (to be imported/moved later)
 # from .. import db # Example
-# from ..utils import login_required # Assuming login_required decorator exists
 # from ..bigquery_functions import execute_bigquery_query, format_query_result
 # from ..wissensbasis_manager import lade_themen # Assuming function exists
-
-# --- Placeholder Decorator --- 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session: # Basic check, improve as needed
-             logging.warning("Access denied: User not logged in.")
-             return jsonify({"error": "Authentication required", "status": "error"}), 401
-        return f(*args, **kwargs)
-    return decorated_function
 
 # --- Placeholder Functions (Replace with actual imports/logic) ---
 

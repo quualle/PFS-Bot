@@ -78,7 +78,7 @@ def select_tool(user_message):
     try:
         # LLM-Anfrage
         response = client.chat.completions.create(
-            model="o3-mini", # oder o3-mini, je nach Verfügbarkeit
+            model="gpt-4o", # oder gpt-4o, je nach Verfügbarkeit
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}
         )
@@ -219,7 +219,7 @@ def select_optimal_tool_with_reasoning(user_message, tools, tool_config):
     try:
         debug_print("Tool-Auswahl", "Starte LLM-Aufruf zur Tool-Bestimmung")
         response = openai.chat.completions.create(
-            model="o3-mini",
+            model="gpt-4o",
             messages=messages
         )
         

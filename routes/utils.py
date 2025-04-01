@@ -20,3 +20,11 @@ def login_required(f):
              return jsonify({"error": "Authentication required", "status": "error"}), 401
         return f(*args, **kwargs)
     return decorated_function
+
+def debug_print(category, message):
+    """
+    Print debug messages with a category prefix.
+    Used for development and troubleshooting.
+    """
+    print(f"DEBUG [{category}]: {message}")
+    logging.debug(f"[{category}] {message}")

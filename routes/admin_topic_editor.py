@@ -8,17 +8,18 @@ import traceback
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from functools import wraps
-from routes.utils import login_required
-from app import (
-    contact_openai, download_wissensbasis, upload_wissensbasis, 
+from routes.utils import login_required, debug_print
+from routes.openai_utils import contact_openai
+from routes.kb_utils import (
+    download_wissensbasis, upload_wissensbasis, 
     lade_themen, aktualisiere_themen, get_next_thema_number, 
-    speichere_wissensbasis, debug_print, themen_datei
+    speichere_wissensbasis, themen_datei
 )
 
 
 
 # Variables that need to be imported or configured
-themen_datei = 'themen.txt'  # Placeholder path, should be imported or configured
+# themen_datei is now imported from kb_utils
 
 # Blueprint definition
 admin_topic_editor_bp = Blueprint('admin_topic_editor', __name__, url_prefix='/admin')

@@ -3,266 +3,44 @@ import json
 import re
 import time
 import logging
+import calendar
 import traceback
-from datetime import datetime, timedelta, date
-import calendar # Import für Monatsberechnungen
-from functools import wraps
-import uuid
-import tempfile
-import requests  # Added import for requests
 from datetime import datetime, timedelta
-import dateparser
-from conversation_manager import ConversationManager
-from flask import (
-    Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response, current_app)
-from flask_wtf import CSRFProtect
-from flask_session import Session
-from dotenv import load_dotenv
-from google.cloud import storage
-from google.oauth2 import service_account
-from google.cloud import bigquery
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import session, flash, make_response, Response, stream_with_context
+from flask_cors import CORS
+from functools import wraps
 from werkzeug.utils import secure_filename
-import openai
-import tiktoken
-import yaml
-import re
-from sql_query_helper import apply_query_enhancements
-from query_router import determine_query_approach, determine_function_need, handle_conversational_clarification, process_user_query
-from extract import (format_customer_details, format_date, extract_date_params, 
-                    extract_enhanced_date_params, extract_agency_name, 
-                    extract_customer_name, extract_parameters_with_llm, 
-                    extract_enhanced_parameters)
-from bigquery_functions import (
-    get_user_id_from_email, 
-    get_bigquery_client, 
-    get_leads_for_seller, 
-    get_contracts_for_seller, 
-    get_households_for_seller, 
-    calculate_kpis_for_seller,
-    get_seller_data,
-    execute_bigquery_query,
-    format_query_result,
-    handle_function_call,
-    )
-from tool_manager import load_tool_config, create_tool_description_prompt, select_tool, load_tool_descriptions, load_tool_descriptions, select_optimal_tool_with_reasoning
-try:
-    from query_selector import select_query_with_llm, update_selection_feedback, process_clarification_response, process_text_clarification_response
-    USE_LLM_QUERY_SELECTOR = True
-    logging.info("LLM-based query selector loaded successfully")
-except ImportError as e:
-    logging.warning(f"LLM-based query selector not available: {e}")
-    USE_LLM_QUERY_SELECTOR = False
-from llm_manager import create_enhanced_system_prompt, generate_fallback_response, call_llm
-from utils import debug_print
+from markdown import markdown
+
+# Import utility modules we created
+from routes.utils import login_required, debug_print
+from routes.openai_utils import contact_openai, create_function_definitions
+from routes.kb_utils import (
+    download_wissensbasis, upload_wissensbasis, 
+    lade_themen, aktualisiere_themen, get_next_thema_number, 
+    speichere_wissensbasis, themen_datei
+)
+
+# Import blueprints
 from routes.auth import auth_bp
 from routes.data_api import data_api_bp
 from routes.kpi import kpi_bp
 from routes.admin_topic_editor import admin_topic_editor_bp
 from routes.admin_file_processing import admin_file_processing_bp
-
-def load_tool_config():
-    """Liefert die Standard-Tool-Konfiguration"""
-    # Direkte Rückgabe der Standardkonfiguration ohne Datei-Zugriff
-    return {
-        "description": "Tool-Konfiguration für LLM-basierte Entscheidungen",
-        "fallback_tool": "get_care_stays_by_date_range",
-        "use_llm_selection": True
-    }
-
-conversation_manager = ConversationManager(max_history=10)
-
-
-###########################################
-# PINECONE: gRPC-Variante laut Quickstart
-###########################################
-from pinecone.grpc import PineconeGRPC as Pinecone
-from pinecone import ServerlessSpec
-
-# Zusätzliche Importe für Dateiverarbeitung
-from PyPDF2 import PdfReader
-import docx
-
-# Für Datum / Statistik
-from datetime import datetime
-
-from bigquery_functions import (
-    handle_function_call, 
-    summarize_query_result, 
-    get_user_id_from_email
-)
-
-# Laden der Umgebungsvariablen aus .env
-load_dotenv()
-
-# Google OAuth Konfiguration
-def configure_google_auth(app):
-    """Konfiguriert die direkte Google OAuth-Authentifizierung."""
-    # Stellen Sie sicher, dass die Umgebungsvariablen gesetzt sind
-    if not os.getenv('GOOGLE_CLIENT_ID') or not os.getenv('GOOGLE_CLIENT_SECRET'):
-        print("WARNUNG: Google OAuth-Credentials nicht gesetzt!")
-    
-    # Direkten Login-Endpoint definieren - make route path and function name match
-    @app.route('/google_login')
-    def google_login():
-        """Eine direkte Google-Login-Route"""
-        # Erstelle eine URL für die Google OAuth-Seite
-        redirect_uri = url_for('google_callback', _external=True)
-        print(f"Redirect URI being used: {redirect_uri}")  # Add this debug line
-        
-        google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
-        params = {
-            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-            'redirect_uri': redirect_uri,
-            'response_type': 'code',
-            'scope': 'email profile',
-            'access_type': 'online',
-            'state': 'direct_test'
-        }
-        
-        auth_url = f"{google_auth_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
-        return redirect(auth_url)
-
-    # Callback für den direkten Login
-    @app.route('/google_callback')
-    def google_callback():
-        """Callback für den direkten Google-Login"""
-        logging.warning(">>> /google_callback wurde aufgerufen!") # NEU
-        print(">>> /google_callback wurde aufgerufen!") # NEU
-        code = request.args.get('code')
-        
-        if not code:
-            flash('Login fehlgeschlagen (kein Code erhalten).', 'danger')
-            return redirect(url_for('login'))
-        
-        # Code gegen Token tauschen
-        try:
-            token_url = "https://oauth2.googleapis.com/token"
-            token_data = {
-                'code': code,
-                'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-                'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
-                'redirect_uri': url_for('google_callback', _external=True),
-                'grant_type': 'authorization_code'
-            }
-            
-            token_response = requests.post(token_url, data=token_data)
-            
-            if not token_response.ok:
-                flash(f'Token-Abruf fehlgeschlagen: {token_response.text}', 'danger')
-                return redirect(url_for('login'))
-            
-            token_info = token_response.json()
-            access_token = token_info.get('access_token')
-            
-            # Benutzerinfo abrufen
-            userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
-            headers = {'Authorization': f'Bearer {access_token}'}
-            userinfo_response = requests.get(userinfo_url, headers=headers)
-            
-            if not userinfo_response.ok:
-                flash(f'Userinfo-Abruf fehlgeschlagen: {userinfo_response.text}', 'danger')
-                return redirect(url_for('login'))
-            
-            user_info = userinfo_response.json()
-            
-            # Session aktualisieren
-            email = user_info.get('email')
-            name = user_info.get('name')
-            
-            # Setze die Session-Variablen
-            user_id = session.get('user_id')
-            if not user_id:
-                user_id = str(uuid.uuid4())
-                session['user_id'] = user_id
-                
-            session['email'] = email
-            session['google_user_email'] = email
-            session['user_name'] = name
-            session['is_logged_via_google'] = True
-            
-            # Seller ID abrufen, wenn eine E-Mail vorhanden ist
-            if email:
-                seller_id = get_user_id_from_email(email)
-                session['seller_id'] = seller_id
-                if seller_id:
-                    print(f"Seller ID gefunden und gesetzt: {seller_id}")
-                else:
-                    print(f"Keine Seller ID für E-Mail {email} gefunden")
-
-            # --- Sonderbehandlung für den Chef ---
-            marco_id = "62d00b56a384fd908f7f5a6c" # Marco
-            norman_email = "gf@pflegehilfe-senioren.de"
-
-            if email == norman_email:
-                logging.warning(f"Sonderbehandlung aktiv: Logged in als {email}. Überschreibe IDs mit Test-ID {marco_id}")
-                session['user_id'] = marco_id
-                session['seller_id'] = marco_id # <<< HINZUGEFÜGT
-            # --- Ende Sonderbehandlung ---
-
-            # --- Sonderbehandlung für Marco ---
-            marco_id = "62d00b56a384fd908f7f5a6c" # Marco
-            marco_email = "marco.heer@pflegehilfe-senioren.de"
-
-            if email == marco_email:
-                logging.warning(f"Sonderbehandlung aktiv: Logged in als {email}. Überschreibe IDs mit Test-ID {marco_id}")
-                session['user_id'] = marco_id
-                session['seller_id'] = marco_id # <<< HINZUGEFÜGT
-            # --- Ende Sonderbehandlung ---
-            
-            session.modified = True
-            
-            flash('Login erfolgreich!', 'success')
-            return redirect(url_for('chat'))
-        
-        except Exception as e:
-            print(f"Fehler beim Google-Login: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            flash(f'Fehler bei der Anmeldung: {str(e)}', 'danger')
-            return redirect(url_for('login'))
-    # Hilfsfunktion zur OAuth-Diagnose
-    @app.route('/debug_oauth')
-    def debug_oauth():
-        """Diagnosewerkzeug für die OAuth-Konfiguration"""
-        output = "<h1>OAuth Debug Info</h1>"
-        
-        # Umgebungsvariablen überprüfen (ohne Secrets zu zeigen)
-        client_id = os.getenv('GOOGLE_CLIENT_ID', 'Nicht gesetzt')
-        client_secret_status = "Gesetzt" if os.getenv('GOOGLE_CLIENT_SECRET') else "Nicht gesetzt"
-        
-        output += f"<p>GOOGLE_CLIENT_ID: {client_id[:5]}...{client_id[-5:] if len(client_id) > 10 else ''}</p>"
-        output += f"<p>GOOGLE_CLIENT_SECRET: {client_secret_status}</p>"
-        
-        # Session-Status
-        output += "<h2>Session Status</h2>"
-        session_values = {k: v for k, v in session.items()}
-        output += f"<pre>{json.dumps(session_values, indent=2)}</pre>"
-        
-        # Test Links - FIXED THIS LINE TO USE THE CORRECT FUNCTION NAME
-        output += "<h2>Test Links</h2>"
-        output += f"<p><a href='{url_for('google_login')}'>Google Login</a></p>"
-        
-        return output
-    
-    return app
-
-
-app = Flask(__name__)
-app.register_blueprint(kpi_bp)
-app.register_blueprint(auth_bp)
-# Removing the old chat_bp import
-# app.register_blueprint(chat_bp)
-app.register_blueprint(data_api_bp)
-app.register_blueprint(kpi_bp)
-app.register_blueprint(admin_topic_editor_bp)
-app.register_blueprint(admin_file_processing_bp)
-
-# Register new blueprint modules
 from routes.chat_routes import chat_bp
 from routes.dashboard_routes import dashboard_bp
 from routes.user_management import user_bp
 from routes.feedback_routes import feedback_bp
 
+app = Flask(__name__)
+app.register_blueprint(kpi_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(data_api_bp)
+app.register_blueprint(admin_topic_editor_bp)
+app.register_blueprint(admin_file_processing_bp)
+
+# Register new blueprint modules
 app.register_blueprint(chat_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(user_bp)
@@ -714,45 +492,46 @@ def speichere_wissensbasis(eintrag):
 ###########################################
 # Kontakt mit OpenAI
 ###########################################
-def contact_openai(messages, model=None):
-    model = 'gpt-4o'  # Changed from gpt-4o-preview to gpt-4o to match the model used in the chat route
-    debug_print("API Calls", "contact_openai wurde aufgerufen – jetzt auf gpt-4o gesetzt.")
-    try:
-        # Create the tool definitions first
-        tools = create_function_definitions()
-        
-        # Add explicit tool_choice parameter to guide the model to use functions
-        response = openai.chat.completions.create(
-            model=model, 
-            messages=messages,
-            tools=tools,  # Add the tools parameter
-            tool_choice="auto"  # Auto lets the model decide when to use functions
-        )
-        
-        if response and response.choices:
-            assistant_message = response.choices[0].message
-            antwort_content = assistant_message.content.strip() if assistant_message.content else ""
-            debug_print("API Calls", f"Antwort von OpenAI: {antwort_content}")
-
-            # Check if the model chose to call a function
-            tool_calls = assistant_message.tool_calls
-            if tool_calls:
-                debug_print("API Calls", f"Function Calls erkannt: {tool_calls}")
-                for tool_call in tool_calls:
-                    function_name = tool_call.function.name
-                    function_args = json.loads(tool_call.function.arguments)
-                    debug_print("API Calls", f"Funktion vom LLM gewählt: {function_name}, Argumente: {function_args}")
-
-            return antwort_content, tool_calls  # Return both the content and tool calls
-        else:
-            antwort_content = "Keine Antwort erhalten."
-            debug_print("API Calls", antwort_content)
-            return antwort_content, None
-        
-    except Exception as e:
-        debug_print("API Calls", f"Fehler: {e}")
-        flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
-        return None, None
+# The contact_openai function has been moved to routes/openai_utils.py
+# def contact_openai(messages, model=None):
+#     model = 'gpt-4o'  # Changed from gpt-4o-preview to gpt-4o to match the model used in the chat route
+#     debug_print("API Calls", "contact_openai wurde aufgerufen – jetzt auf gpt-4o gesetzt.")
+#     try:
+#         # Create the tool definitions first
+#         tools = create_function_definitions()
+#         
+#         # Add explicit tool_choice parameter to guide the model to use functions
+#         response = openai.chat.completions.create(
+#             model=model, 
+#             messages=messages,
+#             tools=tools,  # Add the tools parameter
+#             tool_choice="auto"  # Auto lets the model decide when to use functions
+#         )
+#         
+#         if response and response.choices:
+#             assistant_message = response.choices[0].message
+#             antwort_content = assistant_message.content.strip() if assistant_message.content else ""
+#             debug_print("API Calls", f"Antwort von OpenAI: {antwort_content}")
+# 
+#             # Check if the model chose to call a function
+#             tool_calls = assistant_message.tool_calls
+#             if tool_calls:
+#                 debug_print("API Calls", f"Function Calls erkannt: {tool_calls}")
+#                 for tool_call in tool_calls:
+#                     function_name = tool_call.function.name
+#                     function_args = json.loads(tool_call.function.arguments)
+#                     debug_print("API Calls", f"Funktion vom LLM gewählt: {function_name}, Argumente: {function_args}")
+# 
+#             return antwort_content, tool_calls  # Return both the content and tool calls
+#         else:
+#             antwort_content = "Keine Antwort erhalten."
+#             debug_print("API Calls", antwort_content)
+#             return antwort_content, None
+#         
+#     except Exception as e:
+#         debug_print("API Calls", f"Fehler: {e}")
+#         flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
+#         return None, None
 
 def count_tokens(messages, model=None):
     model = 'gpt-4o'
@@ -834,74 +613,58 @@ def format_simple_results(data_list):
     
     return "\n".join(result)
 
-def create_function_definitions():
-    """
-    Erstellt die Function-Definitionen für OpenAI's Function-Calling basierend auf 
-    den definierten Abfragemustern.
+# Function has been moved to routes/openai_utils.py
+# def create_function_definitions():
+#     """
+#     Erstellt die Function-Definitionen für OpenAI's Function-Calling basierend auf 
+#     den definierten Abfragemustern.
     
-    Returns:
-        list: Eine Liste von Function-Definitionen im Format, das von OpenAI erwartet wird
-    """
-    # Lade das JSON-Schema für Abfragemuster
-    with open('query_patterns.json', 'r', encoding='utf-8') as f:
-        query_patterns = json.load(f)
+#     Returns:
+#         list: Eine Liste von Function-Definitionen im Format, das von OpenAI erwartet wird
+#     """
+#     # Lade das JSON-Schema für Abfragemuster
+#     with open('query_patterns.json', 'r', encoding='utf-8') as f:
+#         query_patterns = json.load(f)
     
-    tools = []
+#     tools = []
     
-    # Erstelle für jedes Abfragemuster eine Funktion
-    for query_name, query_info in query_patterns['common_queries'].items():
-        function_def = {
-            "type": "function",
-            "function": {
-                "name": query_name,
-                "description": query_info['description'],
-                "parameters": {
-                    "type": "object",
-                    "properties": {},
-                    "required": query_info['required_parameters']
-                }
-            }
-        }
+#     # Erstelle für jedes Abfragemuster eine Funktion
+#     for query_name, query_info in query_patterns['common_queries'].items():
+#         function_def = {
+#             "type": "function",
+#             "function": {
+#                 "name": query_name,
+#                 "description": query_info['description'],
+#                 "parameters": {
+#                     "type": "object",
+#                     "properties": {},
+#                     "required": query_info['required_parameters']
+#                 }
+#             }
+#         }
         
-        # Füge Parameter hinzu
-        for param in query_info['required_parameters'] + query_info.get('optional_parameters', []):
-            # Bestimme den Typ des Parameters basierend auf Namen (Heuristik)
-            param_type = "string"
-            if "id" in param:
-                param_type = "string"
-            elif "limit" in param or "count" in param or "_back" in param:
-                param_type = "integer"
-            elif "date" in param or "time" in param:
-                param_type = "string"  # Datum als String, wird später konvertiert
-            elif param == "contacted":
-                param_type = "boolean"
-            
-            # Bestimme die Beschreibung des Parameters
-            param_desc = f"Parameter {param} für die Abfrage"
-            if param == "seller_id":
-                param_desc = "Die ID des Verkäufers, dessen Daten abgefragt werden sollen"
-            elif param == "lead_id":
-                param_desc = "Die ID des Leads, dessen Daten abgefragt werden sollen"
-            elif param == "limit":
-                param_desc = "Maximale Anzahl der zurückzugebenden Datensätze"
-            
-            # Füge Parameter zur Funktionsdefinition hinzu
-            function_def["function"]["parameters"]["properties"][param] = {
-                "type": param_type,
-                "description": param_desc
-            }
-            
-            # Füge Enumerationen für bestimmte Parameter hinzu
-            if param == "ticketable_type":
-                function_def["function"]["parameters"]["properties"][param]["enum"] = [
-                    "Lead", "Contract", "CareStay", "Visor", "Posting"
-                ]
+#         # Füge Parameter hinzu
+#         for param in query_info['required_parameters'] + query_info.get('optional_parameters', []):
+#             # Bestimme den Typ des Parameters basierend auf Namen (Heuristik)
+#             param_type = "string"
+#             if "id" in param:
+#                 param_type = "string"
+#             elif "limit" in param or "count" in param or "_back" in param:
+#                 param_type = "integer"
+#             elif "date" in param:
+#                 param_type = "string"
+#                 
+#             # Füge Parameter zur Definition hinzu
+#             function_def["function"]["parameters"]["properties"][param] = {
+#                 "type": param_type,
+#                 "description": f"Parameter {param} für {query_name}"
+#             }
         
-        tools.append(function_def)
+#         tools.append(function_def)
     
-    return tools
+#     return tools
 
-def create_system_prompt(table_schema):
+def create_system_prompt(table_schema=None):
     # Bestehendes System-Prompt generieren
     prompt = "Du bist ein hilfreicher KI-Assistent, der bei der Verwaltung von Pflegedaten hilft."
     prompt += "\n\nDu hast Zugriff auf eine Datenbank mit folgenden Tabellen:\n"

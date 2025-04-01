@@ -7,6 +7,7 @@ import traceback
 import calendar
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session, current_app
+from functools import wraps
 
 # Placeholder for dependencies (to be imported/moved later)
 # from .. import db # Example

@@ -2,6 +2,7 @@
 
 from flask import Blueprint, jsonify, request, session, current_app
 import logging
+from functools import wraps
 
 # Placeholder for dependencies (to be imported/moved later)
 # from .. import db # Example

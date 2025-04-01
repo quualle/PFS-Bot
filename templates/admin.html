@@ -771,7 +771,7 @@
         <!-- Hauptinhalt -->
         <div class="main-content">
             <!-- Formular für neue Einträge -->
-            <form method="POST" action="{{ url_for('admin') }}">
+            <form method="POST" action="{{ url_for('admin_topic_editor.admin') }}">
                 <!-- CSRF-Token hinzufügen -->
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 

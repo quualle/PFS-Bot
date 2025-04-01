@@ -113,7 +113,7 @@
         
         <div class="widget-row">
             <div class="widget">
-                <div class="widget-header">Abschlussquote (letzte 30 Tage)</div>
+                <div class="widget-header">Abschlussquote <span id="kpi-closing-rate-date-range" style="font-weight: normal; font-size: 0.9em;"></span></div>
                 <div class="widget-content">
                     <div class="dual-metric large">
                         <div class="dual-metric-item">
@@ -479,5 +479,127 @@
                 activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
             }
         }
+        
+        // Funktion zum Laden der KPI-Daten für den ausgewählten Zeitraum
+        function loadKpiData(startDate, endDate) {
+            console.log(`Lade KPI Daten für: ${startDate} bis ${endDate}`);
+            const formattedStartDate = formatDateForDisplay(startDate);
+            const formattedEndDate = formatDateForDisplay(endDate);
+            setElementText('#kpi-closing-rate-date-range', `(${formattedStartDate} - ${formattedEndDate})`);
+            
+            // Setze KPI-Felder auf Ladezustand (optional, aber gut für UX)
+            setElementText('#closing-rate-percent', '...');
+            setElementText('#closing-rate-absolute', '...');
+            setElementText('#lead-eb-percent', '...');
+            setElementText('#lead-eb-absolute', '...');
+            setElementText('#eb-posting-percent', '...');
+            setElementText('#eb-posting-absolute', '...');
+            setElementText('#posting-contract-percent', '...');
+            setElementText('#posting-contract-absolute', '...');
+            setElementText('#termination-rate-percent', '...');
+            setElementText('#termination-rate-absolute', '...');
+            
+            fetch(`/get_kpi_data?start_date=${startDate}&end_date=${endDate}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('KPI Daten erhalten:', data);
+                    setElementText('#closing-rate-percent', `${data.closing_rate_percent}%`);
+                    setElementText('#closing-rate-absolute', data.closing_rate_absolute);
+                    setElementText('#lead-eb-percent', `${data.lead_eb_percent}%`);
+                    setElementText('#lead-eb-absolute', data.lead_eb_absolute);
+                    setElementText('#eb-posting-percent', `${data.eb_posting_percent}%`);
+                    setElementText('#eb-posting-absolute', data.eb_posting_absolute);
+                    setElementText('#posting-contract-percent', `${data.posting_contract_percent}%`);
+                    setElementText('#posting-contract-absolute', data.posting_contract_absolute);
+                    setElementText('#termination-rate-percent', `${data.termination_rate_percent}%`);
+                    setElementText('#termination-rate-absolute', data.termination_rate_absolute);
+                })
+                .catch(error => {
+                    console.error('Fehler beim Laden der KPI-Daten:', error);
+                    showErrorMessage('Fehler beim Laden der KPI Daten.');
+                    // Setze Fehlerstatus für KPI-Felder
+                    setElementText('#kpi-closing-rate-date-range', '(Fehler)');
+                    setElementText('#closing-rate-percent', 'Fehler');
+                    setElementText('#closing-rate-absolute', 'Fehler');
+                    // ... für andere KPI-Felder ebenso
+                });
+        }
+        
+        // Hilfsfunktion zum Formatieren des Datums für die Anzeige (TT.MM.JJJJ)
+        function formatDateForDisplay(dateString) {
+            const [year, month, day] = dateString.split('-');
+            return `${day}.${month}.${year}`;
+        }
+        
+        // Initialisierung des Datumsbereichs und Laden der KPIs
+        function initializeKpiDateRangeAndLoad() {
+            const endDateInput = document.getElementById('kpi-end-date');
+            const startDateInput = document.getElementById('kpi-start-date');
+            const updateButton = document.getElementById('update-kpi-range-btn');
+            
+            if (!startDateInput || !endDateInput || !updateButton) {
+                console.error('Datumseingabe-Elemente oder Button für KPIs nicht gefunden.');
+                return;
+            }
+            
+            // Setze Standarddatum (letzte 30 Tage)
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            const defaultEndDate = formatDate(today);
+            const defaultStartDate = formatDate(thirtyDaysAgo);
+            
+            endDateInput.value = defaultEndDate;
+            startDateInput.value = defaultStartDate;
+            
+            // Lade initiale KPI-Daten für die letzten 30 Tage
+            loadKpiData(defaultStartDate, defaultEndDate);
+            
+            // Event Listener für den Aktualisieren-Button
+            updateButton.addEventListener('click', () => {
+                const selectedStartDate = startDateInput.value;
+                const selectedEndDate = endDateInput.value;
+                if (selectedStartDate && selectedEndDate) {
+                    // Validierung (optional): Sicherstellen, dass Start vor Ende liegt
+                    if (new Date(selectedStartDate) > new Date(selectedEndDate)) {
+                        showErrorMessage('Das Startdatum darf nicht nach dem Enddatum liegen.');
+                        return;
+                    }
+                    loadKpiData(selectedStartDate, selectedEndDate);
+                } else {
+                    showErrorMessage('Bitte wählen Sie Start- und Enddatum aus.');
+                }
+            });
+        }
+        
+        // Initialisierung des KPI-Bereichs aufrufen
+        initializeKpiDateRangeAndLoad();
+        
+        // Event Listener für Tab-Wechsel hinzufügen
+        const tabs = document.querySelectorAll('.business-tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Entferne 'active' von allen Tabs und Inhalten
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                // Füge 'active' zum geklickten Tab und dem entsprechenden Inhalt hinzu
+                tab.classList.add('active');
+                const tabId = tab.getAttribute('data-tab');
+                const activeContent = document.getElementById(`${tabId}-tab`);
+                if (activeContent) {
+                    activeContent.classList.add('active');
+                }
+            });
+        });
+        
     })();
 </script>

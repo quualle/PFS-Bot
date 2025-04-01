@@ -350,6 +350,67 @@
       "result_structure": {
         "total_monthly_pro_rata_revenue": "Summe der anteiligen Provisionen im laufenden Monat"
       }
+    },
+    
+    "get_kpi_lead_to_eb_conversion": {
+      "description": "Berechnet die Conversion Rate von Leads zu Erstberatungen (EB) für einen Zeitraum.",
+      "required_parameters": ["seller_id", "start_date", "end_date"],
+      "optional_parameters": [],
+      "sql_template": "WITH LeadsInPeriod AS ( SELECT _id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` WHERE seller_id = @seller_id AND created_at >= @start_date AND created_at <= @end_date ), EBsFromLeads AS ( SELECT COUNT(DISTINCT l._id) AS eb_count -- Platzhalter: Annahme, EB ist ein Lead-Status oder Aktivität FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l -- JOIN relevante Tabelle für EB-Status/Aktivität WHERE l._id IN (SELECT _id FROM LeadsInPeriod) AND l.stage = 'EB' -- Beispiel: Annahme, es gibt einen Status 'EB' -- UND eb_datum >= @start_date AND eb_datum <= @end_date -- Ggf. Zeitfilter für EB-Datum anpassen ) SELECT (SELECT COUNT(*) FROM LeadsInPeriod) AS lead_count, (SELECT eb_count FROM EBsFromLeads) AS eb_count",
+      "parameter_types": {
+          "start_date": "date",
+          "end_date": "date"
+      },
+      "result_structure": {
+          "lead_count": "Anzahl der Leads im Zeitraum",
+          "eb_count": "Anzahl der EBs aus diesen Leads im Zeitraum (Platzhalter)"
+      }
+    },
+
+    "get_kpi_eb_to_posting_conversion": {
+      "description": "Berechnet die Conversion Rate von Erstberatungen (EB) zu Postings für einen Zeitraum.",
+      "required_parameters": ["seller_id", "start_date", "end_date"],
+      "optional_parameters": [],
+      "sql_template": "WITH LeadsInPeriod AS ( SELECT _id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` WHERE seller_id = @seller_id AND created_at >= @start_date AND created_at <= @end_date ), EBsFromLeads AS ( SELECT l._id -- Platzhalter: Annahme, EB ist ein Lead-Status oder Aktivität FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l -- JOIN relevante Tabelle für EB-Status/Aktivität WHERE l._id IN (SELECT _id FROM LeadsInPeriod) AND l.stage = 'EB' -- Beispiel: Annahme, es gibt einen Status 'EB' -- UND eb_datum >= @start_date AND eb_datum <= @end_date -- Ggf. Zeitfilter für EB-Datum anpassen ), PostingsFromEBs AS ( SELECT COUNT(DISTINCT l._id) AS posting_count -- Platzhalter: Annahme, Posting ist ein Lead-Status oder Aktivität FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l -- JOIN relevante Tabelle für Posting-Status/Aktivität WHERE l._id IN (SELECT _id FROM EBsFromLeads) AND l.stage = 'Posting' -- Beispiel: Annahme, es gibt einen Status 'Posting' -- UND posting_datum >= @start_date AND posting_datum <= @end_date -- Ggf. Zeitfilter für Posting-Datum anpassen ) SELECT (SELECT COUNT(*) FROM EBsFromLeads) AS eb_count, (SELECT posting_count FROM PostingsFromEBs) AS posting_count",
+      "parameter_types": {
+          "start_date": "date",
+          "end_date": "date"
+      },
+      "result_structure": {
+          "eb_count": "Anzahl der EBs im Zeitraum (Platzhalter)",
+          "posting_count": "Anzahl der Postings aus diesen EBs im Zeitraum (Platzhalter)"
+      }
+    },
+
+    "get_kpi_posting_to_contract_conversion": {
+      "description": "Berechnet die Conversion Rate von Postings zu Verträgen für einen Zeitraum.",
+      "required_parameters": ["seller_id", "start_date", "end_date"],
+      "optional_parameters": [],
+      "sql_template": "WITH LeadsInPeriod AS ( SELECT _id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` WHERE seller_id = @seller_id AND created_at >= @start_date AND created_at <= @end_date ), PostingsFromLeads AS ( SELECT l._id -- Platzhalter: Annahme, Posting ist ein Lead-Status oder Aktivität FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l -- JOIN relevante Tabelle für Posting-Status/Aktivität WHERE l._id IN (SELECT _id FROM LeadsInPeriod) AND l.stage = 'Posting' -- Beispiel: Annahme, es gibt einen Status 'Posting' -- UND posting_datum >= @start_date AND posting_datum <= @end_date -- Ggf. Zeitfilter für Posting-Datum anpassen ), ContractsFromPostings AS ( SELECT COUNT(DISTINCT c._id) AS contract_count FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id WHERE l._id IN (SELECT _id FROM PostingsFromLeads) AND c.created_at >= @start_date AND c.created_at <= @end_date ) SELECT (SELECT COUNT(*) FROM PostingsFromLeads) AS posting_count, (SELECT contract_count FROM ContractsFromPostings) AS contract_count",
+      "parameter_types": {
+          "start_date": "date",
+          "end_date": "date"
+      },
+      "result_structure": {
+          "posting_count": "Anzahl der Postings im Zeitraum (Platzhalter)",
+          "contract_count": "Anzahl der Verträge aus diesen Postings im Zeitraum"
+      }
+    },
+
+    "get_kpi_termination_rate": {
+        "description": "Berechnet die Kündigungsquote für einen Zeitraum.",
+        "required_parameters": ["seller_id", "start_date", "end_date"],
+        "optional_parameters": [],
+        "sql_template": "WITH ContractsActiveInPeriod AS ( SELECT DISTINCT c._id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON c._id = cs.contract_id WHERE l.seller_id = @seller_id AND ( -- Verträge, die im Zeitraum gestartet sind DATE(TIMESTAMP(c.created_at)) <= @end_date AND -- Verträge, die im Zeitraum endeten (oder noch aktiv sind) (c.archived = 'true' AND DATE(TIMESTAMP(c.updated_at)) >= @start_date) OR c.archived != 'true' OR -- Verträge, die aktiv waren durch Care Stays im Zeitraum (DATE(TIMESTAMP(cs.bill_start)) <= @end_date AND DATE(TIMESTAMP(cs.bill_end)) >= @start_date) ) ), TerminatedContracts AS ( SELECT c._id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` l ON h.lead_id = l._id LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON c._id = cs.contract_id WHERE l.seller_id = @seller_id AND c.archived = 'true' AND DATE(TIMESTAMP(c.updated_at)) >= @start_date AND DATE(TIMESTAMP(c.updated_at)) <= @end_date -- Alternative: Kündigungsdatum basierend auf letztem Care Stay? -- AND DATE(cs.bill_end) >= @start_date AND DATE(cs.bill_end) <= @end_date GROUP BY c._id HAVING MAX(cs.bill_end) IS NOT NULL -- Nur Verträge mit Care Stays berücksichtigen? ) SELECT (SELECT COUNT(*) FROM ContractsActiveInPeriod) AS active_contracts_count, (SELECT COUNT(*) FROM TerminatedContracts) AS terminated_contracts_count",
+        "parameter_types": {
+            "start_date": "date",
+            "end_date": "date"
+        },
+        "result_structure": {
+            "active_contracts_count": "Anzahl der im Zeitraum aktiven Verträge",
+            "terminated_contracts_count": "Anzahl der im Zeitraum gekündigten Verträge"
+        }
     }
+
   }
 }

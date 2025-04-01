@@ -2016,712 +2016,712 @@ def test_bigquery():
         """
         return error_output
 
-# @app.route('/get_active_care_stays_now', methods=['GET'])
-# def get_active_care_stays_now():
-#     """
-#     Liefert die aktiven Care Stays für den Verkäufer als JSON
-#     """
-#     try:
+@app.route('/get_active_care_stays_now', methods=['GET'])
+def get_active_care_stays_now():
+    """
+    Liefert die aktiven Care Stays für den Verkäufer als JSON
+    """
+    try:
         # Seller ID aus der Session holen
-#         seller_id = session.get('seller_id')
-#         if not seller_id:
-#             return jsonify({
-#                 "error": "Keine Seller ID in der Session gefunden",
-#                 "status": "error"
-#             }), 401
+        seller_id = session.get('seller_id')
+        if not seller_id:
+            return jsonify({
+                "error": "Keine Seller ID in der Session gefunden",
+                "status": "error"
+            }), 401
         
         # Lade die Abfragemuster
-#         with open('query_patterns.json', 'r', encoding='utf-8') as f:
-#             query_patterns = json.load(f)
+        with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            query_patterns = json.load(f)
         
         # Hole die "get_active_care_stays_now" Abfrage
-#         query_name = "get_active_care_stays_now"
-#         if query_name not in query_patterns['common_queries']:
-#             return jsonify({
-#                 "error": f"Abfrage {query_name} nicht gefunden",
-#                 "status": "error"
-#             }), 404
+        query_name = "get_active_care_stays_now"
+        if query_name not in query_patterns['common_queries']:
+            return jsonify({
+                "error": f"Abfrage {query_name} nicht gefunden",
+                "status": "error"
+            }), 404
         
-#         query_pattern = query_patterns['common_queries'][query_name]
+        query_pattern = query_patterns['common_queries'][query_name]
         
         # Parameter für die Abfrage vorbereiten
-#         parameters = {'seller_id': seller_id, 'limit': 100}
+        parameters = {'seller_id': seller_id, 'limit': 100}
         
         # Führe die Abfrage aus
-#         result = execute_bigquery_query(
-#             query_pattern['sql_template'],
-#             parameters
-#         )
+        result = execute_bigquery_query(
+            query_pattern['sql_template'],
+            parameters
+        )
         
         # Formatiere das Ergebnis
-#         formatted_result = format_query_result(result, query_pattern.get('result_structure'))
+        formatted_result = format_query_result(result, query_pattern.get('result_structure'))
         
-#         return jsonify({
-#             "data": formatted_result,
-#             "count": len(formatted_result),
-#             "status": "success"
-#         })
+        return jsonify({
+            "data": formatted_result,
+            "count": len(formatted_result),
+            "status": "success"
+        })
     
-#     except Exception as e:
-#         error_trace = traceback.format_exc()
-#         logging.error(f"Fehler in get_active_care_stays_now: {str(e)}\n{error_trace}")
-#         return jsonify({
-#             "error": str(e),
-#             "trace": error_trace,
-#             "status": "error"
-#         }), 500
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logging.error(f"Fehler in get_active_care_stays_now: {str(e)}\n{error_trace}")
+        return jsonify({
+            "error": str(e),
+            "trace": error_trace,
+            "status": "error"
+        }), 500
 
-# @app.route('/get_dashboard_data', methods=['GET'])
-# def get_dashboard_data():
-#     """
-#     Liefert Daten für das Dashboard, basierend auf dem angegebenen Abfragetyp.
-#     Diese Route wird beim Öffnen des Dashboards aufgerufen.
-#     """
-#     try:
+@app.route('/get_dashboard_data', methods=['GET'])
+def get_dashboard_data():
+    """
+    Liefert Daten für das Dashboard, basierend auf dem angegebenen Abfragetyp.
+    Diese Route wird beim Öffnen des Dashboards aufgerufen.
+    """
+    try:
         # Seller ID aus der Session holen
-#         seller_id = session.get('seller_id')
-#         logging.info(f"Dashboard: Seller ID aus Session: {seller_id}")
+        seller_id = session.get('seller_id')
+        logging.info(f"Dashboard: Seller ID aus Session: {seller_id}")
         
-#         if not seller_id:
-#             logging.error("Dashboard: Keine Seller ID in der Session gefunden")
-#             return jsonify({
-#                 "error": "Keine Seller ID in der Session gefunden",
-#                 "status": "error"
-#             }), 401
+        if not seller_id:
+            logging.error("Dashboard: Keine Seller ID in der Session gefunden")
+            return jsonify({
+                "error": "Keine Seller ID in der Session gefunden",
+                "status": "error"
+            }), 401
         
         # Lade die Abfragemuster
-#         logging.info("Dashboard: Lade Abfragemuster")
-#         with open('query_patterns.json', 'r', encoding='utf-8') as f:
-#             query_patterns = json.load(f)
+        logging.info("Dashboard: Lade Abfragemuster")
+        with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            query_patterns = json.load(f)
         
         # Dashboard-Daten sammeln
-#         dashboard_result = {}
+        dashboard_result = {}
         
         # Hole die "get_active_care_stays_now" Abfrage
                 # 1. Aktive Kunden (get_active_care_stays_now)
-#         query_name = "get_active_care_stays_now"
-#         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
+        query_name = "get_active_care_stays_now"
+        logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
-#         if query_name not in query_patterns['common_queries']:
-#             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
-#             return jsonify({
-#                 "error": f"Abfrage {query_name} nicht gefunden",
-#                 "status": "error"
-#             }), 404
+        if query_name not in query_patterns['common_queries']:
+            logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
+            return jsonify({
+                "error": f"Abfrage {query_name} nicht gefunden",
+                "status": "error"
+            }), 404
         
-#         query_pattern = query_patterns['common_queries'][query_name]
+        query_pattern = query_patterns['common_queries'][query_name]
         
         # Parameter nur für diese Abfrage (aktive Kunden)
-#         parameters = {
-#             'seller_id': seller_id,
-#             'limit': 100  # Standardlimit wieder hinzufügen
-#         }
-#         logging.info(f"Dashboard: Parameter für {query_name}: {parameters}")
+        parameters = {
+            'seller_id': seller_id,
+            'limit': 100  # Standardlimit wieder hinzufügen
+        }
+        logging.info(f"Dashboard: Parameter für {query_name}: {parameters}")
 
-#         result = execute_bigquery_query(
-#             query_pattern['sql_template'],
-#             parameters
-#         )
+        result = execute_bigquery_query(
+            query_pattern['sql_template'],
+            parameters
+        )
         
         # Formatiere das Ergebnis
-#         formatted_result = format_query_result(result, query_pattern.get('result_structure'))
-#         logging.info(f"Dashboard: Ergebnis formatiert, {len(formatted_result)} Einträge")
+        formatted_result = format_query_result(result, query_pattern.get('result_structure'))
+        logging.info(f"Dashboard: Ergebnis formatiert, {len(formatted_result)} Einträge")
         
         # Speichern für die Antwort
-#         dashboard_result['active_customers'] = {
-#             "data": formatted_result,
-#             "count": len(formatted_result)
-#         }
+        dashboard_result['active_customers'] = {
+            "data": formatted_result,
+            "count": len(formatted_result)
+        }
 
 
                 # 2. Abschlussquote (get_cvr_lead_contract)
-#         query_name = "get_cvr_lead_contract"
-#         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
+        query_name = "get_cvr_lead_contract"
+        logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
-#         if query_name in query_patterns['common_queries']:
-#             query_pattern = query_patterns['common_queries'][query_name]
+        if query_name in query_patterns['common_queries']:
+            query_pattern = query_patterns['common_queries'][query_name]
             
             # Zeitraum: Letzte 30 Tage
-#             end_date = datetime.now().date().isoformat()
-#             start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
-#             parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
-#             logging.info(f"Dashboard: Parameter für Abschlussquote: {parameters}")
+            end_date = datetime.now().date().isoformat()
+            start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
+            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
+            logging.info(f"Dashboard: Parameter für Abschlussquote: {parameters}")
             
             # Führe die Abfrage aus
-#             logging.info("Dashboard: Führe BigQuery-Abfrage für Abschlussquote aus")
-#             cvr_result = execute_bigquery_query(
-#                 query_pattern['sql_template'],
-#                 parameters
-#             )
+            logging.info("Dashboard: Führe BigQuery-Abfrage für Abschlussquote aus")
+            cvr_result = execute_bigquery_query(
+                query_pattern['sql_template'],
+                parameters
+            )
             
             # Formatiere das Ergebnis
-#             formatted_cvr = format_query_result(cvr_result, query_pattern.get('result_structure'))
-#             logging.info(f"Dashboard: Abschlussquotenabfrage abgeschlossen")
+            formatted_cvr = format_query_result(cvr_result, query_pattern.get('result_structure'))
+            logging.info(f"Dashboard: Abschlussquotenabfrage abgeschlossen")
             
             # Speichern für die Antwort
-#             dashboard_result['conversion_rate'] = formatted_cvr[0] if formatted_cvr else {}
-#         else:
-#             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
-#             dashboard_result['conversion_rate'] = {}
+            dashboard_result['conversion_rate'] = formatted_cvr[0] if formatted_cvr else {}
+        else:
+            logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
+            dashboard_result['conversion_rate'] = {}
 
                 # 3. Neue Verträge der letzten 14 Tage (get_contract_count)
-#         query_name = "get_contract_count"
-#         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
+        query_name = "get_contract_count"
+        logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
-#         if query_name in query_patterns['common_queries']:
-#             query_pattern = query_patterns['common_queries'][query_name]
+        if query_name in query_patterns['common_queries']:
+            query_pattern = query_patterns['common_queries'][query_name]
             
             # Zeitraum: Letzte 14 Tage
-#             end_date = datetime.now().date().isoformat()
-#             start_date = (datetime.now().date() - timedelta(days=14)).isoformat()
-#             parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
-#             logging.info(f"Dashboard: Parameter für Neue Verträge: {parameters}")
+            end_date = datetime.now().date().isoformat()
+            start_date = (datetime.now().date() - timedelta(days=14)).isoformat()
+            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
+            logging.info(f"Dashboard: Parameter für Neue Verträge: {parameters}")
             
             # Führe die Abfrage aus
-#             logging.info("Dashboard: Führe BigQuery-Abfrage für Neue Verträge aus")
-#             contracts_result = execute_bigquery_query(
-#                 query_pattern['sql_template'],
-#                 parameters
-#             )
+            logging.info("Dashboard: Führe BigQuery-Abfrage für Neue Verträge aus")
+            contracts_result = execute_bigquery_query(
+                query_pattern['sql_template'],
+                parameters
+            )
             
             # Formatiere das Ergebnis
-#             formatted_contracts = format_query_result(contracts_result, query_pattern.get('result_structure'))
-#             logging.info(f"Dashboard: Neue Verträge Abfrage abgeschlossen")
+            formatted_contracts = format_query_result(contracts_result, query_pattern.get('result_structure'))
+            logging.info(f"Dashboard: Neue Verträge Abfrage abgeschlossen")
             
             # Speichern für die Antwort
-#             dashboard_result['new_contracts'] = formatted_contracts[0] if formatted_contracts else {}
-#         else:
-#             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
-#             dashboard_result['new_contracts'] = {}
+            dashboard_result['new_contracts'] = formatted_contracts[0] if formatted_contracts else {}
+        else:
+            logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
+            dashboard_result['new_contracts'] = {}
 
                 # 4. Kündigungen (get_contract_terminations)
-#         query_name = "get_contract_terminations"
-#         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
+        query_name = "get_contract_terminations"
+        logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
-#         if query_name in query_patterns['common_queries']:
-#             query_pattern = query_patterns['common_queries'][query_name]
+        if query_name in query_patterns['common_queries']:
+            query_pattern = query_patterns['common_queries'][query_name]
             
             # Zeitraum: Letzte 30 Tage
-#             end_date = datetime.now().date().isoformat()
-#             start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
-#             parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date, 'limit': 500}
-#             logging.info(f"Dashboard: Parameter für Kündigungen: {parameters}")
+            end_date = datetime.now().date().isoformat()
+            start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
+            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date, 'limit': 500}
+            logging.info(f"Dashboard: Parameter für Kündigungen: {parameters}")
             
             # Führe die Abfrage aus
-#             logging.info("Dashboard: Führe BigQuery-Abfrage für Kündigungen aus")
-#             terminations_result = execute_bigquery_query(
-#                 query_pattern['sql_template'],
-#                 parameters
-#             )
+            logging.info("Dashboard: Führe BigQuery-Abfrage für Kündigungen aus")
+            terminations_result = execute_bigquery_query(
+                query_pattern['sql_template'],
+                parameters
+            )
             
             # Formatiere das Ergebnis
-#             formatted_terminations = format_query_result(terminations_result, query_pattern.get('result_structure'))
-#             logging.info(f"Dashboard: Kündigungen Abfrage abgeschlossen")
+            formatted_terminations = format_query_result(terminations_result, query_pattern.get('result_structure'))
+            logging.info(f"Dashboard: Kündigungen Abfrage abgeschlossen")
             
             # Extrahiere die relevanten Kennzahlen - bei der ersten Zeile stehen die Gesamtzahlen
-#             if formatted_terminations and len(formatted_terminations) > 0:
-#                 terminations_data = {
-#                     'serious_terminations_count': formatted_terminations[0].get('serious_terminations_count', 0),
-#                     'agency_switch_count': formatted_terminations[0].get('agency_switch_count', 0),
-#                     'total_terminations_count': formatted_terminations[0].get('total_terminations_count', 0)
-#                 }
-#             else:
-#                 terminations_data = {
-#                     'serious_terminations_count': 0,
-#                     'agency_switch_count': 0,
-#                     'total_terminations_count': 0
-#                 }
+            if formatted_terminations and len(formatted_terminations) > 0:
+                terminations_data = {
+                    'serious_terminations_count': formatted_terminations[0].get('serious_terminations_count', 0),
+                    'agency_switch_count': formatted_terminations[0].get('agency_switch_count', 0),
+                    'total_terminations_count': formatted_terminations[0].get('total_terminations_count', 0)
+                }
+            else:
+                terminations_data = {
+                    'serious_terminations_count': 0,
+                    'agency_switch_count': 0,
+                    'total_terminations_count': 0
+                }
             
             # Speichern für die Antwort
-#             dashboard_result['terminations'] = terminations_data
-#         else:
-#             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
-#             dashboard_result['terminations'] = {'serious_terminations_count': 0, 'agency_switch_count': 0, 'total_terminations_count': 0}
+            dashboard_result['terminations'] = terminations_data
+        else:
+            logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
+            dashboard_result['terminations'] = {'serious_terminations_count': 0, 'agency_switch_count': 0, 'total_terminations_count': 0}
 
                 # 5. Umsatz Pro Rata (laufender Monat)
-#         query_name_revenue = "get_revenue_current_month_pro_rata"
-#         logging.info(f"Dashboard: Verwende Abfrage {query_name_revenue}")
-#         if query_name_revenue in query_patterns['common_queries']:
-#             query_pattern_revenue = query_patterns['common_queries'][query_name_revenue]
-#             target_date = datetime.now().date()
-#             start_of_month = target_date.replace(day=1)
-#             _, days_in_month = calendar.monthrange(target_date.year, target_date.month)
-#             end_of_month = target_date # Aktueller Tag als Ende
-#             parameters_revenue = {
-#                 'seller_id': seller_id,
-#                 'start_of_month': start_of_month.isoformat(),
-#                 'end_of_month': end_of_month.isoformat(),
-#                 'days_in_month': days_in_month
-#             }
-#             logging.info(f"Dashboard: Parameter für Umsatz Pro Rata: {parameters_revenue}")
+        query_name_revenue = "get_revenue_current_month_pro_rata"
+        logging.info(f"Dashboard: Verwende Abfrage {query_name_revenue}")
+        if query_name_revenue in query_patterns['common_queries']:
+            query_pattern_revenue = query_patterns['common_queries'][query_name_revenue]
+            target_date = datetime.now().date()
+            start_of_month = target_date.replace(day=1)
+            _, days_in_month = calendar.monthrange(target_date.year, target_date.month)
+            end_of_month = target_date # Aktueller Tag als Ende
+            parameters_revenue = {
+                'seller_id': seller_id,
+                'start_of_month': start_of_month.isoformat(),
+                'end_of_month': end_of_month.isoformat(),
+                'days_in_month': days_in_month
+            }
+            logging.info(f"Dashboard: Parameter für Umsatz Pro Rata: {parameters_revenue}")
 
-#             revenue_result = execute_bigquery_query(
-#                 query_pattern_revenue['sql_template'],
-#                 parameters_revenue
-#             )
-#             formatted_revenue = format_query_result(revenue_result, query_pattern_revenue.get('result_structure'))
-#             logging.info(f"Dashboard: Umsatz Pro Rata Abfrage abgeschlossen")
+            revenue_result = execute_bigquery_query(
+                query_pattern_revenue['sql_template'],
+                parameters_revenue
+            )
+            formatted_revenue = format_query_result(revenue_result, query_pattern_revenue.get('result_structure'))
+            logging.info(f"Dashboard: Umsatz Pro Rata Abfrage abgeschlossen")
 
             # Nimm den Wert oder 0, falls kein Ergebnis
-#             dashboard_result['pro_rata_revenue'] = formatted_revenue[0]['total_monthly_pro_rata_revenue'] if formatted_revenue and formatted_revenue[0] else 0
-#         else:
-#             logging.error(f"Dashboard: Abfrage {query_name_revenue} nicht gefunden")
-#             dashboard_result['pro_rata_revenue'] = 0
+            dashboard_result['pro_rata_revenue'] = formatted_revenue[0]['total_monthly_pro_rata_revenue'] if formatted_revenue and formatted_revenue[0] else 0
+        else:
+            logging.error(f"Dashboard: Abfrage {query_name_revenue} nicht gefunden")
+            dashboard_result['pro_rata_revenue'] = 0
 
                 # Gesamte Antwort zusammenstellen
-#         response = {
-#             "data": dashboard_result['active_customers']['data'],
-#             "count": dashboard_result['active_customers']['count'],
-#             "conversion_rate": dashboard_result['conversion_rate'],
-#             "new_contracts": dashboard_result['new_contracts'],
-#             "terminations": dashboard_result['terminations'],
-#             "pro_rata_revenue": dashboard_result.get('pro_rata_revenue', 0), # Hier hinzugefügt
-#             "status": "success"
-#         }
-#         logging.info("Dashboard: Sende Antwort")
-#         return jsonify(response)
+        response = {
+            "data": dashboard_result['active_customers']['data'],
+            "count": dashboard_result['active_customers']['count'],
+            "conversion_rate": dashboard_result['conversion_rate'],
+            "new_contracts": dashboard_result['new_contracts'],
+            "terminations": dashboard_result['terminations'],
+            "pro_rata_revenue": dashboard_result.get('pro_rata_revenue', 0), # Hier hinzugefügt
+            "status": "success"
+        }
+        logging.info("Dashboard: Sende Antwort")
+        return jsonify(response)
     
-#     except Exception as e:
-#         error_trace = traceback.format_exc()
-#         logging.error(f"Fehler in get_dashboard_data: {str(e)}\n{error_trace}")
-#         return jsonify({
-#             "error": str(e),
-#             "trace": error_trace,
-#             "status": "error"
-#         }), 500
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logging.error(f"Fehler in get_dashboard_data: {str(e)}\n{error_trace}")
+        return jsonify({
+            "error": str(e),
+            "trace": error_trace,
+            "status": "error"
+        }), 500
 
-# @app.route('/update_stream_chat_history', methods=['POST'])
-# def update_stream_chat_history():
-#     """Update chat history in the session from streaming responses"""
-#     try:
-#         data = request.json
-#         user_message = data.get('user_message')
-#         bot_response = data.get('bot_response')
+@app.route('/update_stream_chat_history', methods=['POST'])
+def update_stream_chat_history():
+    """Update chat history in the session from streaming responses"""
+    try:
+        data = request.json
+        user_message = data.get('user_message')
+        bot_response = data.get('bot_response')
         
-#         if not user_message or not bot_response:
-#             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        if not user_message or not bot_response:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
             
-#         user_id = session.get("user_id")
-#         user_name = session.get("user_name")
+        user_id = session.get("user_id")
+        user_name = session.get("user_name")
         
-#         if not user_id or not user_name:
-#             return jsonify({'success': False, 'error': 'No active session'}), 400
+        if not user_id or not user_name:
+            return jsonify({'success': False, 'error': 'No active session'}), 400
             
-#         chat_key = f'chat_history_{user_id}'
+        chat_key = f'chat_history_{user_id}'
         
         # Get current chat history or initialize it
-#         chat_history = session.get(chat_key, [])
+        chat_history = session.get(chat_key, [])
         
         # Add the new messages
-#         chat_history.append({"user": user_message, "bot": bot_response})
+        chat_history.append({"user": user_message, "bot": bot_response})
         
         # Update the session
-#         session[chat_key] = chat_history
-#         session.modified = True
+        session[chat_key] = chat_history
+        session.modified = True
         
         # Store in the persistent storage
-#         store_chatlog(user_name, chat_history)
+        store_chatlog(user_name, chat_history)
         
-#         return jsonify({'success': True})
+        return jsonify({'success': True})
         
-#     except Exception as e:
-#         logging.exception("Error updating chat history")
-#         return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception as e:
+        logging.exception("Error updating chat history")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-# @app.route('/check_login')
-# def check_login():
+@app.route('/check_login')
+def check_login():
     # Alle relevanten Session-Daten anzeigen
-#     session_data = {
-#         'user_id': session.get('user_id'),
-#         'user_name': session.get('user_name'),
-#         'email': session.get('email'),
-#         'google_user_email': session.get('google_user_email'),
-#         'seller_id': session.get('seller_id'),
-#         'is_logged_via_google': session.get('is_logged_via_google')
-#     }
+    session_data = {
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'email': session.get('email'),
+        'google_user_email': session.get('google_user_email'),
+        'seller_id': session.get('seller_id'),
+        'is_logged_via_google': session.get('is_logged_via_google')
+    }
     
-#     output = "<h1>Login-Status</h1>"
-#     output += "<pre>" + json.dumps(session_data, indent=2) + "</pre>"
+    output = "<h1>Login-Status</h1>"
+    output += "<pre>" + json.dumps(session_data, indent=2) + "</pre>"
     
     # Wenn E-Mail vorhanden ist, teste BigQuery-Abfrage
-#     email = session.get('email') or session.get('google_user_email')
-#     if email:
-#         output += f"<h2>Test der seller_id-Abfrage für {email}</h2>"
-#         try:
-#             seller_id = get_user_id_from_email(email)
-#             output += f"<p>Gefundene seller_id: {seller_id}</p>"
-#         except Exception as e:
-#             output += f"<p style='color:red'>Fehler: {str(e)}</p>"
+    email = session.get('email') or session.get('google_user_email')
+    if email:
+        output += f"<h2>Test der seller_id-Abfrage für {email}</h2>"
+        try:
+            seller_id = get_user_id_from_email(email)
+            output += f"<p>Gefundene seller_id: {seller_id}</p>"
+        except Exception as e:
+            output += f"<p style='color:red'>Fehler: {str(e)}</p>"
     
     # Link zum Zurücksetzen der Session
-#     output += "<p><a href='/reset_session'>Session zurücksetzen</a></p>"
+    output += "<p><a href='/reset_session'>Session zurücksetzen</a></p>"
     
-#     return output
+    return output
 
-# @app.route('/reset_session')
-# def reset_session():
+@app.route('/reset_session')
+def reset_session():
     # Alle Session-Daten löschen, außer user_id
-#     user_id = session.get('user_id')
-#     session.clear()
-#     session['user_id'] = user_id
-#     session.modified = True
-#     return redirect('/check_login')
+    user_id = session.get('user_id')
+    session.clear()
+    session['user_id'] = user_id
+    session.modified = True
+    return redirect('/check_login')
 
-# @app.route('/debug_dashboard', methods=['GET'])
-# def debug_dashboard():
-#     """
-#     Debug-Route für das Dashboard, die alle relevanten Informationen zurückgibt
-#     und in der Session gespeicherte Daten anzeigt.
-#     """
-#     debug_info = {
-#         "session_data": {
-#             "seller_id": session.get('seller_id'),
-#             "user_name": session.get('user_name'),
-#             "all_session_keys": list(session.keys())
-#         },
-#         "request_info": {
-#             "method": request.method,
-#             "headers": dict(request.headers),
-#             "endpoint": request.endpoint,
-#         }
-#     }
+@app.route('/debug_dashboard', methods=['GET'])
+def debug_dashboard():
+    """
+    Debug-Route für das Dashboard, die alle relevanten Informationen zurückgibt
+    und in der Session gespeicherte Daten anzeigt.
+    """
+    debug_info = {
+        "session_data": {
+            "seller_id": session.get('seller_id'),
+            "user_name": session.get('user_name'),
+            "all_session_keys": list(session.keys())
+        },
+        "request_info": {
+            "method": request.method,
+            "headers": dict(request.headers),
+            "endpoint": request.endpoint,
+        }
+    }
     
     # Lade die Abfragemuster und teste den Zugriff
-#     try:
-#         with open('query_patterns.json', 'r', encoding='utf-8') as f:
-#             debug_info["query_patterns_loaded"] = True
-#             query_patterns = json.load(f)
+    try:
+        with open('query_patterns.json', 'r', encoding='utf-8') as f:
+            debug_info["query_patterns_loaded"] = True
+            query_patterns = json.load(f)
             
             # Prüfe, ob die benötigte Abfrage vorhanden ist
-#             query_name = "get_active_care_stays_now"
-#             if query_name in query_patterns.get('common_queries', {}):
-#                 debug_info["query_exists"] = True
-#                 debug_info["query_name"] = query_name
-#                 debug_info["query_desc"] = query_patterns['common_queries'][query_name].get('description')
-#             else:
-#                 debug_info["query_exists"] = False
-#     except Exception as e:
-#         debug_info["query_patterns_loaded"] = False
-#         debug_info["query_patterns_error"] = str(e)
+            query_name = "get_active_care_stays_now"
+            if query_name in query_patterns.get('common_queries', {}):
+                debug_info["query_exists"] = True
+                debug_info["query_name"] = query_name
+                debug_info["query_desc"] = query_patterns['common_queries'][query_name].get('description')
+            else:
+                debug_info["query_exists"] = False
+    except Exception as e:
+        debug_info["query_patterns_loaded"] = False
+        debug_info["query_patterns_error"] = str(e)
     
     # HTML-Ausgabe für leichtere Lesbarkeit
-#     html_output = "<h1>Dashboard Debug-Informationen</h1>"
-#     html_output += "<pre>" + json.dumps(debug_info, indent=4) + "</pre>"
+    html_output = "<h1>Dashboard Debug-Informationen</h1>"
+    html_output += "<pre>" + json.dumps(debug_info, indent=4) + "</pre>"
     
     # Button zum Testen des eigentlichen Endpunkts
-#     html_output += """
-#     <script>
-#     function testEndpoint() {
-#         fetch('/get_dashboard_data')
-#             .then(response => response.json())
-#             .then(data => {
-#                 document.getElementById('result').textContent = JSON.stringify(data, null, 2);
-#             })
-#             .catch(error => {
-#                 document.getElementById('result').textContent = 'Fehler: ' + error;
-#             });
-#     }
-#     </script>
+    html_output += """
+    <script>
+    function testEndpoint() {
+        fetch('/get_dashboard_data')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('result').textContent = 'Fehler: ' + error;
+            });
+    }
+    </script>
     
-#     <button onclick="testEndpoint()">Test /get_dashboard_data</button>
-#     <pre id="result">Klicken Sie auf den Button, um den Endpunkt zu testen...</pre>
-#     """
+    <button onclick="testEndpoint()">Test /get_dashboard_data</button>
+    <pre id="result">Klicken Sie auf den Button, um den Endpunkt zu testen...</pre>
+    """
     
-#     return html_output
+    return html_output
 
-# @app.route('/toggle_notfall_mode', methods=['POST'])
-# def toggle_notfall_mode():
-#     try:
-#         activate = request.form.get('activate', '0')
-#         if activate == '1':
-#             session['notfall_mode'] = True
-#         else:
-#             session.pop('notfall_mode', None)
-#         return jsonify({
-#             'success': True,
-#             'notfall_mode_active': session.get('notfall_mode', False)
-#         })
-#     except Exception as e:
-#         return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/toggle_notfall_mode', methods=['POST'])
+def toggle_notfall_mode():
+    try:
+        activate = request.form.get('activate', '0')
+        if activate == '1':
+            session['notfall_mode'] = True
+        else:
+            session.pop('notfall_mode', None)
+        return jsonify({
+            'success': True,
+            'notfall_mode_active': session.get('notfall_mode', False)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-# @app.route('/store_feedback', methods=['POST'])
-# def store_feedback_route():
-#     try:
-#         data = request.get_json()
-#         feedback_type = data.get("feedback_type", "")
-#         comment = data.get("comment", "").strip()
-#         message = data.get("message", "").strip()  # Get the specific message being rated
+@app.route('/store_feedback', methods=['POST'])
+def store_feedback_route():
+    try:
+        data = request.get_json()
+        feedback_type = data.get("feedback_type", "")
+        comment = data.get("comment", "").strip()
+        message = data.get("message", "").strip()  # Get the specific message being rated
         
-#         user_id = session.get('user_id')
-#         if not user_id:
-#             return jsonify({"success": False, "message": "User nicht erkannt"}), 400
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({"success": False, "message": "User nicht erkannt"}), 400
         
-#         chat_key = f'chat_history_{user_id}'
-#         chat_history = session.get(chat_key, [])
+        chat_key = f'chat_history_{user_id}'
+        chat_history = session.get(chat_key, [])
         
         # Call the updated store_feedback function with the message parameter
-#         store_feedback(feedback_type, comment, chat_history, message)
-#         return jsonify({"success": True}), 200
-#     except Exception as e:
-#         logging.exception("Fehler beim Speichern des Feedbacks.")
-#         return jsonify({"success": False, "error": str(e)}), 500
+        store_feedback(feedback_type, comment, chat_history, message)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        logging.exception("Fehler beim Speichern des Feedbacks.")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 ###########################################
 # Neue Routen: Username setzen/auslesen
 ###########################################
-# @app.route('/get_username', methods=['GET'])
-# def get_username():
-#     try:
-#         user_name = session.get('user_name')
-#         return jsonify({'user_name': user_name}), 200
-#     except Exception as e:
-#         return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/get_username', methods=['GET'])
+def get_username():
+    try:
+        user_name = session.get('user_name')
+        return jsonify({'user_name': user_name}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-# @app.route('/set_username', methods=['POST'])
-# def set_username():
-#     try:
-#         username = request.form.get('username', '').strip()
-#         if len(username) < 3:
-#             return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
+@app.route('/set_username', methods=['POST'])
+def set_username():
+    try:
+        username = request.form.get('username', '').strip()
+        if len(username) < 3:
+            return jsonify({'success': False, 'message': 'Name zu kurz'}), 400
         
-#         session['user_name'] = username
+        session['user_name'] = username
         
-#         return jsonify({'success': True}), 200
-#     except Exception as e:
-#         return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# @app.route('/admin_login', methods=['GET', 'POST'])
-# def admin_login():
-#     if request.method == 'POST':
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
         # Behalten Sie die bestehende Admin-Login-Logik bei
-#         password = request.form.get('password', '')
-#         admin_password = os.getenv('ADMIN_PASSWORD', '')
-#         if password == admin_password:
-#             session['admin_logged_in'] = True
-#             flash('Erfolgreich als Administrator eingeloggt.', 'success')
-#             return redirect(url_for('admin'))
-#         else:
-#             flash('Falsches Passwort.', 'danger')
-#             return redirect(url_for('admin_login'))
+        password = request.form.get('password', '')
+        admin_password = os.getenv('ADMIN_PASSWORD', '')
+        if password == admin_password:
+            session['admin_logged_in'] = True
+            flash('Erfolgreich als Administrator eingeloggt.', 'success')
+            return redirect(url_for('admin'))
+        else:
+            flash('Falsches Passwort.', 'danger')
+            return redirect(url_for('admin_login'))
             
     # Render admin login template
-#     return render_template('admin_login.html')
+    return render_template('admin_login.html')
 
 ###########################################
 # CSRF & Session Hooks
 ###########################################
-# from flask_wtf.csrf import generate_csrf
+from flask_wtf.csrf import generate_csrf
 
-# @app.context_processor
-# def inject_csrf_token():
-#     return {'csrf_token': generate_csrf()}
+@app.context_processor
+def inject_csrf_token():
+    return {'csrf_token': generate_csrf()}
 
-# @app.before_request
-# def ensure_user_id():
-#     if 'user_id' not in session:
-#         session['user_id'] = str(uuid.uuid4())
+@app.before_request
+def ensure_user_id():
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
 
 ###########################################
 # Login-Decorator
 ###########################################
 
-# def login_required(f):
-#     @wraps(f)
-#     def decorated_function(*args, **kwargs):
-#         if not session.get('admin_logged_in'):
-#             return redirect(url_for('admin_login'))
-#         return f(*args, **kwargs)
-#     return decorated_function
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 ###########################################
 # AJAX Endpoint für Human-in-the-Loop
 ###########################################
-# @app.route('/get_clarification_response', methods=['GET'])
-# def get_clarification_response():
-#     """
-#     AJAX endpoint to get a response after a human-in-loop clarification button was clicked.
-#     This allows the client to update the UI without a page refresh.
-#     """
-#     try:
+@app.route('/get_clarification_response', methods=['GET'])
+def get_clarification_response():
+    """
+    AJAX endpoint to get a response after a human-in-loop clarification button was clicked.
+    This allows the client to update the UI without a page refresh.
+    """
+    try:
         # Ensure user is authenticated
-#         user_id = session.get("user_id")
-#         if not user_id:
-#             return jsonify({"error": "Nicht angemeldet"}), 403
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"error": "Nicht angemeldet"}), 403
             
         # Check if we have a pending clarification response
-#         if "human_in_loop_clarification_response" in session:
-#             clarification_response = session.pop("human_in_loop_clarification_response")
-#             pending_query = session.get("pending_query", "")
-#             session.pop("pending_query", None)
+        if "human_in_loop_clarification_response" in session:
+            clarification_response = session.pop("human_in_loop_clarification_response")
+            pending_query = session.get("pending_query", "")
+            session.pop("pending_query", None)
             
             # Process the clarification response
-#             logging.info(f"Processing clarification response via AJAX: {clarification_response.get('text', '')}")
+            logging.info(f"Processing clarification response via AJAX: {clarification_response.get('text', '')}")
             
             # Extract the selected query and parameters
-#             selected_query = clarification_response.get("query")
-#             selected_params = clarification_response.get("params", {})
+            selected_query = clarification_response.get("query")
+            selected_params = clarification_response.get("params", {})
             
             # Add standard parameters
-#             if "seller_id" in selected_params and "seller_id" in session:
-#                 selected_params["seller_id"] = session.get("seller_id")
+            if "seller_id" in selected_params and "seller_id" in session:
+                selected_params["seller_id"] = session.get("seller_id")
             
             # Execute function call
-#             try:
-#                 tool_result = handle_function_call(selected_query, selected_params)
+            try:
+                tool_result = handle_function_call(selected_query, selected_params)
                 
                 # Check for empty results
-#                 result_data = json.loads(tool_result)
-#                 if "data" in result_data and len(result_data["data"]) == 0:
+                result_data = json.loads(tool_result)
+                if "data" in result_data and len(result_data["data"]) == 0:
                     # No data found, return a proper error
-#                     logging.warning(f"No data found for query {selected_query} with params {selected_params}")
-#                     return jsonify({
-#                         "success": False,
-#                         "error": f"Keine Daten für diese Anfrage gefunden."
-#                     }), 404
+                    logging.warning(f"No data found for query {selected_query} with params {selected_params}")
+                    return jsonify({
+                        "success": False,
+                        "error": f"Keine Daten für diese Anfrage gefunden."
+                    }), 404
                     
-#             except Exception as e:
-#                 logging.error(f"Error executing function call: {str(e)}")
-#                 return jsonify({
-#                     "success": False,
-#                     "error": f"Fehler bei der Ausführung: {str(e)}"
-#                 }), 500
+            except Exception as e:
+                logging.error(f"Error executing function call: {str(e)}")
+                return jsonify({
+                    "success": False,
+                    "error": f"Fehler bei der Ausführung: {str(e)}"
+                }), 500
             
             # Create enhanced system prompt for LLM response generation
-#             system_prompt = create_enhanced_system_prompt(selected_query)
+            system_prompt = create_enhanced_system_prompt(selected_query)
             
-#             messages = [
-#                 {"role": "developer", "content": system_prompt},
-#                 {"role": "user", "content": pending_query},
-#                 {"role": "function", "name": selected_query, "content": tool_result}
-#             ]
+            messages = [
+                {"role": "developer", "content": system_prompt},
+                {"role": "user", "content": pending_query},
+                {"role": "function", "name": selected_query, "content": tool_result}
+            ]
             
             # Generate response with LLM
             # gpt-4o doesn't support function role, so we'll convert the function message to a user message
-#             adjusted_messages = [
-#                 {"role": "developer", "content": system_prompt},
-#                 {"role": "user", "content": f"User question: {pending_query}\n\nQuery result: {tool_result}"}
-#             ]
+            adjusted_messages = [
+                {"role": "developer", "content": system_prompt},
+                {"role": "user", "content": f"User question: {pending_query}\n\nQuery result: {tool_result}"}
+            ]
             
-#             response = openai.chat.completions.create(
-#                 model="gpt-4o",
-#                 messages=adjusted_messages
-#             )
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=adjusted_messages
+            )
             
-#             final_response = response.choices[0].message.content
+            final_response = response.choices[0].message.content
             
             # Update chat history
-#             chat_key = f"chat_history_{session.get('user_id')}"
-#             chat_history = session.get(chat_key, [])
-#             chat_history.append({"role": "user", "content": pending_query})
-#             chat_history.append({"role": "assistant", "content": final_response})
-#             session[chat_key] = chat_history
-#             session.modified = True
+            chat_key = f"chat_history_{session.get('user_id')}"
+            chat_history = session.get(chat_key, [])
+            chat_history.append({"role": "user", "content": pending_query})
+            chat_history.append({"role": "assistant", "content": final_response})
+            session[chat_key] = chat_history
+            session.modified = True
             
             # Return the response as JSON
-#             return jsonify({
-#                 "success": True,
-#                 "response": final_response
-#             })
-#         else:
+            return jsonify({
+                "success": True,
+                "response": final_response
+            })
+        else:
             # No pending clarification response
-#             return jsonify({
-#                 "success": False,
-#                 "error": "Keine ausstehende Antwort auf Rückfrage gefunden"
-#             })
-#     except Exception as e:
-#         logging.exception(f"Error processing clarification response: {str(e)}")
-#         return jsonify({
-#             "success": False,
-#             "error": f"Fehler bei der Verarbeitung: {str(e)}"
-#         }), 500
+            return jsonify({
+                "success": False,
+                "error": "Keine ausstehende Antwort auf Rückfrage gefunden"
+            })
+    except Exception as e:
+        logging.exception(f"Error processing clarification response: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Fehler bei der Verarbeitung: {str(e)}"
+        }), 500
 
 ###########################################
 # Clear Chat
 ###########################################
-# @app.route('/clear_chat_history', methods=['POST'])
-# def clear_chat_history():
-#     try:
-#         user_id = session.get('user_id')
-#         if not user_id:
-#             flash('Benutzer nicht erkannt.', 'danger')
-#             return redirect(url_for('chat'))
+@app.route('/clear_chat_history', methods=['POST'])
+def clear_chat_history():
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            flash('Benutzer nicht erkannt.', 'danger')
+            return redirect(url_for('chat'))
 
-#         chat_key = f'chat_history_{user_id}'
-#         if chat_key in session:
-#             session.pop(chat_key)
-#             flash('Chatverlauf wurde erfolgreich geleert.', 'success')
-#         else:
-#             flash('Es gibt keinen Chatverlauf zu löschen.', 'info')
-#         return redirect(url_for('chat'))
-#     except Exception as e:
-#         logging.exception("Fehler beim Löschen Chatverlaufs.")
-#         flash('Ein Fehler ist aufgetreten.', 'danger')
-#         return redirect(url_for('chat'))
+        chat_key = f'chat_history_{user_id}'
+        if chat_key in session:
+            session.pop(chat_key)
+            flash('Chatverlauf wurde erfolgreich geleert.', 'success')
+        else:
+            flash('Es gibt keinen Chatverlauf zu löschen.', 'info')
+        return redirect(url_for('chat'))
+    except Exception as e:
+        logging.exception("Fehler beim Löschen Chatverlaufs.")
+        flash('Ein Fehler ist aufgetreten.', 'danger')
+        return redirect(url_for('chat'))
 
 ###########################################
 # Login / Logout
 ###########################################
-# @app.route('/logout')
-# def logout():
+@app.route('/logout')
+def logout():
     # Check if user is admin and handle accordingly
-#     if session.get('admin_logged_in'):
-#         session.pop('admin_logged_in', None)
-#         flash('Erfolgreich ausgeloggt.', 'success')
-#         return redirect(url_for('login'))
+    if session.get('admin_logged_in'):
+        session.pop('admin_logged_in', None)
+        flash('Erfolgreich ausgeloggt.', 'success')
+        return redirect(url_for('login'))
     
     # Clear specific user session data
-#     keys_to_remove = [
-#         'user_name', 'email', 'google_user_email', 
-#         'seller_id', 'is_logged_via_google', 'access_token'
-#     ]
+    keys_to_remove = [
+        'user_name', 'email', 'google_user_email', 
+        'seller_id', 'is_logged_via_google', 'access_token'
+    ]
     
-#     for key in keys_to_remove:
-#         if key in session:
-#             session.pop(key)
+    for key in keys_to_remove:
+        if key in session:
+            session.pop(key)
     
     # Completely clear Flask session to force a new Google login
-#     session.clear()
+    session.clear()
     
     # Setze den Session-Cookie zurück, um einen neuen Login zu erzwingen
-#     response = redirect(url_for('chat'))
-#     if 'session' in request.cookies:
-#         response.delete_cookie('session')
+    response = redirect(url_for('chat'))
+    if 'session' in request.cookies:
+        response.delete_cookie('session')
     
-#     flash('Erfolgreich ausgeloggt. Bitte melden Sie sich erneut an.', 'success')
+    flash('Erfolgreich ausgeloggt. Bitte melden Sie sich erneut an.', 'success')
     
-#     return response
+    return response
 
-# @app.route('/login', methods=['GET', 'POST'])
-# def login():
-#     if request.method == 'POST':
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
         # Behalten Sie die bestehende Admin-Login-Logik bei
-#         password = request.form.get('password', '')
-#         admin_password = os.getenv('ADMIN_PASSWORD', '')
-#         if password == admin_password:
-#             session['admin_logged_in'] = True
-#             flash('Erfolgreich eingeloggt.', 'success')
-#             return redirect(url_for('admin'))
-#         else:
-#             flash('Falsches Passwort.', 'danger')
-#             return redirect(url_for('login'))
+        password = request.form.get('password', '')
+        admin_password = os.getenv('ADMIN_PASSWORD', '')
+        if password == admin_password:
+            session['admin_logged_in'] = True
+            flash('Erfolgreich eingeloggt.', 'success')
+            return redirect(url_for('admin'))
+        else:
+            flash('Falsches Passwort.', 'danger')
+            return redirect(url_for('login'))
             
     # Render login template mit Google-Login-Option
-#     return render_template('login.html')
+    return render_template('login.html')
 
 ###########################################
 # Lade Themen
 ###########################################
-# @app.route('/lade_themen', methods=['GET'], endpoint='lade_themen')
-# @login_required
-# def lade_themen_route():
-#     themen_dict = lade_themen()
-#     return jsonify(themen_dict), 200
+@app.route('/lade_themen', methods=['GET'], endpoint='lade_themen')
+@login_required
+def lade_themen_route():
+    themen_dict = lade_themen()
+    return jsonify(themen_dict), 200
 
 ###########################################
 # App Start
 ###########################################
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     app.run(debug=True)#
+    app.run(debug=True)#

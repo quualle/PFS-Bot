@@ -7,14 +7,16 @@ chat_bp = Blueprint('chat', __name__)
 
 # Import necessary functions from the main app
 from app import (
-    stream_response, stream_text_response, generate_clarification_stream,
-    generate_conversational_clarification_stream, handle_function_call, format_customer_details,
+    handle_function_call, format_customer_details,
     conversation_manager, extract_date_params, select_optimal_tool_with_reasoning,
     load_tool_config, calculate_chat_stats, store_chatlog, download_wissensbasis
 )
 
 # Import OpenAI utilities from the utility module
 from routes.openai_utils import contact_openai, count_tokens, create_function_definitions, create_system_prompt
+
+# Import stream utilities from the stream utils module
+from routes.stream_utils import stream_response, stream_text_response, generate_clarification_stream, generate_conversational_clarification_stream
 
 @chat_bp.route("/clarify", methods=["POST"])
 def handle_clarification():

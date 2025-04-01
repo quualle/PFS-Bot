@@ -95,7 +95,7 @@ def initialize_time_awareness():
     except (ImportError, AttributeError, Exception) as e:
         logging.error(f"Fehler beim Initialisieren der Zeit-Awareness: {e}")
 
-def call_llm(messages, model="o3-mini", conversation_history=None):
+def call_llm(messages, model="gpt-4o", conversation_history=None):
     """
     Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
     Diese sollte die bestehende call_llm Funktion in app.py ersetzen.

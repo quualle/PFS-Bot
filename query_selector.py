@@ -203,7 +203,7 @@ def post_process_llm_parameters(user_request: str, parameters: Dict) -> Dict:
     
     return parameters
 
-def call_llm(messages: List[Dict], model: str = "o3-mini", expect_json: bool = True) -> str:
+def call_llm(messages: List[Dict], model: str = "gpt-4o", expect_json: bool = True) -> str:
     """Send messages to LLM and get response
     
     This is a placeholder function - replace with your actual LLM call implementation.

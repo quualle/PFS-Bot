@@ -32,7 +32,7 @@ except ImportError:
         """Vereinfachte Debug-Print-Funktion, falls die Original-Funktion nicht verfügbar ist"""
         logger.debug(f"{category}: {message}")
     
-    def call_llm(messages, model="o3-mini", expect_json=True, conversation_history=None):
+    def call_llm(messages, model="gpt-4o", expect_json=True, conversation_history=None):
         """
         Verbesserte LLM-Aufruf-Funktion mit Konversationshistorie.
         Diese sollte die bestehende call_llm Funktion in app.py ersetzen.
@@ -156,7 +156,7 @@ def determine_query_approach(user_message, conversation_history=None) -> Tuple[s
     
     # Call LLM
     try:
-        response = call_llm(messages, "o3-mini")  # Using a smaller, faster model for this decision
+        response = call_llm(messages, "gpt-4o")  # Using a smaller, faster model for this decision
         
         # Parse response
         if isinstance(response, str):
@@ -254,7 +254,7 @@ def determine_function_need(user_message, query_patterns, conversation_history=N
     
     # Call LLM
     try:
-        response = call_llm(messages, "o3-mini")
+        response = call_llm(messages, "gpt-4o")
         
         # Parse response
         if isinstance(response, str):
@@ -378,7 +378,7 @@ def handle_conversational_clarification(user_message, previous_clarification_dat
     
     # Call LLM
     try:
-        response = call_llm(messages, "o3-mini")
+        response = call_llm(messages, "gpt-4o")
         
         # Parse response
         if isinstance(response, str):
@@ -547,7 +547,7 @@ def process_user_query(user_message, session_data):
                 
                 # Use conversation history for better context
                 response = openai.chat.completions.create(
-                    model="o3-mini",
+                    model="gpt-4o",
                     messages=messages
                 )
                 
@@ -615,7 +615,7 @@ def process_user_query(user_message, session_data):
         
         try:
             response = openai.chat.completions.create(
-                model="o3-mini",
+                model="gpt-4o",
                 messages=messages
             )
             
@@ -711,7 +711,7 @@ def process_user_query(user_message, session_data):
         ]
         
         response = openai.chat.completions.create(
-            model="o3-mini",
+            model="gpt-4o",
             messages=messages
         )
         

@@ -457,7 +457,7 @@ def extract_parameters_with_llm(user_message, tool_name, missing_params):
     
     try:
         response = openai.chat.completions.create(
-            model="o3-mini",
+            model="gpt-4o",
             messages=messages,
             max_tokens=150
         )

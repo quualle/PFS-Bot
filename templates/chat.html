@@ -2528,23 +2528,31 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             // Übersicht-Tab Metriken
             document.getElementById('active-customers-now-widget').innerHTML = '<div class="customer-count">0</div>';
             document.getElementById('conversion-rate-widget').innerHTML = '<div class="customer-count">0%</div>';
-            document.getElementById('total-revenue').textContent = '0 €';
-            document.getElementById('new-contracts').textContent = '0';
-            document.getElementById('agency-switches').textContent = '0';
-            document.getElementById('active-new-contracts').textContent = '0';
-            document.getElementById('active-agency-switches').textContent = '0';
-            document.getElementById('serious-terminations').textContent = '0';
-            document.getElementById('agency-change-terminations').textContent = '0';
-            
-            // Hier können später weitere Dashboard-Felder initialisiert werden
+            // Meine KPIs-Tab Metriken
+            updateKPIMetrics(getLast30Days());
         }
-        
-        // Funktion zum Laden der Dashboard-Daten auch automatisch beim Seitenstart
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verzögerung, damit die Sitzungsdaten zuerst vollständig geladen werden können
-            setTimeout(() => {
-                loadDashboardData();
-            }, 1000);
+
+        // Funktion zum Aktualisieren der KPI-Metriken
+        function updateKPIMetrics(dateRange) {
+            const startDate = dateRange.start;
+            const endDate = dateRange.end;
+            // Hier sollte die Logik zum Abrufen und Anzeigen der Abschlussquote für den angegebenen Zeitraum implementiert werden
+            // Beispiel: document.getElementById('kpi-conversion-rate-widget').innerHTML = '<div class="customer-count">' + calculatedRate + '%</div>';
+        }
+
+        // Funktion zum Abrufen der letzten 30 Tage
+        function getLast30Days() {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - 30);
+            return { start, end };
+        }
+
+        // Event-Listener für die Aktualisierung des Zeitraums in Meine KPIs
+        document.getElementById('update-kpi-range-btn').addEventListener('click', function() {
+            const startDate = document.getElementById('kpi-start-date').value;
+            const endDate = document.getElementById('kpi-end-date').value;
+            updateKPIMetrics({ start: new Date(startDate), end: new Date(endDate) });
         });
         
         // Funktion zum Laden der Vertragsdaten

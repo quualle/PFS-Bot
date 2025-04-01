@@ -6,6 +6,7 @@ This module contains functions for interacting with the OpenAI API.
 import json
 import logging
 import openai
+import tiktoken
 from flask import flash
 from routes.utils import debug_print
 
@@ -61,6 +62,29 @@ def create_function_definitions():
         }
     ]
     return function_definitions
+
+def count_tokens(messages, model=None):
+    """
+    Zählt die Token in einer Liste von Nachrichten für das angegebene Modell.
+    
+    Args:
+        messages: Liste von Nachrichten im Format {'role': '...', 'content': '...'}
+        model: Zu verwendendes Modell (Standard: gpt-4o)
+        
+    Returns:
+        int: Anzahl der Token
+    """
+    model = 'gpt-4o'
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        encoding = tiktoken.get_encoding("cl100k_base")
+    token_count = 0
+    for msg in messages:
+        token_count += len(encoding.encode(msg['content']))
+        token_count += 4
+    token_count += 2
+    return token_count
 
 def contact_openai(messages, model=None):
     """

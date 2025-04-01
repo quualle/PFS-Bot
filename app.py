@@ -533,18 +533,19 @@ def speichere_wissensbasis(eintrag):
 #         flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
 #         return None, None
 
-def count_tokens(messages, model=None):
-    model = 'gpt-4o'
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        encoding = tiktoken.get_encoding("cl100k_base")
-    token_count = 0
-    for msg in messages:
-        token_count += len(encoding.encode(msg['content']))
-        token_count += 4
-    token_count += 2
-    return token_count
+# Function has been moved to routes/openai_utils.py
+# def count_tokens(messages, model=None):
+#     model = 'gpt-4o'
+#     try:
+#         encoding = tiktoken.encoding_for_model(model)
+#     except KeyError:
+#         encoding = tiktoken.get_encoding("cl100k_base")
+#     token_count = 0
+#     for msg in messages:
+#         token_count += len(encoding.encode(msg['content']))
+#         token_count += 4
+#     token_count += 2
+#     return token_count
 
 
 ###########################################

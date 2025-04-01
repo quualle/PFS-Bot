@@ -54,10 +54,9 @@ except ImportError as e:
     USE_LLM_QUERY_SELECTOR = False
 from llm_manager import create_enhanced_system_prompt, generate_fallback_response, call_llm
 from utils import debug_print
-from kpi_routes import kpi_bp
 from routes.auth import auth_bp
 from routes.data_api import data_api_bp
-from routes.kpi import kpi_routes_bp
+from routes.kpi import kpi_bp
 from routes.admin_topic_editor import admin_topic_editor_bp
 from routes.admin_file_processing import admin_file_processing_bp
 
@@ -254,7 +253,7 @@ app.register_blueprint(auth_bp)
 # Removing the old chat_bp import
 # app.register_blueprint(chat_bp)
 app.register_blueprint(data_api_bp)
-app.register_blueprint(kpi_routes_bp)
+app.register_blueprint(kpi_bp)
 app.register_blueprint(admin_topic_editor_bp)
 app.register_blueprint(admin_file_processing_bp)
 

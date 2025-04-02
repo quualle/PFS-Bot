@@ -40,9 +40,33 @@ Die folgenden Endpunkte in chat.html wurden korrigiert:
 - `get_username` → `user.get_username`
 - `set_username` → `user.set_username`
 - `update_stream_chat_history` → `chat.update_stream_chat_history`
-- `chat` → `chat.chat`
+- `chat` → `chat.chat` (an mehreren Stellen)
 - `handle_clarification` → `chat.handle_clarification`
 - `get_clarification_response` → `chat.get_clarification_response`
 
 ### Implementierte Änderungen
 - URL-Endpunkte in templates/chat.html angepasst
+
+## 2025-04-02: Umfangreiche URL-Anpassungen für Blueprint-Struktur
+
+### Fehler
+```
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'chat'. 
+Did you mean 'chat.chat' instead?
+```
+
+### Analyse
+Bei der Umstellung auf die Blueprint-Struktur wurden zahlreiche Routen in entsprechende Blueprint-Dateien verschoben. In den Templates müssen alle URL-Endpunkte mit dem Blueprint-Präfix versehen werden. Dies betrifft sowohl die direkten url_for()-Aufrufe als auch JavaScript-Redirects.
+
+### Lösung
+Systematische Aktualisierung aller URL-Endpunkte in der chat.html Datei, um die Blueprint-Struktur zu reflektieren. Die folgenden Muster wurden umgesetzt:
+- `endpoint` → `blueprint_name.endpoint`
+
+### Implementierte Änderungen
+- URL-Endpunkte in templates/chat.html für folgende Routen angepasst:
+  - user.get_username
+  - user.set_username
+  - chat.update_stream_chat_history
+  - chat.chat (mehrere Stellen)
+  - chat.handle_clarification
+  - chat.get_clarification_response

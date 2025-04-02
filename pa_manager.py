@@ -23,6 +23,7 @@ WEBAPP_DOMAIN = "staging-pfs.pythonanywhere.com"
 PROJECT_PATH = "/home/PfS/staging"
 HOST = "www.pythonanywhere.com"
 ERROR_LOG_PATH = "/var/log/staging-pfs.pythonanywhere.com.error.log"
+SERVER_LOG_PATH = "/var/log/staging-pfs.pythonanywhere.com.server.log"
 API_TOKEN = "b32d07cf8fcc4d7259aa19c305cadd44727f612c"
 CONSOLE_ID = "39048079"  # ID der zu verwendenden Konsole
 
@@ -165,6 +166,81 @@ def get_error_logs(token, lines=20):
         print(f"Fehler beim Abrufen des Fehler-Logs: {response.status_code} - {response.text}")
         return False
 
+def get_server_logs(token, lines=20):
+    """
+    Zeigt die letzten Zeilen des Server-Logs und prüft, ob sie aktuell sind.
+    """
+    print(f"\nLetzte {lines} Zeilen des Server-Logs werden abgerufen...")
+    
+    response = requests.get(
+        f'https://{HOST}/api/v0/user/{USERNAME}/files/path{SERVER_LOG_PATH}',
+        headers={'Authorization': f'Token {token}'}
+    )
+    
+    if response.status_code == 200:
+        log_lines = response.text.split('\n')
+        relevant_logs = log_lines[-lines:]
+        
+        # Zeitvalidierung - prüfe, ob die neuesten Logs aktuell sind
+        current_time = datetime.datetime.now()
+        # Server-Zeit ist 2 Stunden früher als lokale Zeit
+        server_time = current_time - datetime.timedelta(hours=2)
+        server_time_str = server_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Suche nach Zeitstempeln in den Logs - Server-Log hat möglicherweise anderes Format
+        newest_log_time = None
+        for line in relevant_logs:
+            if line.strip():
+                try:
+                    # Versuche verschiedene Formate für Server-Logs
+                    # Format 1: [02/Apr/2025:08:58:06]
+                    timestamp_match = re.search(r'\[(\d{2}/[A-Za-z]{3}/\d{4}):(\d{2}:\d{2}:\d{2})\]', line)
+                    if timestamp_match:
+                        date_str = timestamp_match.group(1)
+                        time_str = timestamp_match.group(2)
+                        log_time = datetime.datetime.strptime(f"{date_str} {time_str}", "%d/%b/%Y %H:%M:%S")
+                        if newest_log_time is None or log_time > newest_log_time:
+                            newest_log_time = log_time
+                        continue
+                    
+                    # Format 2: YYYY-MM-DD HH:MM:SS 
+                    timestamp_match = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})', line)
+                    if timestamp_match:
+                        timestamp_str = timestamp_match.group(1)
+                        log_time = datetime.datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                        if newest_log_time is None or log_time > newest_log_time:
+                            newest_log_time = log_time
+                except (ValueError, IndexError) as e:
+                    continue
+        
+        print("\n--- BEGINN DES SERVER-LOGS ---")
+        print('\n'.join(relevant_logs))
+        print("--- ENDE DES SERVER-LOGS ---")
+        
+        # Hinweis zur Aktualität der Logs
+        if newest_log_time:
+            time_diff = server_time - newest_log_time
+            minutes_diff = time_diff.total_seconds() / 60
+            
+            if minutes_diff <= 5:
+                print(f"\nHinweis: Die neuesten Server-Logs sind von {newest_log_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                      f"(aktuell: {server_time_str}, vor ca. {int(minutes_diff)} Minuten) - AKTUELL")
+            else:
+                print(f"\nACHTUNG: Die neuesten Server-Logs sind von {newest_log_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                      f"(aktuell: {server_time_str}, vor ca. {int(minutes_diff)} Minuten) - MÖGLICHERWEISE VERALTET")
+                print("Die Logs sind möglicherweise nicht aktuell. Es kann sein, dass neuere Einträge noch nicht erfasst wurden.")
+        else:
+            print("\nHinweis: Zeitstempel in den Server-Logs konnte nicht ausgewertet werden.")
+            print(f"Beispiel-Logzeilen zum Debuggen:")
+            for i, line in enumerate(relevant_logs[:3]):
+                if line.strip():
+                    print(f"Zeile {i+1}: {line[:50]}...")
+        
+        return True
+    else:
+        print(f"Fehler beim Abrufen des Server-Logs: {response.status_code} - {response.text}")
+        return False
+
 def trigger_website_for_logs():
     """
     Ruft die Website auf, um sicherzustellen, dass die Logs aktualisiert werden.
@@ -233,11 +309,14 @@ def deploy():
             trigger_website_for_logs()
             
             # Längere Wartezeit, damit die Logs geschrieben werden
-            print("Warte 15 Sekunden, damit die Fehlerlogs aktualisiert werden...")
+            print("Warte 15 Sekunden, damit die Logs aktualisiert werden...")
             time.sleep(15)
             
             # Logs nach dem Neustart anzeigen
             get_error_logs(token, lines=30)
+            
+            # Server-Logs nach dem Neustart anzeigen
+            get_server_logs(token, lines=30)
             
             print("\nDeployment abgeschlossen!")
         else:

@@ -79,28 +79,32 @@ def get_dashboard_data():
     Diese Route wird beim Öffnen des Dashboards aufgerufen.
     """
     try:
-        query_type = request.args.get('type', 'overview')
-        date_range = request.args.get('range', '7d')  # Default: 7 Tage
-        seller_id = session.get('seller_id')
+        # 0. Debug-Log für Dashboard-Anfragen
+        logging.info("==== DASHBOARD DEBUGGING START ====")
+        logging.info(f"Dashboard: Anfrage von User {session.get('user_id')}")
+        # Auch im Server-Log protokollieren für Debugging
+        print(f"==== DASHBOARD DEBUGGING START - User: {session.get('user_id')} ====")
         
+        # 1. Grundlegende Daten vorbereiten
+        dashboard_result = {
+            'active_customers': 0,
+            'conversion_rate': 0,
+            'new_contracts': 0,
+            'pro_rata_revenue': 0
+        }
+        
+        seller_id = session.get('user_id')
         if not seller_id:
-            logging.error("Dashboard: Keine Seller ID in der Session gefunden")
-            return jsonify({
-                "error": "Keine Seller ID in der Session gefunden",
-                "status": "error"
-            }), 401
+            logging.error("Dashboard: Kein User in Session")
+            print("DASHBOARD DEBUG ERROR: Kein User in Session")
+            return jsonify({'error': 'Nicht eingeloggt', 'status': 'error'}), 401
         
-        # Lade die Abfragemuster
-        logging.info("Dashboard: Lade Abfragemuster")
-        try:
-            with open('query_patterns.json', 'r', encoding='utf-8') as f:
-                query_patterns = json.load(f)
-        except Exception as e:
-            logging.error(f"Fehler beim Laden der query_patterns.json: {e}")
-            return jsonify({
-                "error": "Konnte Abfragemuster nicht laden",
-                "status": "error"
-            }), 500
+        # Query patterns laden
+        query_patterns = load_query_patterns()
+        if not query_patterns:
+            logging.error("Dashboard: Konnte query_patterns nicht laden")
+            print("DASHBOARD DEBUG ERROR: Konnte query_patterns nicht laden")
+            return jsonify({'error': 'Serverfehler', 'status': 'error'}), 500
         
         # Zeitraum berechnen für die Standardabfragen
         today = datetime.now().date()
@@ -301,6 +305,7 @@ def get_dashboard_data():
             
             formatted_result = format_query_result(result, query_pattern.get('result_structure'))
             logging.info(f"Dashboard: Aktive Kunden Abfrage abgeschlossen")
+            print(f"DASHBOARD DEBUG: Aktive Kunden - {formatted_result}")
             
             dashboard_result['active_customers'] = formatted_result
             dashboard_result['count'] = len(formatted_result)
@@ -332,9 +337,12 @@ def get_dashboard_data():
             # Formatiere das Ergebnis
             formatted_cvr = format_query_result(cvr_result, query_pattern.get('result_structure'))
             logging.info(f"Dashboard: Abschlussquotenabfrage abgeschlossen: {formatted_cvr}")
+            print(f"DASHBOARD DEBUG: Abschlussquotenabfrage - {formatted_cvr}")
             
             # Speichern für die Antwort (Schlüssel korrigiert: conversion_rate statt closing_rate)
             dashboard_result['conversion_rate'] = formatted_cvr[0]['conversion_rate'] if formatted_cvr and 'conversion_rate' in formatted_cvr[0] else 0
+            logging.info(f"Dashboard: Conversion Rate gesetzt: {dashboard_result['conversion_rate']}")
+            print(f"DASHBOARD DEBUG: Conversion Rate gesetzt: {dashboard_result['conversion_rate']}")
         else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['conversion_rate'] = 0
@@ -362,10 +370,13 @@ def get_dashboard_data():
             # Formatiere das Ergebnis
             formatted_contracts = format_query_result(contracts_result, query_pattern.get('result_structure'))
             logging.info(f"Dashboard: Neue Verträge Abfrage abgeschlossen: {formatted_contracts}")
+            print(f"DASHBOARD DEBUG: Neue Verträge - {formatted_contracts}")
             
             # Speichern für die Antwort (Schlüssel korrigiert: total_contracts/normal_contracts_count statt count)
             # Wir verwenden den 'Alle neuen Verträge' Eintrag (Index 1) und den normal_contracts_count Wert
             dashboard_result['new_contracts'] = formatted_contracts[1]['normal_contracts_count'] if formatted_contracts and len(formatted_contracts) > 1 and 'normal_contracts_count' in formatted_contracts[1] else 0
+            logging.info(f"Dashboard: Neue Verträge gesetzt: {dashboard_result['new_contracts']}")
+            print(f"DASHBOARD DEBUG: Neue Verträge gesetzt: {dashboard_result['new_contracts']}")
         else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['new_contracts'] = 0
@@ -407,18 +418,24 @@ def get_dashboard_data():
             # Formatiere das Ergebnis
             formatted_revenue = format_query_result(revenue_result, query_pattern.get('result_structure'))
             logging.info(f"Dashboard: Pro-Rata-Umsatz Abfrage abgeschlossen: {formatted_revenue}")
+            print(f"DASHBOARD DEBUG: Pro-Rata-Umsatz - {formatted_revenue}")
             
             # Speichern für die Antwort (Schlüssel korrigiert: total_monthly_pro_rata_revenue statt revenue)
             dashboard_result['pro_rata_revenue'] = formatted_revenue[0]['total_monthly_pro_rata_revenue'] if formatted_revenue and 'total_monthly_pro_rata_revenue' in formatted_revenue[0] else 0
+            logging.info(f"Dashboard: Pro-Rata-Umsatz gesetzt: {dashboard_result['pro_rata_revenue']}")
+            print(f"DASHBOARD DEBUG: Pro-Rata-Umsatz gesetzt: {dashboard_result['pro_rata_revenue']}")
         else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['pro_rata_revenue'] = 0
         
         # Status hinzufügen
         dashboard_result['status'] = 'success'
+        logging.info(f"Dashboard: Erfolgreiche Antwort: {dashboard_result}")
+        print(f"==== DASHBOARD DEBUGGING ENDE - Erfolgreiche Antwort: {dashboard_result} ====")
         
         return jsonify(dashboard_result)
             
     except Exception as e:
         logging.error(f"Fehler in get_dashboard_data: {e}")
+        print(f"DASHBOARD DEBUG ERROR: Fehler in get_dashboard_data: {e}")
         return jsonify({'error': str(e), 'status': 'error'}), 500

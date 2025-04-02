@@ -140,3 +140,20 @@ def chat():
 ### Implementierte Änderungen
 - Vollständige Implementierung von `calculate_chat_stats` in routes/chat_utils.py
 - Übergabe der `stats`-Variable an das chat.html-Template in routes/chat_routes.py
+
+## 2025-04-02: Namenskollision der calculate_chat_stats-Funktion behoben
+
+### Fehler
+```
+2025-04-02 08:24:46,909: Stub-Implementierung von calculate_chat_stats wird verwendet
+2025-04-02 08:25:12,923: Stub-Implementierung von calculate_chat_stats wird verwendet
+```
+
+### Analyse
+Obwohl wir die vollständige Implementierung von `calculate_chat_stats` in routes/chat_utils.py hinzugefügt und in routes/chat_routes.py importiert haben, wurde weiterhin die Stub-Version der Funktion verwendet. Dies lag an einer Namenskollision: Die lokale Definition in chat_routes.py hatte Vorrang vor der importierten Funktion.
+
+### Lösung
+Die Stub-Implementierung von `calculate_chat_stats` in routes/chat_routes.py wurde entfernt, sodass nun nur noch die vollständige Implementierung aus chat_utils.py verwendet wird.
+
+### Implementierte Änderungen
+- Entfernung der Stub-Implementierung von `calculate_chat_stats` in routes/chat_routes.py

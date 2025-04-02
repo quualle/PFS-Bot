@@ -33,10 +33,6 @@ def load_tool_config():
     logging.warning("Stub-Implementierung von load_tool_config wird verwendet")
     return {}
 
-def calculate_chat_stats():
-    logging.warning("Stub-Implementierung von calculate_chat_stats wird verwendet")
-    return {}
-
 def store_chatlog(user_name, chat_history):
     logging.warning("Stub-Implementierung von store_chatlog wird verwendet")
     

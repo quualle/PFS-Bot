@@ -273,10 +273,11 @@ def generate_conversational_clarification_stream(clarification_data):
             time.sleep(0.1)  # Kleine Verzögerung für natürlichere Ausgabe
         
         # "human_in_loop" Event sendet die Metadaten
-        yield f"data: {json.dumps({
+        clarification_data_json = json.dumps({
             'type': 'conversational_clarification',
             'data': clarification_data
-        })}\n\n"
+        })
+        yield f"data: {clarification_data_json}\n\n"
         
         yield f"data: {json.dumps({'type': 'end'})}\n\n"
     except Exception as e:

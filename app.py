@@ -14,6 +14,7 @@ from functools import wraps
 from werkzeug.utils import secure_filename
 from markdown import markdown
 from flask_session import Session
+from flask_wtf.csrf import CSRFProtect
 
 # Import utility modules we created
 from routes.utils import login_required, debug_print

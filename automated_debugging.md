@@ -157,3 +157,27 @@ Die Stub-Implementierung von `calculate_chat_stats` in routes/chat_routes.py wur
 
 ### Implementierte Änderungen
 - Entfernung der Stub-Implementierung von `calculate_chat_stats` in routes/chat_routes.py
+
+## 2025-04-02: JavaScript-Konsolenwarnungen behoben
+
+### Fehler
+```
+(index):1779 Element mit ID #kpi-closing-rate-date-range nicht gefunden
+setElementText @ (index):1779
+(index):1779 Element mit ID #closing-rate-percent nicht gefunden
+setElementText @ (index):1779
+(index):1779 Element mit ID #closing-rate-absolute nicht gefunden
+[...]
+```
+
+### Analyse
+Die JavaScript-Konsole zeigte zahlreiche Warnungen, die beim Versuch auftraten, nicht vorhandene DOM-Elemente zu aktualisieren. Diese Warnungen waren nicht kritisch für die Funktionalität der Anwendung, aber sie haben die Konsole mit unnötigen Meldungen überflutet.
+
+Das Problem lag in der `setElementText`-Funktion in der Datei `templates/components/my_business/container.html`, die eine Warnung ausgab, wenn ein Element nicht gefunden wurde. Da einige Elemente nur in bestimmten Ansichten der Anwendung vorhanden sind, waren diese Warnungen unnötig.
+
+### Lösung
+Die `setElementText`-Funktion wurde überarbeitet, um elegant fehlzuschlagen, wenn Elemente nicht im DOM gefunden werden. Die Warnungen werden nicht mehr ausgegeben, was zu einer saubereren Konsolenausgabe führt.
+
+### Implementierte Änderungen
+- Überarbeitung der `setElementText`-Funktion in `templates/components/my_business/container.html`, um Konsolenwarnungen zu vermeiden
+- Verbesserte Unterstützung für verschiedene ID-Selektorformate (mit und ohne #-Präfix)

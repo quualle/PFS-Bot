@@ -404,12 +404,14 @@
         
         // Hilfsfunktion zur Textaktualisierung von Elementen
         function setElementText(elementId, text) {
-            const element = document.getElementById(elementId);
+            // Unterstützt sowohl ID-Selektoren (mit #) als auch direkte Element-IDs
+            const selector = elementId.startsWith('#') ? elementId : `#${elementId}`;
+            // querySelector gibt null zurück, wenn das Element nicht existiert
+            const element = document.querySelector(selector);
             if (element) {
                 element.textContent = text;
-            } else {
-                console.warn(`Element mit ID ${elementId} nicht gefunden`);
             }
+            // Keine Warnung mehr ausgeben, wenn das Element nicht gefunden wird
         }
         
         // Hilfsfunktion zum Ausblenden des Loading-Spinners

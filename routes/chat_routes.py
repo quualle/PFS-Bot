@@ -7,7 +7,6 @@ chat_bp = Blueprint('chat', __name__)
 
 # Import necessary functions from the main app
 from app import (
-    format_customer_details,
     conversation_manager, extract_date_params, select_optimal_tool_with_reasoning,
     load_tool_config, calculate_chat_stats, store_chatlog, download_wissensbasis
 )
@@ -20,6 +19,9 @@ from routes.stream_utils import stream_response, stream_text_response, generate_
 
 # Import BigQuery functions
 from bigquery_functions import handle_function_call
+
+# Import extraction utilities
+from extract import format_customer_details
 
 @chat_bp.route("/clarify", methods=["POST"])
 def handle_clarification():

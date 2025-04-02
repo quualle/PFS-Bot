@@ -139,33 +139,39 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
         for param_name in used_params:
             param_value = parameters.get(param_name)
             
-            # Konvertiere Limit-Parameter explizit zu Integer
+            # Vorverarbeitung für spezielle Parameter
+            # 1. LIMIT-Parameter immer als INT64 behandeln
             if param_name == 'limit' and param_value is not None:
                 try:
                     param_value = int(param_value)
+                    param_type = "INT64"
                 except (ValueError, TypeError):
                     param_value = 100  # Default fallback
+                    param_type = "INT64"
                     
-            # Konvertiere Datumswerte vom Format DD.MM.YYYY zu YYYY-MM-DD
-            if param_name in ['start_date', 'end_date'] and isinstance(param_value, str) and param_value.count('.') == 2:
+            # 2. Datumsparameter vom Format DD.MM.YYYY zu YYYY-MM-DD konvertieren
+            elif param_name in ['start_date', 'end_date', 'start_of_month', 'end_of_month'] and isinstance(param_value, str) and param_value.count('.') == 2:
                 try:
                     # Beispiel: '03.03.2025' -> '2025-03-03'
                     day, month, year = param_value.split('.')
                     param_value = f"{year}-{month}-{day}"
+                    param_type = "DATE"
                 except Exception as e:
                     logger.error(f"Fehler bei der Datumskonvertierung für {param_name}: {e}")
+                    param_type = "STRING"
             
-            # Parameter-Typ bestimmen
-            if isinstance(param_value, int):
-                param_type = "INT64"
-            elif isinstance(param_value, float):
-                param_type = "FLOAT64"
-            elif isinstance(param_value, bool):
-                param_type = "BOOL"
-            elif isinstance(param_value, datetime.date):
-                param_type = "DATE"
+            # 3. Parameter-Typ für alle anderen Parameter bestimmen
             else:
-                param_type = "STRING"
+                if isinstance(param_value, int):
+                    param_type = "INT64"
+                elif isinstance(param_value, float):
+                    param_type = "FLOAT64"
+                elif isinstance(param_value, bool):
+                    param_type = "BOOL"
+                elif isinstance(param_value, datetime.date):
+                    param_type = "DATE"
+                else:
+                    param_type = "STRING"
                 
             # Auch NULL-Werte müssen korrekt typisiert werden
             query_parameters.append(
@@ -184,7 +190,7 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
             row_dict = {}
             for key, value in row.items():
                 # Konvertiere nicht-serialisierbare Werte
-                if isinstance(value, (datetime.datetime, datetime.date)):
+                if hasattr(value, 'isoformat'):
                     row_dict[key] = value.isoformat()
                 else:
                     row_dict[key] = value

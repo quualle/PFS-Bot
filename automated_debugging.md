@@ -493,7 +493,6 @@ Nach Aktivierung des Ladens von SQL-Abfragen aus der `query_patterns.json` Datei
 2. **LIMIT-Parameter-Problem**: Die LIMIT-Klausel in SQL-Abfragen erwartete eine Integer-Literal, aber der Wert wurde nicht korrekt konvertiert. Dies führte zu dem Fehler `400 LIMIT expects an integer literal or parameter at [1:1059]`.
 
 ### Lösung
-
 Die `execute_bigquery_query`-Funktion in `bigquery_functions.py` wurde aktualisiert, um:
 
 1. Datumsparameter automatisch vom Format DD.MM.YYYY zum Format YYYY-MM-DD zu konvertieren, das von BigQuery erwartet wird:
@@ -521,3 +520,42 @@ Die `execute_bigquery_query`-Funktion in `bigquery_functions.py` wurde aktualisi
 ### Test
 
 Nach dem Hochladen der Änderungen wurde die Dashboard-Funktion getestet. Die Fehler mit dem Datumformat und dem LIMIT-Parameter sollten nun behoben sein.
+
+## BigQuery SQL-Abfragen beheben - Teil 3 - 02.04.2025
+
+### Problem
+
+Nach der Implementierung der Konvertierung von Datumsparametern und des LIMIT-Parameters tritt weiterhin ein Fehler mit dem LIMIT-Parameter auf:
+
+```
+google.api_core.exceptions.BadRequest: 400 LIMIT expects an integer literal or parameter at [1:1059]
+```
+
+Dies deutet darauf hin, dass die ursprüngliche Korrektur nicht ausreichend war und der Parameter trotz Konvertierung nicht als korrekter Integer an BigQuery übergeben wurde.
+
+### Analyse
+
+Das Problem liegt vermutlich in der Art, wie BigQuery die Parameter typisiert. Obwohl wir den Wert in einen Python-Integer konvertiert haben, müssen wir auch sicherstellen, dass BigQuery diesen Wert explizit als INT64-Typ erkennt und behandelt.
+
+### Lösung
+
+Die `execute_bigquery_query`-Funktion in `bigquery_functions.py` wurde verbessert:
+
+1. Die Parametertyp-Zuweisung wurde neu strukturiert, um spezielle Parameter früher zu erkennen.
+2. Der LIMIT-Parameter wird jetzt explizit als INT64 typisiert, unabhängig von der späteren Typbestimmung:
+   ```python
+   if param_name == 'limit' and param_value is not None:
+       try:
+           param_value = int(param_value)
+           param_type = "INT64"  # Explizite Typzuweisung
+       except (ValueError, TypeError):
+           param_value = 100  # Default fallback
+           param_type = "INT64"  # Auch für den Fallback-Wert
+   ```
+
+3. Die Datumserkennung wurde erweitert, um auch andere Datumsparameter wie `start_of_month` und `end_of_month` zu erfassen und korrekt zu konvertieren.
+4. Die Logik für die Typbestimmung wurde verbessert, sodass Parameter-Typen jetzt direkt während der Vorverarbeitung gesetzt werden.
+
+### Test
+
+Nach dem Hochladen der Änderungen wurde die Dashboard-Funktion erneut getestet, um zu überprüfen, ob die SQL-Parameter-Probleme behoben wurden.

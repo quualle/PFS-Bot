@@ -6,8 +6,8 @@ import os
 # Blueprint Definition
 user_bp = Blueprint('user', __name__)
 
-# Import necessary functions from the main app
-from app import ensure_user_id
+# Import necessary functions from utils module
+from routes.utils import ensure_user_id
 
 @user_bp.route('/get_username', methods=['GET'])
 def get_username():

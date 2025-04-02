@@ -6,6 +6,7 @@ This module contains functions and decorators used across multiple blueprints.
 import logging
 from functools import wraps
 from flask import session, jsonify
+import uuid  # Für UUID-Generierung in ensure_user_id
 
 # Authentication decorator
 def login_required(f):
@@ -28,3 +29,11 @@ def debug_print(category, message):
     """
     print(f"DEBUG [{category}]: {message}")
     logging.debug(f"[{category}] {message}")
+
+def ensure_user_id():
+    """
+    Stellt sicher, dass ein user_id in der Session existiert.
+    Erzeugt eine neue UUID, wenn keine vorhanden ist.
+    """
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())

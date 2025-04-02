@@ -41,6 +41,7 @@ Die folgenden Endpunkte in chat.html wurden korrigiert:
 - `set_username` → `user.set_username`
 - `update_stream_chat_history` → `chat.update_stream_chat_history`
 - `chat` → `chat.chat`
+- `handle_clarification` → `chat.handle_clarification`
 
 ### Implementierte Änderungen
 - URL-Endpunkte in templates/chat.html angepasst

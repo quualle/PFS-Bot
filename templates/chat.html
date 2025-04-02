@@ -1884,7 +1884,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                                                         // Formular erstellen
                                                         const form = document.createElement('form');
                                                         form.method = 'post';
-                                                        form.action = "{{ url_for('handle_clarification') }}";
+                                                        form.action = "{{ url_for('chat.handle_clarification') }}";
                                                         
                                                         // CSRF Token
                                                         const csrfInput = document.createElement('input');

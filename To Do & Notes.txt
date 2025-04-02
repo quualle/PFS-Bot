@@ -4,3 +4,4 @@ start_date = "2025-01-01T00:00:00.000Z"
 end_date = "2025-01-31T00:00:00.000Z"
 limit = 1000
 
+tail -f /var/log/staging-pfs.pythonanywhere.com.error.log

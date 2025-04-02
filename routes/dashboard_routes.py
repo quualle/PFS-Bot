@@ -331,10 +331,10 @@ def get_dashboard_data():
             
             # Formatiere das Ergebnis
             formatted_cvr = format_query_result(cvr_result, query_pattern.get('result_structure'))
-            logging.info(f"Dashboard: Abschlussquotenabfrage abgeschlossen")
+            logging.info(f"Dashboard: Abschlussquotenabfrage abgeschlossen: {formatted_cvr}")
             
-            # Speichern für die Antwort
-            dashboard_result['conversion_rate'] = formatted_cvr[0]['closing_rate'] if formatted_cvr and 'closing_rate' in formatted_cvr[0] else 0
+            # Speichern für die Antwort (Schlüssel korrigiert: conversion_rate statt closing_rate)
+            dashboard_result['conversion_rate'] = formatted_cvr[0]['conversion_rate'] if formatted_cvr and 'conversion_rate' in formatted_cvr[0] else 0
         else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['conversion_rate'] = 0
@@ -361,26 +361,40 @@ def get_dashboard_data():
             
             # Formatiere das Ergebnis
             formatted_contracts = format_query_result(contracts_result, query_pattern.get('result_structure'))
-            logging.info(f"Dashboard: Neue Verträge Abfrage abgeschlossen")
+            logging.info(f"Dashboard: Neue Verträge Abfrage abgeschlossen: {formatted_contracts}")
             
-            # Speichern für die Antwort
-            dashboard_result['new_contracts'] = formatted_contracts[0]['count'] if formatted_contracts and 'count' in formatted_contracts[0] else 0
+            # Speichern für die Antwort (Schlüssel korrigiert: total_contracts/normal_contracts_count statt count)
+            # Wir verwenden den 'Alle neuen Verträge' Eintrag (Index 1) und den normal_contracts_count Wert
+            dashboard_result['new_contracts'] = formatted_contracts[1]['normal_contracts_count'] if formatted_contracts and len(formatted_contracts) > 1 and 'normal_contracts_count' in formatted_contracts[1] else 0
         else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['new_contracts'] = 0
         
-        # 5. Pro-Rata-Umsatz (get_pro_rata_revenue)
-        query_name = "get_pro_rata_revenue"
+        # 5. Pro-Rata-Umsatz (get_revenue_current_month_pro_rata)
+        query_name = "get_revenue_current_month_pro_rata"  # Korrekter Name aus query_patterns.json
         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
         if query_name in query_patterns['common_queries']:
             query_pattern = query_patterns['common_queries'][query_name]
             
-            # Zeitraum: Aktuelles Jahr
+            # Zeitraum: Aktueller Monat mit korrekten Parametern
             today_date = datetime.now().date()
-            start_of_year = datetime(today_date.year, 1, 1).date().isoformat()
-            end_of_year = datetime(today_date.year, 12, 31).date().isoformat()
-            parameters = {'seller_id': seller_id, 'start_date': start_of_year, 'end_date': end_of_year}
+            start_of_month = datetime(today_date.year, today_date.month, 1).date().isoformat()
+            # Letzter Tag des aktuellen Monats
+            if today_date.month == 12:
+                end_of_month = datetime(today_date.year, 12, 31).date().isoformat()
+            else:
+                end_of_month = (datetime(today_date.year, today_date.month + 1, 1) - timedelta(days=1)).date().isoformat()
+            
+            # Tage im Monat berechnen
+            days_in_month = (datetime.strptime(end_of_month, "%Y-%m-%d") - datetime.strptime(start_of_month, "%Y-%m-%d")).days + 1
+            
+            parameters = {
+                'seller_id': seller_id, 
+                'start_of_month': start_of_month, 
+                'end_of_month': end_of_month,
+                'days_in_month': days_in_month
+            }
             logging.info(f"Dashboard: Parameter für Pro-Rata-Umsatz: {parameters}")
             
             # Führe die Abfrage aus
@@ -392,10 +406,10 @@ def get_dashboard_data():
             
             # Formatiere das Ergebnis
             formatted_revenue = format_query_result(revenue_result, query_pattern.get('result_structure'))
-            logging.info(f"Dashboard: Pro-Rata-Umsatz Abfrage abgeschlossen")
+            logging.info(f"Dashboard: Pro-Rata-Umsatz Abfrage abgeschlossen: {formatted_revenue}")
             
-            # Speichern für die Antwort
-            dashboard_result['pro_rata_revenue'] = formatted_revenue[0]['revenue'] if formatted_revenue and 'revenue' in formatted_revenue[0] else 0
+            # Speichern für die Antwort (Schlüssel korrigiert: total_monthly_pro_rata_revenue statt revenue)
+            dashboard_result['pro_rata_revenue'] = formatted_revenue[0]['total_monthly_pro_rata_revenue'] if formatted_revenue and 'total_monthly_pro_rata_revenue' in formatted_revenue[0] else 0
         else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['pro_rata_revenue'] = 0

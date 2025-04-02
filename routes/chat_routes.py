@@ -293,6 +293,7 @@ def handle_clarification():
 def chat():
     # Stats für die Anzeige im Template bereitstellen
     stats = calculate_chat_stats()
+    logging.info(f"Chat-Stats wurden berechnet: {stats}")
     return render_template("chat.html", stats=stats)
 
 @chat_bp.route('/update_stream_chat_history', methods=['POST'])

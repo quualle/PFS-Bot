@@ -234,3 +234,36 @@ if query_name in query_patterns['common_queries']:
 ```
 
 Nach dieser Implementierung werden nun wieder alle Geschäftsdaten im MyBusiness-Dashboard korrekt angezeigt.
+
+## 2023-04-05: Chat-Template zeigt keine Statistiken an
+
+### Fehler
+Im Chat-Template tritt ein Jinja2-Fehler auf: `jinja2.exceptions.UndefinedError: 'stats' is undefined`. Dies geschieht, weil die Variable `stats` nicht korrekt an das Template übergeben wird, obwohl die entsprechende Route in `chat_routes.py` sie korrekt zu übergeben scheint.
+
+### Analyse
+Bei der Umstellung auf Blueprints wurde zwar die `chat`-Route korrekt implementiert, aber es gibt zwei Versionen der `calculate_chat_stats`-Funktion:
+1. Eine ursprüngliche Version in `app.py`
+2. Eine neuere Version in `chat_utils.py`, die in `chat_routes.py` importiert wird
+
+Das Problem könnte darin bestehen, dass die Blueprint-Version der Funktion nicht korrekt funktioniert oder dass Template-Variablen nicht korrekt übergeben werden.
+
+### Lösung
+Es gibt mehrere mögliche Lösungsansätze:
+
+1. **Direkte Template-Variablen-Übergabe verbessern:**
+   ```python
+   @chat_bp.route("/", methods=["GET", "POST"])
+   def chat():
+       # Explizites Debugging
+       stats = calculate_chat_stats()
+       logging.info(f"Chat-Stats berechnet: {stats}")
+       return render_template("chat.html", stats=stats)
+   ```
+
+2. **Template-Fehlerbehandlung verbessern:**
+   Im Template kann eine bessere Fehlerbehandlung eingebaut werden, um Fehler zu vermeiden, wenn `stats` nicht definiert ist.
+
+3. **Verwendung der gleichen Funktion:**
+   Sicherstellen, dass nur eine Version der `calculate_chat_stats`-Funktion im System existiert und diese überall konsistent verwendet wird.
+
+Der bevorzugte Ansatz wäre, die neuere, Blueprint-basierte Implementierung zu verwenden und sicherzustellen, dass sie korrekt funktioniert, während die ältere Version in `app.py` entfernt wird.

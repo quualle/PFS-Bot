@@ -2724,24 +2724,24 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                 <h2>XORA Nachrichten-Statistiken</h2>
                 <div class="stats-chart-container">
                     <div class="stats-chart">
-                        <div class="chart-bar" style="height: {{ (stats.today / stats.total * 100) if stats.total else 0 }}%"></div>
+                        <div class="chart-bar" style="height: {{ (stats.today / stats.total * 100) if stats and stats.total else 0 }}%"></div>
                         <div class="chart-label">Heute</div>
-                        <div class="chart-value">{{ stats.today }}</div>
+                        <div class="chart-value">{{ stats.today if stats else 0 }}</div>
                     </div>
                     <div class="stats-chart">
-                        <div class="chart-bar" style="height: {{ (stats.month / stats.total * 100) if stats.total else 0 }}%"></div>
+                        <div class="chart-bar" style="height: {{ (stats.month / stats.total * 100) if stats and stats.total else 0 }}%"></div>
                         <div class="chart-label">Monat</div>
-                        <div class="chart-value">{{ stats.month }}</div>
+                        <div class="chart-value">{{ stats.month if stats else 0 }}</div>
                     </div>
                     <div class="stats-chart">
-                        <div class="chart-bar" style="height: {{ (stats.year / stats.total * 100) if stats.total else 0 }}%"></div>
+                        <div class="chart-bar" style="height: {{ (stats.year / stats.total * 100) if stats and stats.total else 0 }}%"></div>
                         <div class="chart-label">Jahr</div>
-                        <div class="chart-value">{{ stats.year }}</div>
+                        <div class="chart-value">{{ stats.year if stats else 0 }}</div>
                     </div>
                     <div class="stats-chart">
                         <div class="chart-bar" style="height: 100%"></div>
                         <div class="chart-label">Gesamt</div>
-                        <div class="chart-value">{{ stats.total }}</div>
+                        <div class="chart-value">{{ stats.total if stats else 0 }}</div>
                     </div>
                 </div>
                 <button id="closeStatsBtn">Schließen</button>

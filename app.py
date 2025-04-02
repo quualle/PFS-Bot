@@ -82,8 +82,7 @@ app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Google OAuth konfigurieren
-app = configure_google_auth(app)
+# Google OAuth wird bereits über auth_bp registriert
 Session(app)
 
 logging.basicConfig(level=logging.info)
@@ -590,12 +589,10 @@ def format_simple_results(data_list):
             parts = []
             if "first_name" in item and "last_name" in item:
                 parts.append(f"{item['first_name']} {item['last_name']}")
-            if "agency_name" in item:
-                parts.append(f"Agentur: {item['agency_name']}")
-            if "bill_start" in item and "bill_end" in item:
-                parts.append(f"Zeitraum: {format_date(item['bill_start'])} bis {format_date(item['bill_end'])}")
-            if "prov_seller" in item:
-                parts.append(f"Provision: {item['prov_seller']}€")
+            if "email" in item:
+                parts.append(item["email"])
+            if "name" in item:
+                parts.append(item["name"])
             
             if parts:
                 result.append(" | ".join(parts))
@@ -604,7 +601,7 @@ def format_simple_results(data_list):
                 simple_parts = []
                 count = 0
                 for key, value in item.items():
-                    if count < 3 and key not in ["_id", "cs_id", "contract_id", "lead_id"]:
+                    if count < 3 and isinstance(value, (str, int, float, bool)):
                         simple_parts.append(f"{key}: {value}")
                         count += 1
                 result.append(" | ".join(simple_parts))

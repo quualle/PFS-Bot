@@ -370,3 +370,40 @@ Diese Änderung sollte sicherstellen, dass die Funktion korrekt importiert wird 
 1. Bei der Umstellung von relativen zu absoluten Importen muss die genaue Modulstruktur des Projekts berücksichtigt werden.
 2. Es ist wichtig, die Fehlerprotokolle sorgfältig zu analysieren, um die genaue Ursache von Importfehlern zu identifizieren.
 3. Die Korrektur von Importfehlern kann ein mehrstufiger Prozess sein, bei dem mehrere Fehler nacheinander behoben werden müssen.
+
+## 2025-04-02 - Import-Fehler in Blueprint-Dateien behoben, Teil 3
+
+### Problem
+Trotz der Korrektur des Imports in der Datei `routes/data_api.py` (von `from wissensbasis_manager import lade_themen` zu `from routes.kb_utils import lade_themen`) wird auf dem Server immer noch der alte Import verwendet und der Fehler besteht fort:
+```
+ModuleNotFoundError: No module named 'wissensbasis_manager'
+```
+
+### Analyse
+Es scheint ein Problem mit dem Caching oder der Dateiaktualisierung auf dem Server zu geben. Obwohl die Git-Pull-Protokolle bestätigen, dass die Änderung auf den Server übertragen wurde, zeigen die Fehlerprotokolle immer noch den alten Import-Pfad.
+
+### Lösung
+Statt weiter zu versuchen, den Import in der bestehenden Datei zu korrigieren, haben wir einen Adapter-Ansatz gewählt:
+
+1. Eine neue Datei `wissensbasis_manager.py` wurde im Stammverzeichnis des Projekts erstellt
+2. Diese Datei importiert die benötigten Funktionen aus `routes.kb_utils` und stellt sie zur Verfügung
+3. Das ermöglicht der Anwendung, den Import `from wissensbasis_manager import lade_themen` weiterhin zu verwenden
+
+```python
+"""
+Wissensbasis-Manager modul.
+Dient als Adapter für die kb_utils Module, um Kompatibilität sicherzustellen.
+"""
+
+# Import der benötigten Funktionen aus kb_utils
+from routes.kb_utils import lade_themen, aktualisiere_themen, get_next_thema_number
+
+# Andere Funktionen können nach Bedarf hinzugefügt werden
+```
+
+Dieser Ansatz ist pragmatisch und vermeidet mögliche Probleme mit hartnäckigen Caching-Mechanismen oder anderen Konfigurationsproblemen auf dem Server.
+
+### Gelernte Lektionen
+1. Manchmal ist es effizienter, einen Workaround zu implementieren, als ein hartnäckiges Problem direkt zu lösen.
+2. Adapter-Muster können nützlich sein, um Kompatibilität zu gewährleisten, ohne bestehenden Code zu ändern.
+3. Bei persistenten Server-Problemen sollte man alternative Lösungsansätze in Betracht ziehen.

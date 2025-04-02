@@ -1510,7 +1510,7 @@
 
         // Namens-Check
         function checkUserName() {
-            fetch("{{ url_for('get_username') }}", {
+            fetch("{{ url_for('user.get_username') }}", {
                 method: 'GET',
                 headers: {
                     'X-CSRFToken': csrfToken
@@ -1579,7 +1579,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             const nameValue = userNameInput.value.trim();
             if (nameValue.length < 3) return; 
 
-            fetch("{{ url_for('set_username') }}", {
+            fetch("{{ url_for('user.set_username') }}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -2820,53 +2820,35 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                     console.log('XHR Response Text:', this.responseText.substring(0, 200) + '...');
                     
                     if (this.status === 200) {
-                        try {
-                            const data = JSON.parse(this.responseText);
-                            console.log('Daten erfolgreich geladen:', data);
-                            
-                            // Direkte Anzeige der Kundenzahl
-                            if (activeCustomersNowWidget) {
-                                console.log('DEBUG: Berechneter Gesamtumsatz:', data.count);
-                                activeCustomersNowWidget.innerHTML = `
-                                    <div class="customer-count">${data.count || 0}</div>
-                                `;
-                            }
-                            
-                            // Direktes Anzeigen der Kundenliste
-                            if (activeCustomersListContainer && data.data && data.data.length > 0) {
-                                let html = '<div class="customer-list">';
-                                
-                                data.data.forEach(customer => {
-                                    console.log(`DEBUG: Verarbeite Kunde ${customer.first_name || ''} ${customer.last_name || ''}`);
-                                    html += `
-                                        <div class="customer-item">
-                                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
-                                            <div class="customer-details">
-                                                <div class="detail-item">Seit: ${formatDate(customer.since) || 'n/a'}</div>
-                                                <div class="detail-item">Status: ${customer.state || 'Aktiv'}</div>
-                                            </div>
-                                        </div>
-                                    `;
-                                });
-                                
-                                html += `</div>`;
-                                activeCustomersListContainer.innerHTML = html;
-                            } else if (activeCustomersListContainer) {
-                                activeCustomersListContainer.innerHTML = '<div class="no-data">Keine Kunden gefunden</div>';
-                            }
-                        } catch (e) {
-                            console.error('Fehler beim Parsen der Antwort:', e);
-                            
-                            // Fehler anzeigen
-                            const errorHtml = `
-                                <div class="error-message">
-                                    <div>Fehler beim Parsen der Daten</div>
-                                    <div class="error-details">${e.message}</div>
-                                </div>
+                        // Direkte Anzeige der Kundenzahl
+                        if (activeCustomersNowWidget) {
+                            console.log('DEBUG: Berechneter Gesamtumsatz:', data.count);
+                            activeCustomersNowWidget.innerHTML = `
+                                <div class="customer-count">${data.count || 0}</div>
                             `;
+                        }
+                        
+                        // Direktes Anzeigen der Kundenliste
+                        if (activeCustomersListContainer && data.data && data.data.length > 0) {
+                            let html = '<div class="customer-list">';
                             
-                            if (activeCustomersNowWidget) activeCustomersNowWidget.innerHTML = errorHtml;
-                            if (activeCustomersListContainer) activeCustomersListContainer.innerHTML = errorHtml;
+                            data.data.forEach(customer => {
+                                console.log(`DEBUG: Verarbeite Kunde ${customer.first_name || ''} ${customer.last_name || ''}`);
+                                html += `
+                                    <div class="customer-item">
+                                        <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
+                                        <div class="customer-details">
+                                            <div class="detail-item">Seit: ${formatDate(customer.since) || 'n/a'}</div>
+                                            <div class="detail-item">Status: ${customer.state || 'Aktiv'}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            
+                            html += `</div>`;
+                            activeCustomersListContainer.innerHTML = html;
+                        } else if (activeCustomersListContainer) {
+                            activeCustomersListContainer.innerHTML = '<div class="no-data">Keine Kunden gefunden</div>';
                         }
                     } else {
                         console.error('Fehler bei der Anfrage:', this.status);
@@ -2875,7 +2857,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         const errorHtml = `
                             <div class="error-message">
                                 <div>Fehler beim Laden der Daten</div>
-                                <div class="error-details">Status: ${this.status}</div>
+                                <div class="error-details">${this.status}</div>
                             </div>
                         `;
                         

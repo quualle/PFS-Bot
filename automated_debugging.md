@@ -89,3 +89,21 @@ Aktualisierung der URL-Endpunkte in der chat.html Datei:
 
 ### Implementierte Änderungen
 - URL-Endpunkt für Feedback in templates/chat.html angepasst
+
+## 2025-04-02: Chat-Verlauf-Blueprint-Endpunkt korrigiert
+
+### Fehler
+```
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'clear_chat_history'. 
+Did you mean 'chat.clear_chat_history' instead?
+```
+
+### Analyse
+Bei der systematischen Überprüfung der Templates wurden weitere Routen gefunden, die auf die Blueprint-Struktur angepasst werden mussten. Dies betrifft die Funktion zum Löschen des Chat-Verlaufs, die zum `chat`-Blueprint gehört.
+
+### Lösung
+Aktualisierung der URL-Endpunkte in der chat.html Datei:
+- `clear_chat_history` → `chat.clear_chat_history`
+
+### Implementierte Änderungen
+- URL-Endpunkt für das Löschen des Chat-Verlaufs in templates/chat.html angepasst

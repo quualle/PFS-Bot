@@ -2672,7 +2672,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         // Event-Listener für Clear Chat Button
         document.getElementById('clearChatBtn').addEventListener('click', function() {
             if (confirm('Möchten Sie wirklich den gesamten Chatverlauf löschen?')) {
-                fetch("{{ url_for('clear_chat_history') }}", {
+                fetch("{{ url_for('chat.clear_chat_history') }}", {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': csrfToken,

@@ -267,3 +267,35 @@ Es gibt mehrere mögliche Lösungsansätze:
    Sicherstellen, dass nur eine Version der `calculate_chat_stats`-Funktion im System existiert und diese überall konsistent verwendet wird.
 
 Der bevorzugte Ansatz wäre, die neuere, Blueprint-basierte Implementierung zu verwenden und sicherzustellen, dass sie korrekt funktioniert, während die ältere Version in `app.py` entfernt wird.
+
+## 2025-04-02: Dummy-Funktionen durch echte API-Implementierungen ersetzt
+
+### Fehler
+```
+WARN: Dummy handle_function_call called in kpi.py for get_cvr_lead_contract
+WARN: Dummy execute_bigquery_query called in data_api.py
+WARN: Dummy format_query_result called in data_api.py
+```
+
+### Analyse
+Bei der Umstellung auf die Blueprint-Struktur wurden in einigen Blueprint-Dateien (kpi.py und data_api.py) temporäre Dummy-Funktionen implementiert, die nur Platzhalter-Daten zurückgaben. Diese Funktionen sollten eigentlich durch die echten Implementierungen aus dem bigquery_functions.py-Modul ersetzt werden, was jedoch nicht geschehen ist.
+
+Das Problem wurde in den Server-Logs erkannt, wo bei jeder Anfrage Warnungsmeldungen wie "Dummy handle_function_call called in kpi.py" erschienen. Diese Dummy-Funktionen lieferten nur statische Test-Daten zurück, sodass keine echten Daten aus BigQuery abgerufen wurden.
+
+Die eigentlichen echten Funktionen sind bereits im Modul bigquery_functions.py implementiert und funktionsfähig.
+
+### Lösung
+Folgende Änderungen wurden vorgenommen:
+
+1. In `routes/kpi.py`:
+   - Die Dummy-Implementierung von `handle_function_call` wurde entfernt
+   - Stattdessen wurde die echte Funktion aus dem Modul `..bigquery_functions` importiert
+
+2. In `routes/data_api.py`:
+   - Die Dummy-Implementierungen von `execute_bigquery_query` und `format_query_result` wurden entfernt
+   - Stattdessen wurden die echten Funktionen aus dem Modul `..bigquery_functions` importiert
+   - Die Dummy-Implementierung von `lade_themen` wurde entfernt und durch den Import der echten Funktion aus dem Modul `..wissensbasis_manager` ersetzt
+
+### Implementierte Änderungen
+- In `routes/kpi.py`: Ersetzung der Dummy-Funktion handle_function_call durch Import der echten Funktion
+- In `routes/data_api.py`: Ersetzung der Dummy-Funktionen execute_bigquery_query, format_query_result und lade_themen durch Importe der echten Funktionen

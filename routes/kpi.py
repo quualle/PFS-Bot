@@ -5,20 +5,8 @@ import logging
 from routes.utils import login_required
 from functools import wraps
 
-# Placeholder for dependencies (to be imported/moved later)
-# from .. import db # Example
-# from ..bigquery_functions import handle_function_call 
-
-# --- Placeholder Function (Replace with actual import) ---
-def handle_function_call(query_name, parameters):
-    print(f"WARN: Dummy handle_function_call called in kpi.py for {query_name}")
-    # Simulate BQ results based on query_name and params
-    if query_name == "get_cvr_lead_contract":
-        # Simulate returning lead count and contract count for the period
-        # You'll need to adapt this based on the actual return structure of your BQ function
-        return [{'net_leads': 50, 'total_contracts': 10}] # Example data
-    return [] # Default empty
-
+# Echte Funktion importieren statt Dummy-Funktion verwenden
+from ..bigquery_functions import handle_function_call
 
 # --- Blueprint Definition ---
 kpi_bp = Blueprint('kpi', __name__)

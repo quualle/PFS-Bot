@@ -10,52 +10,10 @@ from flask import Blueprint, request, jsonify, session, current_app
 from functools import wraps
 from routes.utils import login_required
 
-# Placeholder for dependencies (to be imported/moved later)
-# from .. import db # Example
-# from ..bigquery_functions import execute_bigquery_query, format_query_result
-# from ..wissensbasis_manager import lade_themen # Assuming function exists
-
-# --- Placeholder Functions (Replace with actual imports/logic) ---
-
-def execute_bigquery_query(query, params):
-    print(f"WARN: Dummy execute_bigquery_query called in data_api.py")
-    # Simulate BQ results based on query pattern
-    if "get_active_care_stays_now" in query:
-        return [(5,)] # Example active customers count
-    if "get_cvr_lead_contract" in query:
-        return [(0.75,)] # Example CVR
-    if "get_contract_count" in query:
-        return [(10,)] # Example new contracts
-    if "get_contract_terminations" in query:
-        return [(2, 1)] # Example terminations
-    if "get_revenue_current_month_pro_rata" in query:
-        return [(1234.56,)] # Example revenue
-    return [] # Default empty result
-
-def format_query_result(result, structure):
-    print(f"WARN: Dummy format_query_result called in data_api.py")
-    # Simulate formatting
-    if not result:
-        return []
-    # Very basic simulation assuming single row, single/multiple columns
-    if structure and isinstance(structure, list): # Multiple columns
-         return [dict(zip([col['name'] for col in structure], result[0]))]
-    elif structure and isinstance(structure, dict): # Single column
-        return [{structure['name']: result[0][0]}]
-    else: # Default guess if no structure
-         return [{f'col_{i}': val for i, val in enumerate(result[0])}]
-
-def lade_themen():
-    print(f"WARN: Dummy lade_themen called in data_api.py")
-    # Replace with actual logic to load topics (e.g., from wissensbasis.json)
-    return {
-        "Thema 1": {
-            "Unterthema 1.1": {"description": "Desc 1.1", "inhalt": ["Inhalt 1.1"]}
-        },
-        "Thema 2": {
-             "Unterthema 2.1": {"description": "Desc 2.1", "inhalt": ["Inhalt 2.1"]}
-        }
-    }
+# Echte Funktionen importieren statt Dummy-Funktionen
+from ..bigquery_functions import execute_bigquery_query, format_query_result
+# Wissensbasis-Manager importieren
+from ..wissensbasis_manager import lade_themen
 
 # --- Blueprint Definition ---
 data_api_bp = Blueprint('data_api', __name__)

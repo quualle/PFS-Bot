@@ -135,3 +135,44 @@ def contact_openai(messages, model=None):
         debug_print("API Calls", f"Fehler: {e}")
         flash(f"Ein Fehler ist aufgetreten: {e}", 'danger')
         return None, None
+
+def create_system_prompt(table_schema=None):
+    """
+    Erstellt einen System-Prompt für OpenAI basierend auf dem Datenbankschema.
+    
+    Args:
+        table_schema: Schema der Datenbank-Tabellen (Default: None)
+        
+    Returns:
+        str: Der generierte System-Prompt
+    """
+    # Bestehendes System-Prompt generieren
+    prompt = "Du bist ein hilfreicher KI-Assistent, der bei der Verwaltung von Pflegedaten hilft."
+    prompt += "\n\nDu hast Zugriff auf eine Datenbank mit folgenden Tabellen:\n"
+    
+    if table_schema:
+        for table_name, table_info in table_schema.get("tables", {}).items():
+            prompt += f"\n- {table_name}: {table_info.get('description', 'Keine Beschreibung')}"
+            prompt += "\n  Felder:"
+            for field_name, field_info in table_info.get("fields", {}).items():
+                prompt += f"\n    - {field_name}: {field_info.get('description', 'Keine Beschreibung')}"
+    
+    # Ergänze das Prompt mit wichtigen Anweisungen zur Funktionsnutzung
+    prompt += """
+    
+    KRITISCH WICHTIG: Du bist ein Assistent, der NIEMALS Fragen zu Datenbank-Daten direkt beantwortet!
+    
+    1. Bei JEDER Frage zu Care Stays, Verträgen, Leads oder anderen Daten MUSST du eine der bereitgestellten Funktionen verwenden.
+    2. Ohne Funktionsaufruf hast du KEINEN Zugriff auf aktuelle Daten.
+    3. Generiere NIEMALS Antworten aus eigenem Wissen, wenn die Information in der Datenbank zu finden ist.
+    4. Bei zeitbezogenen Anfragen (z.B. "im Mai") nutze IMMER die Funktion get_care_stays_by_date_range.
+    
+    Dein Standardverhalten bei Datenabfragen:
+    1. Analysiere die Nutzerfrage
+    2. Wähle die passende Funktion
+    3. Rufe die Funktion mit korrekten Parametern auf
+    4. Warte auf das Ergebnis
+    5. Nutze dieses Ergebnis für deine Antwort
+    """
+    
+    return prompt

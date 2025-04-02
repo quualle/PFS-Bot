@@ -342,3 +342,31 @@ Die relativen Imports wurden durch absolute Imports ersetzt:
 ### Implementierte Änderungen
 - Ersetzung der relativen Imports durch absolute Imports in `routes/data_api.py`
 - Ersetzung der relativen Imports durch absolute Imports in `routes/kpi.py`
+
+## 2025-04-02 - Import-Fehler in Blueprint-Dateien behoben, Teil 2
+
+### Problem
+Nach der ersten Korrektur der relativen Imports zu absoluten Imports traten weiterhin Fehler auf. Der neue Fehler war:
+```
+ModuleNotFoundError: No module named 'wissensbasis_manager'
+```
+
+### Analyse
+Bei der Analyse der Fehlerprotokolle wurde festgestellt, dass es ein Problem mit dem Import der Funktion `lade_themen` in der Datei `routes/data_api.py` gab. Die Funktion wurde fälschlicherweise aus einem nicht existierenden Modul `wissensbasis_manager` importiert, während sie tatsächlich in der Datei `routes/kb_utils.py` definiert ist.
+
+### Lösung
+Der Import in `routes/data_api.py` wurde korrigiert:
+```python
+# Vorher
+from wissensbasis_manager import lade_themen
+
+# Nachher
+from routes.kb_utils import lade_themen
+```
+
+Diese Änderung sollte sicherstellen, dass die Funktion korrekt importiert wird und die Anwendung ohne Importfehler ausgeführt werden kann.
+
+### Gelernte Lektionen
+1. Bei der Umstellung von relativen zu absoluten Importen muss die genaue Modulstruktur des Projekts berücksichtigt werden.
+2. Es ist wichtig, die Fehlerprotokolle sorgfältig zu analysieren, um die genaue Ursache von Importfehlern zu identifizieren.
+3. Die Korrektur von Importfehlern kann ein mehrstufiger Prozess sein, bei dem mehrere Fehler nacheinander behoben werden müssen.

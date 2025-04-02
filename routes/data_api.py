@@ -13,7 +13,7 @@ from routes.utils import login_required
 # Absolute Importe statt relative Importe
 from bigquery_functions import execute_bigquery_query, format_query_result
 # Wissensbasis-Manager importieren
-from wissensbasis_manager import lade_themen
+from routes.kb_utils import lade_themen
 
 # --- Blueprint Definition ---
 data_api_bp = Blueprint('data_api', __name__)

@@ -6,6 +6,7 @@ import logging
 import calendar
 import traceback
 import tempfile
+import openai
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask import session, flash, make_response, Response, stream_with_context

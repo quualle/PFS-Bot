@@ -139,6 +139,22 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
         for param_name in used_params:
             param_value = parameters.get(param_name)
             
+            # Konvertiere Limit-Parameter explizit zu Integer
+            if param_name == 'limit' and param_value is not None:
+                try:
+                    param_value = int(param_value)
+                except (ValueError, TypeError):
+                    param_value = 100  # Default fallback
+                    
+            # Konvertiere Datumswerte vom Format DD.MM.YYYY zu YYYY-MM-DD
+            if param_name in ['start_date', 'end_date'] and isinstance(param_value, str) and param_value.count('.') == 2:
+                try:
+                    # Beispiel: '03.03.2025' -> '2025-03-03'
+                    day, month, year = param_value.split('.')
+                    param_value = f"{year}-{month}-{day}"
+                except Exception as e:
+                    logger.error(f"Fehler bei der Datumskonvertierung für {param_name}: {e}")
+            
             # Parameter-Typ bestimmen
             if isinstance(param_value, int):
                 param_type = "INT64"
@@ -315,7 +331,7 @@ def summarize_query_result(result: str, query_name: str) -> str:
                 details = []
                 for item in result_data:
                     lead_name = f"{item.get('first_name', '')} {item.get('last_name', '')}".strip() or "Unbenannter Lead"
-                    created_at = format_date(item.get('lead_created_at', 'N/A'))
+                    created_at = format_date(item.get('lead_created_at', ''))
                     details.append(f"{lead_name} (erstellt am {created_at})")
                 summary += "Details: " + "; ".join(details)
             
@@ -613,7 +629,7 @@ def summarize_query_result(result: str, query_name: str) -> str:
                     details.append(f"{i+1}. {lead_name} ({lead_date}, {email})")
                 
                 if details:
-                    summary += "\n\n" + "\n".join(details)
+                    summary += "\n".join(details)
             else:
                 # Bei mehr als 10 Leads nur die ersten 10 anzeigen
                 details = []
@@ -624,7 +640,7 @@ def summarize_query_result(result: str, query_name: str) -> str:
                     details.append(f"{i+1}. {lead_name} ({lead_date}, {email})")
                 
                 if details:
-                    summary += "\n\n" + "\n".join(details)
+                    summary += "\n".join(details)
                     summary += f"\n\n...und {count - 10} weitere Leads."
             
             return summary

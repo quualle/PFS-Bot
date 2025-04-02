@@ -469,7 +469,7 @@ query_patterns = {
 Mehrere dieser hardcodierten Abfragen enthielten Tabellennamen ohne Dataset-Qualifikation, was zu dem Fehler führte.
 
 ### Lösung
-Anstatt alle hardcodierten Abfragen einzeln zu korrigieren, haben wir den auskommentierten Code aktiviert, damit die SQL-Abfragen direkt aus der `query_patterns.json` Datei geladen werden. Diese enthält bereits alle korrekten SQL-Abfragen mit vollständigen Dataset-Qualifikationen.
+Die SQL-Abfragen wurden direkt aus der `query_patterns.json` Datei geladen. Diese enthält bereits alle korrekten SQL-Abfragen mit vollständigen Dataset-Qualifikationen.
 
 ```python
 base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -481,3 +481,43 @@ with open(query_path, 'r', encoding='utf-8') as f:
 ### Gelernte Lektionen
 1. Es ist wichtig, die Quelldateien für Konfigurationen und Abfragen zu verwenden, anstatt temporäre "Dummy"-Daten im Code zu belassen.
 2. Wenn mehrere Stellen im Code die gleichen Tabellen referenzieren, ist es besser, eine zentrale Konfigurationsquelle zu verwenden, anstatt die Änderungen an mehreren Stellen vorzunehmen.
+
+## BigQuery SQL-Abfragen beheben - Teil 2 - 02.04.2025
+
+### Problem
+
+Nach Aktivierung des Ladens von SQL-Abfragen aus der `query_patterns.json` Datei wurden zwei neue Probleme erkannt:
+
+1. **Datumformat-Fehler**: In BigQuery wurden Datumsangaben im Format "DD.MM.YYYY" übergeben, aber BigQuery erwartet das Format "YYYY-MM-DD". Dies führte zu dem Fehler `400 Invalid timestamp: '03.03.2025'`.
+
+2. **LIMIT-Parameter-Problem**: Die LIMIT-Klausel in SQL-Abfragen erwartete eine Integer-Literal, aber der Wert wurde nicht korrekt konvertiert. Dies führte zu dem Fehler `400 LIMIT expects an integer literal or parameter at [1:1059]`.
+
+### Lösung
+
+Die `execute_bigquery_query`-Funktion in `bigquery_functions.py` wurde aktualisiert, um:
+
+1. Datumsparameter automatisch vom Format DD.MM.YYYY zum Format YYYY-MM-DD zu konvertieren, das von BigQuery erwartet wird:
+   ```python
+   # Konvertiere Datumswerte vom Format DD.MM.YYYY zu YYYY-MM-DD
+   if param_name in ['start_date', 'end_date'] and isinstance(param_value, str) and param_value.count('.') == 2:
+       try:
+           # Beispiel: '03.03.2025' -> '2025-03-03'
+           day, month, year = param_value.split('.')
+           param_value = f"{year}-{month}-{day}"
+       except Exception as e:
+           logger.error(f"Fehler bei der Datumskonvertierung für {param_name}: {e}")
+   ```
+
+2. Sicherzustellen, dass der LIMIT-Parameter immer als Integer behandelt wird:
+   ```python
+   # Konvertiere Limit-Parameter explizit zu Integer
+   if param_name == 'limit' and param_value is not None:
+       try:
+           param_value = int(param_value)
+       except (ValueError, TypeError):
+           param_value = 100  # Default fallback
+   ```
+
+### Test
+
+Nach dem Hochladen der Änderungen wurde die Dashboard-Funktion getestet. Die Fehler mit dem Datumformat und dem LIMIT-Parameter sollten nun behoben sein.

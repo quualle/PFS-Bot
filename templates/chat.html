@@ -1723,7 +1723,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         'stream': '1'
                     });
                     
-                    fetch("{{ url_for('chat') }}", {
+                    fetch("{{ url_for('chat.chat') }}", {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
@@ -2101,7 +2101,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         'notfallart': joinedNotfallOptions
                     });
 
-                    fetch("{{ url_for('chat') }}", {
+                    fetch("{{ url_for('chat.chat') }}", {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',

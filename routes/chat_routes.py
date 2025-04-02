@@ -1,27 +1,88 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, Response, current_app
 import logging
 import json
+import os
+import datetime
 
 # Blueprint Definition
 chat_bp = Blueprint('chat', __name__)
 
-# Import necessary functions from the main app
-from app import (
-    conversation_manager, extract_date_params, select_optimal_tool_with_reasoning,
-    load_tool_config, calculate_chat_stats, store_chatlog, download_wissensbasis
-)
-
-# Import OpenAI utilities from the utility module
+# Import utilities from dedicated modules
 from routes.openai_utils import contact_openai, count_tokens, create_function_definitions, create_system_prompt
-
-# Import stream utilities from the stream utils module
 from routes.stream_utils import stream_response, stream_text_response, generate_clarification_stream, generate_conversational_clarification_stream
-
-# Import BigQuery functions
+from routes.kb_utils import download_wissensbasis
 from bigquery_functions import handle_function_call
-
-# Import extraction utilities
 from extract import format_customer_details
+
+# Temporäre Stubs für fehlende Funktionen
+# Diese sollten später durch echte Implementierungen ersetzt werden
+def conversation_manager(user_message, conversation_data=None):
+    logging.warning("Stub-Implementierung von conversation_manager wird verwendet")
+    return {'messages': [{'role': 'user', 'content': user_message}]}
+
+def extract_date_params(text):
+    logging.warning("Stub-Implementierung von extract_date_params wird verwendet")
+    return {}
+
+def select_optimal_tool_with_reasoning(messages, available_tools):
+    logging.warning("Stub-Implementierung von select_optimal_tool_with_reasoning wird verwendet")
+    return None, "Keine passenden Tools gefunden"
+
+def load_tool_config():
+    logging.warning("Stub-Implementierung von load_tool_config wird verwendet")
+    return {}
+
+def calculate_chat_stats():
+    logging.warning("Stub-Implementierung von calculate_chat_stats wird verwendet")
+    return {}
+
+def store_chatlog(user_name, chat_history):
+    logging.warning("Stub-Implementierung von store_chatlog wird verwendet")
+    
+    if not user_name:
+        user_name = "Unbekannt"
+    
+    # Make sure the directory exists
+    CHATLOG_FOLDER = 'chatlogs'
+    os.makedirs(CHATLOG_FOLDER, exist_ok=True)
+    
+    # Use just the date for the filename (not time) to group all chats from same day
+    date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    session_id = session.get('user_id', 'unknown')
+    
+    # Create a unique filename based on user, date and session ID
+    filename = f"{user_name}_{date_str}_{session_id}.txt"
+    filepath = os.path.join(CHATLOG_FOLDER, filename)
+    
+    # Write the complete chat history to the file (overwrite existing)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        # Add a timestamp for this update
+        current_time = datetime.datetime.now().strftime("%H:%M:%S")
+        
+        # Add a header
+        f.write(f"=== CHAT LOG: {user_name} ===\n")
+        f.write(f"=== UPDATED: {date_str} {current_time} ===\n\n")
+        
+        # Write each message in the chat history
+        for message in chat_history:
+            role = message.get('role', 'unknown')
+            content = message.get('content', '')
+            
+            # Skip system messages
+            if role == 'system':
+                continue
+                
+            # Format the message
+            if role == 'user':
+                f.write(f"USER: {content}\n\n")
+            elif role == 'assistant':
+                f.write(f"BOT: {content}\n\n")
+            else:
+                f.write(f"{role.upper()}: {content}\n\n")
+        
+        f.write("="*50 + "\n")
+    
+    return filepath
 
 @chat_bp.route("/clarify", methods=["POST"])
 def handle_clarification():

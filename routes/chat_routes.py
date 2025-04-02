@@ -13,6 +13,7 @@ from routes.stream_utils import stream_response, stream_text_response, generate_
 from routes.kb_utils import download_wissensbasis
 from bigquery_functions import handle_function_call
 from extract import format_customer_details
+from routes.chat_utils import calculate_chat_stats
 
 # Temporäre Stubs für fehlende Funktionen
 # Diese sollten später durch echte Implementierungen ersetzt werden
@@ -294,8 +295,9 @@ def handle_clarification():
 
 @chat_bp.route("/", methods=["GET", "POST"])
 def chat():
-    # Function implementation will be added in a separate edit to avoid token limits
-    return render_template("chat.html")
+    # Stats für die Anzeige im Template bereitstellen
+    stats = calculate_chat_stats()
+    return render_template("chat.html", stats=stats)
 
 @chat_bp.route('/update_stream_chat_history', methods=['POST'])
 def update_stream_chat_history():

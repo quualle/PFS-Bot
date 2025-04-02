@@ -107,3 +107,36 @@ Aktualisierung der URL-Endpunkte in der chat.html Datei:
 
 ### Implementierte Änderungen
 - URL-Endpunkt für das Löschen des Chat-Verlaufs in templates/chat.html angepasst
+
+## 2025-04-02: Fehlende Stats-Variable im Chat-Template korrigiert
+
+### Fehler
+```
+jinja2.exceptions.UndefinedError: 'stats' is undefined
+```
+
+### Analyse
+Nach der Korrektur der URL-Endpunkte wurde ein neuer Fehlertyp festgestellt: Die Template-Datei chat.html versucht, auf eine Variable `stats` zuzugreifen, die im Template-Kontext nicht verfügbar ist. Bei der Umstellung auf die Blueprint-Struktur wurde die Funktion `calculate_chat_stats` als Stub-Implementierung in verschiedenen Dateien hinzugefügt, die aber keine echten Daten zurückgeben, und die Route `chat()` im Blueprint übergibt diese Variable nicht an das Template.
+
+Die Variable `stats` wird in der chat.html-Datei für die Anzeige von Chat-Statistiken benötigt:
+```html
+<div class="chart-bar" style="height: {{ (stats.today / stats.total * 100) if stats.total else 0 }}%"></div>
+```
+
+### Lösung
+Zwei Änderungen wurden vorgenommen:
+
+1. Die vollständige Implementierung der `calculate_chat_stats`-Funktion wurde aus app.py nach routes/chat_utils.py übertragen, um die Chatlog-Statistiken korrekt zu berechnen.
+
+2. Die `chat()`-Funktion in routes/chat_routes.py wurde aktualisiert, um die `stats`-Variable an das Template zu übergeben:
+```python
+@chat_bp.route("/", methods=["GET", "POST"])
+def chat():
+    # Stats für die Anzeige im Template bereitstellen
+    stats = calculate_chat_stats()
+    return render_template("chat.html", stats=stats)
+```
+
+### Implementierte Änderungen
+- Vollständige Implementierung von `calculate_chat_stats` in routes/chat_utils.py
+- Übergabe der `stats`-Variable an das chat.html-Template in routes/chat_routes.py

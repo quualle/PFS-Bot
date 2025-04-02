@@ -407,3 +407,33 @@ Dieser Ansatz ist pragmatisch und vermeidet mögliche Probleme mit hartnäckigen
 1. Manchmal ist es effizienter, einen Workaround zu implementieren, als ein hartnäckiges Problem direkt zu lösen.
 2. Adapter-Muster können nützlich sein, um Kompatibilität zu gewährleisten, ohne bestehenden Code zu ändern.
 3. Bei persistenten Server-Problemen sollte man alternative Lösungsansätze in Betracht ziehen.
+
+## 2025-04-02 - BigQuery SQL-Abfrage korrigiert
+
+### Problem
+In der Dashboard-Funktion für "Aktive Kunden (Heute)" tritt ein Fehler auf, wenn die SQL-Abfrage gegen BigQuery ausgeführt wird:
+
+```
+google.api_core.exceptions.BadRequest: 400 Table "active_stays" must be qualified with a dataset (e.g. dataset.table).
+```
+
+### Analyse
+Der Fehler tritt auf, weil in der Fallback-Definition der SQL-Abfragen in `routes/data_api.py` die Tabelle "active_stays" ohne Dataset-Qualifikation verwendet wird. BigQuery erfordert, dass alle Tabellen mit ihrem vollständigen Dataset-Namen qualifiziert werden (z.B. `dataset.tabelle`).
+
+Der ursprüngliche Code war:
+```python
+"get_active_care_stays_now": {"sql_template": "SELECT COUNT(*) FROM active_stays WHERE seller_id=@seller_id;", "result_structure": {"name": "active_customers_count"}},
+```
+
+### Lösung
+Die SQL-Abfrage wurde aktualisiert, um die Tabelle mit dem vollständigen Dataset-Namen zu qualifizieren, basierend auf dem korrekten Format aus `query_patterns.json`:
+
+```python
+"get_active_care_stays_now": {"sql_template": "SELECT COUNT(*) FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id WHERE l.seller_id=@seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) <= CURRENT_DATE() AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE();", "result_structure": {"name": "active_customers_count"}},
+```
+
+Diese Änderung stellt sicher, dass die SQL-Abfrage korrekt formatiert ist und BigQuery die Tabellen richtig identifizieren kann.
+
+### Gelernte Lektionen
+1. In BigQuery müssen Tabellen immer mit ihrem vollständigen Dataset-Namen qualifiziert werden.
+2. Wenn Fallback-Definitionen verwendet werden, müssen diese die gleichen Formatierungsregeln befolgen wie die Haupt-Implementierung.

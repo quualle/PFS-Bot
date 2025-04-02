@@ -23,3 +23,23 @@ from google.cloud import storage
 
 ### Implementierte Änderungen
 - Zusätzliche Importe in app.py Zeile 145-146 hinzugefügt
+
+## 2025-04-02: Blueprint Endpunkt-Fehler in chat.html behoben
+
+### Fehler
+```
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'get_username'. 
+Did you mean 'auth.get_username' instead?
+```
+
+### Analyse
+Bei der Umstellung auf die Blueprint-Struktur wurden die Routen in entsprechende Blueprint-Dateien verschoben. In den Templates müssen die URL-Endpunkte nun mit dem Blueprint-Präfix versehen werden.
+
+### Lösung
+Die folgenden Endpunkte in chat.html wurden korrigiert:
+- `get_username` → `user.get_username`
+- `set_username` → `user.set_username`
+- `update_stream_chat_history` → `chat.update_stream_chat_history`
+
+### Implementierte Änderungen
+- URL-Endpunkte in templates/chat.html angepasst

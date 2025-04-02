@@ -436,4 +436,48 @@ Diese Änderung stellt sicher, dass die SQL-Abfrage korrekt formatiert ist und B
 
 ### Gelernte Lektionen
 1. In BigQuery müssen Tabellen immer mit ihrem vollständigen Dataset-Namen qualifiziert werden.
-2. Wenn Fallback-Definitionen verwendet werden, müssen diese die gleichen Formatierungsregeln befolgen wie die Haupt-Implementierung.
+2. Wenn mehrere Stellen im Code die gleichen Tabellen referenzieren, ist es besser, eine zentrale Konfigurationsquelle zu verwenden, anstatt die Änderungen an mehreren Stellen vorzunehmen.
+
+## 2025-04-02 - Verwendung der SQL-Abfragen aus query_patterns.json
+
+### Problem
+Der Fehler bei der BigQuery-Abfrage tritt weiterhin auf, obwohl wir die direkte Referenz auf "active_stays" in der `routes/data_api.py` korrigiert haben:
+
+```
+google.api_core.exceptions.BadRequest: 400 Table "active_stays" must be qualified with a dataset (e.g. dataset.table).
+```
+
+### Analyse
+Bei der genaueren Untersuchung des Codes in `routes/data_api.py` wurde festgestellt, dass die SQL-Abfragen nicht aus der `query_patterns.json` Datei geladen werden, sondern direkt im Code hardcodiert sind. Der Code zum Laden der JSON-Datei war auskommentiert, und stattdessen wurde ein "Dummy"-Dictionary mit SQL-Abfragen verwendet:
+
+```python
+# base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# query_path = os.path.join(base_path, 'query_patterns.json')
+# with open(query_path, 'r', encoding='utf-8') as f:
+#     query_patterns = json.load(f)
+# Dummy load for now
+query_patterns = { 
+    "common_queries": {
+        "get_active_care_stays_now": {...},
+        "get_cvr_lead_contract": {"sql_template": "SELECT rate FROM cvr WHERE seller_id=@seller_id;", ...},
+        "get_contract_count": {"sql_template": "SELECT COUNT(*) FROM contracts WHERE seller_id=@seller_id AND date BETWEEN @start_date AND @end_date;", ...},
+        ...
+    }
+}
+```
+
+Mehrere dieser hardcodierten Abfragen enthielten Tabellennamen ohne Dataset-Qualifikation, was zu dem Fehler führte.
+
+### Lösung
+Anstatt alle hardcodierten Abfragen einzeln zu korrigieren, haben wir den auskommentierten Code aktiviert, damit die SQL-Abfragen direkt aus der `query_patterns.json` Datei geladen werden. Diese enthält bereits alle korrekten SQL-Abfragen mit vollständigen Dataset-Qualifikationen.
+
+```python
+base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+query_path = os.path.join(base_path, 'query_patterns.json')
+with open(query_path, 'r', encoding='utf-8') as f:
+    query_patterns = json.load(f)
+```
+
+### Gelernte Lektionen
+1. Es ist wichtig, die Quelldateien für Konfigurationen und Abfragen zu verwenden, anstatt temporäre "Dummy"-Daten im Code zu belassen.
+2. Wenn mehrere Stellen im Code die gleichen Tabellen referenzieren, ist es besser, eine zentrale Konfigurationsquelle zu verwenden, anstatt die Änderungen an mehreren Stellen vorzunehmen.

@@ -33,20 +33,10 @@ def get_dashboard_data_route():
 
         # Load query patterns (Need robust path handling)
         try:
-            # base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            # query_path = os.path.join(base_path, 'query_patterns.json')
-            # with open(query_path, 'r', encoding='utf-8') as f:
-            #     query_patterns = json.load(f)
-            # Dummy load for now
-            query_patterns = { 
-                "common_queries": {
-                    "get_active_care_stays_now": {"sql_template": "SELECT COUNT(*) FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS cs JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON cs.contract_id = c._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id WHERE l.seller_id=@seller_id AND cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.bill_start)) <= CURRENT_DATE() AND DATE(TIMESTAMP(cs.bill_end)) >= CURRENT_DATE();", "result_structure": {"name": "active_customers_count"}},
-                    "get_cvr_lead_contract": {"sql_template": "SELECT rate FROM cvr WHERE seller_id=@seller_id;", "result_structure": {"name": "conversion_rate"}},
-                    "get_contract_count": {"sql_template": "SELECT COUNT(*) FROM contracts WHERE seller_id=@seller_id AND date BETWEEN @start_date AND @end_date;", "result_structure": {"name": "new_contracts_count"}},
-                    "get_contract_terminations": {"sql_template": "SELECT COUNT(CASE WHEN type='serious' THEN 1 END), COUNT(CASE WHEN type='agency' THEN 1 END) FROM terminations WHERE seller_id=@seller_id AND date BETWEEN @start_date AND @end_date;", "result_structure": [{"name": "serious_terminations_count"}, {"name": "agency_switch_count"}]},
-                    "get_revenue_current_month_pro_rata": {"sql_template": "SELECT SUM(revenue) FROM revenue WHERE seller_id=@seller_id AND date BETWEEN @start_of_month AND @end_of_month;", "result_structure": {"name": "total_monthly_pro_rata_revenue"}}
-                 }
-            }
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            query_path = os.path.join(base_path, 'query_patterns.json')
+            with open(query_path, 'r', encoding='utf-8') as f:
+                query_patterns = json.load(f)
         except Exception as e:
             logging.error(f"Dashboard: Error loading query_patterns.json: {e}")
             return jsonify({"error": "Failed to load query configuration", "status": "error"}), 500

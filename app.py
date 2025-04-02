@@ -12,6 +12,7 @@ from flask_cors import CORS
 from functools import wraps
 from werkzeug.utils import secure_filename
 from markdown import markdown
+from flask_session import Session
 
 # Import utility modules we created
 from routes.utils import login_required, debug_print
@@ -585,7 +586,7 @@ def format_simple_results(data_list):
     result = []
     for item in data_list:
         try:
-            # Versuche, häufig vorkommende Eigenschaften zu formatieren
+#             # Versuche, häufig vorkommende Eigenschaften zu formatieren
             parts = []
             if "first_name" in item and "last_name" in item:
                 parts.append(f"{item['first_name']} {item['last_name']}")
@@ -597,7 +598,7 @@ def format_simple_results(data_list):
             if parts:
                 result.append(" | ".join(parts))
             else:
-                # Fallback: Zeige die ersten paar Eigenschaften
+#                 # Fallback: Zeige die ersten paar Eigenschaften
                 simple_parts = []
                 count = 0
                 for key, value in item.items():
@@ -606,7 +607,7 @@ def format_simple_results(data_list):
                         count += 1
                 result.append(" | ".join(simple_parts))
         except:
-            # Bei Fehlern: Vereinfacht darstellen
+#             # Bei Fehlern: Vereinfacht darstellen
             result.append(str(item)[:100] + "...")
     
     return "\n".join(result)

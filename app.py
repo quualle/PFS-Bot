@@ -17,6 +17,8 @@ from markdown import markdown
 from flask_session import Session
 from flask_wtf.csrf import CSRFProtect
 from pinecone import Pinecone
+from google.oauth2 import service_account
+from google.cloud import storage
 
 # Import utility modules we created
 from routes.utils import login_required, debug_print
@@ -140,6 +142,10 @@ index = pc.Index(pinecone_index_name)
 ###########################################
 # Google Cloud Storage + Sonstige Einstellungen
 ###########################################
+# Stelle sicher, dass die notwendigen Module importiert sind
+from google.oauth2 import service_account
+from google.cloud import storage
+
 service_account_path = '/home/PfS/service_account_key.json'
 if not os.path.exists(service_account_path):
     raise FileNotFoundError(f"Service Account Datei nicht gefunden: {service_account_path}")
@@ -2492,5 +2498,4 @@ def test_bigquery():
 # App Start
 ###########################################
 # if __name__ == "__main__":
-
 #     app.run(debug=True)#

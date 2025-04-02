@@ -5,8 +5,8 @@ import json
 # Blueprint Definition
 feedback_bp = Blueprint('feedback', __name__)
 
-# Import necessary functions from the main app
-from app import store_feedback
+# Import necessary functions from utils module
+from routes.utils import store_feedback
 
 @feedback_bp.route('/store_feedback', methods=['POST'])
 def store_feedback_route():

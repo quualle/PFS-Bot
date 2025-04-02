@@ -299,3 +299,46 @@ Folgende Änderungen wurden vorgenommen:
 ### Implementierte Änderungen
 - In `routes/kpi.py`: Ersetzung der Dummy-Funktion handle_function_call durch Import der echten Funktion
 - In `routes/data_api.py`: Ersetzung der Dummy-Funktionen execute_bigquery_query, format_query_result und lade_themen durch Importe der echten Funktionen
+
+## 2025-04-02: Import-Fehler in Blueprint-Dateien behoben
+
+### Fehler
+```
+ImportError: attempted relative import beyond top-level package
+  File "/home/PfS/staging/./routes/data_api.py", line 14, in <module>
+    from ..bigquery_functions import execute_bigquery_query, format_query_result
+```
+
+### Analyse
+Nach der Ersetzung der Dummy-Funktionen durch echte Funktionen wurde ein Problem mit relativen Imports in den Blueprint-Dateien festgestellt. Die Verwendung von relativen Imports (mit `..` Syntax) führte zu einem Import-Fehler, da die Blueprint-Dateien auf dem Server nicht als Teil eines Packages erkannt wurden.
+
+Dies trat in beiden dateien auf:
+1. In `routes/data_api.py` bei `from ..bigquery_functions import ...`
+2. In `routes/kpi.py` bei `from ..bigquery_functions import handle_function_call`
+
+### Lösung
+Die relativen Imports wurden durch absolute Imports ersetzt:
+
+1. In `routes/data_api.py`:
+   ```python
+   # Alt (relativ):
+   from ..bigquery_functions import execute_bigquery_query, format_query_result
+   from ..wissensbasis_manager import lade_themen
+   
+   # Neu (absolut):
+   from bigquery_functions import execute_bigquery_query, format_query_result
+   from wissensbasis_manager import lade_themen
+   ```
+
+2. In `routes/kpi.py`:
+   ```python
+   # Alt (relativ):
+   from ..bigquery_functions import handle_function_call
+   
+   # Neu (absolut):
+   from bigquery_functions import handle_function_call
+   ```
+
+### Implementierte Änderungen
+- Ersetzung der relativen Imports durch absolute Imports in `routes/data_api.py`
+- Ersetzung der relativen Imports durch absolute Imports in `routes/kpi.py`

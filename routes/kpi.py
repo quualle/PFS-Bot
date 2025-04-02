@@ -5,8 +5,8 @@ import logging
 from routes.utils import login_required
 from functools import wraps
 
-# Echte Funktion importieren statt Dummy-Funktion verwenden
-from ..bigquery_functions import handle_function_call
+# Absolute Importe statt relative Importe
+from bigquery_functions import handle_function_call
 
 # --- Blueprint Definition ---
 kpi_bp = Blueprint('kpi', __name__)

@@ -2181,7 +2181,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         // FEEDBACK
         sendFeedbackBtn.addEventListener('click', () => {
             const commentVal = feedbackComment.value.trim();
-            fetch("{{ url_for('store_feedback_route') }}", {
+            fetch("{{ url_for('feedback.store_feedback_route') }}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

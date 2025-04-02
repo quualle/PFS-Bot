@@ -70,3 +70,22 @@ Systematische Aktualisierung aller URL-Endpunkte in der chat.html Datei, um die 
   - chat.chat (mehrere Stellen)
   - chat.handle_clarification
   - chat.get_clarification_response
+  - feedback.store_feedback_route
+
+## 2025-04-02: Weitere Blueprint-Endpunkte korrigiert
+
+### Fehler
+```
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'store_feedback_route'. 
+Did you mean 'feedback.store_feedback_route' instead?
+```
+
+### Analyse
+Bei der systematischen Überprüfung der Templates wurden weitere Routen gefunden, die auf die Blueprint-Struktur angepasst werden mussten. Dies betrifft den Feedback-Endpunkt, der zum `feedback`-Blueprint gehört.
+
+### Lösung
+Aktualisierung der URL-Endpunkte in der chat.html Datei:
+- `store_feedback_route` → `feedback.store_feedback_route`
+
+### Implementierte Änderungen
+- URL-Endpunkt für Feedback in templates/chat.html angepasst

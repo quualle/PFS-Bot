@@ -7,9 +7,9 @@ import pandas as pd
 # Blueprint Definition
 dashboard_bp = Blueprint('dashboard', __name__)
 
-# Import necessary functions from the main app
-from app import (
-    get_bigquery_client, execute_query, format_simple_results
+# Import necessary functions from bigquery_functions.py instead of app.py
+from bigquery_functions import (
+    get_bigquery_client, execute_bigquery_query, format_simple_results
 )
 
 @dashboard_bp.route('/get_active_care_stays_now', methods=['GET'])
@@ -44,7 +44,7 @@ def get_active_care_stays_now():
         ON 
             c.customer_id = cu.id
         WHERE 
-            c.seller_id = "{seller_id}"
+            c.seller_id = @seller_id
             AND c.from_date <= CURRENT_TIMESTAMP()
             AND c.to_date >= CURRENT_TIMESTAMP()
         ORDER BY 
@@ -52,7 +52,8 @@ def get_active_care_stays_now():
         """
         
         # Abfrage ausführen
-        results = execute_query(client, query)
+        parameters = {"seller_id": seller_id}
+        results = execute_bigquery_query(query, parameters)
         
         # Ergebnisse formatieren
         formatted_results = []
@@ -123,14 +124,15 @@ def get_dashboard_data():
             FROM 
                 `{current_app.config['BIGQUERY_TABLE_PREFIX']}.chatlog`
             WHERE 
-                seller_id = "{seller_id}"
-                AND DATE(timestamp) >= '{start_date}'
-                AND DATE(timestamp) <= '{today}'
+                seller_id = @seller_id
+                AND DATE(timestamp) >= @start_date
+                AND DATE(timestamp) <= @today
             GROUP BY 
                 time_period
             ORDER BY 
                 time_period
             """
+            parameters = {"seller_id": seller_id, "start_date": start_date.isoformat(), "today": today.isoformat()}
         elif query_type == 'customers':
             # Top-Kunden im Zeitraum
             query = f"""
@@ -140,9 +142,9 @@ def get_dashboard_data():
             FROM 
                 `{current_app.config['BIGQUERY_TABLE_PREFIX']}.chatlog`
             WHERE 
-                seller_id = "{seller_id}"
-                AND DATE(timestamp) >= '{start_date}'
-                AND DATE(timestamp) <= '{today}'
+                seller_id = @seller_id
+                AND DATE(timestamp) >= @start_date
+                AND DATE(timestamp) <= @today
                 AND customer_name IS NOT NULL
                 AND customer_name != ''
             GROUP BY 
@@ -151,6 +153,7 @@ def get_dashboard_data():
                 count DESC
             LIMIT 10
             """
+            parameters = {"seller_id": seller_id, "start_date": start_date.isoformat(), "today": today.isoformat()}
         elif query_type == 'topics':
             # Häufigste Themen im Zeitraum
             query = f"""
@@ -161,15 +164,16 @@ def get_dashboard_data():
                 `{current_app.config['BIGQUERY_TABLE_PREFIX']}.chatlog`,
                 UNNEST(topics) as topic
             WHERE 
-                seller_id = "{seller_id}"
-                AND DATE(timestamp) >= '{start_date}'
-                AND DATE(timestamp) <= '{today}'
+                seller_id = @seller_id
+                AND DATE(timestamp) >= @start_date
+                AND DATE(timestamp) <= @today
             GROUP BY 
                 topic
             ORDER BY 
                 count DESC
             LIMIT 10
             """
+            parameters = {"seller_id": seller_id, "start_date": start_date.isoformat(), "today": today.isoformat()}
         elif query_type == 'functions':
             # Häufigste Funktionsaufrufe im Zeitraum
             query = f"""
@@ -179,23 +183,24 @@ def get_dashboard_data():
             FROM 
                 `{current_app.config['BIGQUERY_TABLE_PREFIX']}.function_calls`
             WHERE 
-                seller_id = "{seller_id}"
-                AND DATE(timestamp) >= '{start_date}'
-                AND DATE(timestamp) <= '{today}'
+                seller_id = @seller_id
+                AND DATE(timestamp) >= @start_date
+                AND DATE(timestamp) <= @today
             GROUP BY 
                 function_name
             ORDER BY 
                 count DESC
             LIMIT 10
             """
+            parameters = {"seller_id": seller_id, "start_date": start_date.isoformat(), "today": today.isoformat()}
         else:
             return jsonify({'error': f'Unbekannter Abfragetyp: {query_type}'}), 400
             
         # Abfrage ausführen
-        results = execute_query(client, query)
+        results = execute_bigquery_query(query, parameters)
         
         # Ergebnisse in ein DataFrame konvertieren für einfachere Verarbeitung
-        df = results.to_dataframe()
+        df = pd.DataFrame(results)
         
         # Ergebnisse formatieren
         formatted_results = []

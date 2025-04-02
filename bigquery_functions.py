@@ -365,10 +365,6 @@ def summarize_query_result(result: str, query_name: str) -> str:
             if total_contracts is not None:
                 stats.append(f"{total_contracts} Verträge insgesamt")
             
-            total_leads = item.get('total_leads')
-            if total_leads is not None:
-                stats.append(f"{total_leads} Leads insgesamt")
-            
             avg_care_stay_duration = item.get('avg_care_stay_duration')
             if avg_care_stay_duration is not None:
                 stats.append(f"durchschnittliche Care-Stay-Dauer: {avg_care_stay_duration:.1f} Tage")
@@ -1091,3 +1087,39 @@ def get_seller_data(seller_id, data_type=None):
         result['kpis'] = calculate_kpis_for_seller(seller_id)
     
     return result
+
+def format_simple_results(data_list):
+    """Formatiert einfache Ergebnisse für Fallback-Antworten"""
+    if not data_list:
+        return "Keine Daten"
+    
+    result = []
+    for item in data_list:
+        try:
+            # Versuche, häufig vorkommende Eigenschaften zu formatieren
+            parts = []
+            if "first_name" in item and "last_name" in item:
+                parts.append(f"{item['first_name']} {item['last_name']}")
+            if "agency_name" in item:
+                parts.append(f"Agentur: {item['agency_name']}")
+            if "bill_start" in item and "bill_end" in item:
+                parts.append(f"Zeitraum: {format_date(item['bill_start'])} bis {format_date(item['bill_end'])}")
+            if "prov_seller" in item:
+                parts.append(f"Provision: {item['prov_seller']}€")
+            
+            if parts:
+                result.append(" | ".join(parts))
+            else:
+                # Fallback: Zeige die ersten paar Eigenschaften
+                simple_parts = []
+                count = 0
+                for key, value in item.items():
+                    if count < 3 and key not in ["_id", "cs_id", "contract_id", "lead_id"]:
+                        simple_parts.append(f"{key}: {value}")
+                        count += 1
+                result.append(" | ".join(simple_parts))
+        except:
+            # Bei Fehlern: Vereinfacht darstellen
+            result.append(str(item)[:100] + "...")
+    
+    return "\n".join(result)

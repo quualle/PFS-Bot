@@ -181,3 +181,56 @@ Die `setElementText`-Funktion wurde überarbeitet, um elegant fehlzuschlagen, we
 ### Implementierte Änderungen
 - Überarbeitung der `setElementText`-Funktion in `templates/components/my_business/container.html`, um Konsolenwarnungen zu vermeiden
 - Verbesserte Unterstützung für verschiedene ID-Selektorformate (mit und ohne #-Präfix)
+
+## 2023-04-05: Dashboard-Daten werden nicht angezeigt (MyBusiness-Dashboard)
+
+### Fehler
+Nach der Umstellung der Routen auf Blueprints werden im MyBusiness-Dashboard keine Daten mehr angezeigt. Die Felder für KPIs (z.B. aktive Kunden, Abschlussquote, neue Verträge) zeigen "0" oder "Daten werden geladen..." an, ohne jemals die korrekten Werte anzuzeigen.
+
+### Analyse
+Bei der Blueprint-Umstellung wurde die `get_dashboard_data`-Route in dashboard_routes.py implementiert, aber nur mit einem Teil der ursprünglichen Funktionalität. Die Originalimplementierung in app.py lieferte verschiedene wichtige Business-KPIs aus query_patterns.json:
+
+1. Aktive Kunden (get_active_care_stays_now)
+2. Abschlussquote (get_cvr_lead_contract)
+3. Neue Verträge (get_contract_count)
+4. Pro-Rata-Umsatz (get_pro_rata_revenue)
+
+Die neue Implementierung lieferte jedoch nur Chat-Statistiken (Anzahl der Chatlog-Einträge), ohne die wichtigen KPIs.
+
+### Lösung
+Die dashboard_routes.py-Datei wurde überarbeitet:
+
+1. Import von `format_query_result` aus bigquery_functions.py hinzugefügt
+2. Die Route `/get_active_care_stays_now` vollständig implementiert
+3. Die Funktion `get_dashboard_data` komplett überarbeitet, um alle KPIs bereitzustellen:
+   - Laden der Abfragemuster aus query_patterns.json
+   - Implementierung aller ursprünglichen Abfragen (aktive Kunden, Abschlussquote, neue Verträge, Pro-Rata-Umsatz)
+   - Fehlerbehandlung und ausführliches Logging hinzugefügt
+   - Erhalt der speziellen Abfragefunktionen (customers, topics, functions)
+
+```python
+# Dashboard-Daten sammeln
+dashboard_result = {}
+
+# 2. Aktive Kunden (get_active_care_stays_now)
+query_name = "get_active_care_stays_now"
+if query_name in query_patterns['common_queries']:
+    query_pattern = query_patterns['common_queries'][query_name]
+    
+    parameters = {
+        'seller_id': seller_id,
+        'limit': 100
+    }
+    
+    result = execute_bigquery_query(
+        query_pattern['sql_template'],
+        parameters
+    )
+    
+    formatted_result = format_query_result(result, query_pattern.get('result_structure'))
+    dashboard_result['active_customers'] = formatted_result
+    dashboard_result['count'] = len(formatted_result)
+# [...weitere KPI-Abfragen...]
+```
+
+Nach dieser Implementierung werden nun wieder alle Geschäftsdaten im MyBusiness-Dashboard korrekt angezeigt.

@@ -42,6 +42,7 @@ Die folgenden Endpunkte in chat.html wurden korrigiert:
 - `update_stream_chat_history` → `chat.update_stream_chat_history`
 - `chat` → `chat.chat`
 - `handle_clarification` → `chat.handle_clarification`
+- `get_clarification_response` → `chat.get_clarification_response`
 
 ### Implementierte Änderungen
 - URL-Endpunkte in templates/chat.html angepasst

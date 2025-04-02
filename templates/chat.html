@@ -1952,7 +1952,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                                                                     forceScrollToBottom();
                                                                     
                                                                     // Now fetch the actual response using our new endpoint
-                                                                    fetch("{{ url_for('get_clarification_response') }}", {
+                                                                    fetch("{{ url_for('chat.get_clarification_response') }}", {
                                                                         method: 'GET',
                                                                         headers: {
                                                                             'X-Requested-With': 'XMLHttpRequest',

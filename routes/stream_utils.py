@@ -242,11 +242,12 @@ def generate_clarification_stream(human_in_loop_data):
             time.sleep(0.1)  # Kleine Verzögerung für natürlichere Ausgabe
         
         # "human_in_loop" Event sendet die Metadaten
-        yield f"data: {json.dumps({
+        human_in_loop_data_json = json.dumps({
             'type': 'human_in_loop',
             'mode': 'clarification',
             'data': human_in_loop_data
-        })}\n\n"
+        })
+        yield f"data: {human_in_loop_data_json}\n\n"
         
         yield f"data: {json.dumps({'type': 'end'})}\n\n"
     except Exception as e:

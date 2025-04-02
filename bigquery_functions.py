@@ -125,6 +125,14 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
     """
     import re
     try:
+        # Vereinfachte Lösung: Hardcode LIMIT direkt auf 1000
+        # Ersetze LIMIT @limit durch LIMIT 1000
+        sql_template = re.sub(r'LIMIT\s+@limit', 'LIMIT 1000', sql_template)
+        
+        # Entferne den limit-Parameter aus der Parameter-Map
+        if 'limit' in parameters:
+            parameters = {k: v for k, v in parameters.items() if k != 'limit'}
+        
         # Initialisiere BigQuery-Client
         client = bigquery.Client.from_service_account_json(SERVICE_ACCOUNT_PATH)
         
@@ -139,18 +147,8 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
         for param_name in used_params:
             param_value = parameters.get(param_name)
             
-            # Vorverarbeitung für spezielle Parameter
-            # 1. LIMIT-Parameter immer als INT64 behandeln
-            if param_name == 'limit' and param_value is not None:
-                try:
-                    param_value = int(param_value)
-                    param_type = "INT64"
-                except (ValueError, TypeError):
-                    param_value = 100  # Default fallback
-                    param_type = "INT64"
-                    
-            # 2. Datumsparameter vom Format DD.MM.YYYY zu YYYY-MM-DD konvertieren
-            elif param_name in ['start_date', 'end_date', 'start_of_month', 'end_of_month'] and isinstance(param_value, str) and param_value.count('.') == 2:
+            # Datumsparameter vom Format DD.MM.YYYY zu YYYY-MM-DD konvertieren
+            if param_name in ['start_date', 'end_date', 'start_of_month', 'end_of_month'] and isinstance(param_value, str) and param_value.count('.') == 2:
                 try:
                     # Beispiel: '03.03.2025' -> '2025-03-03'
                     day, month, year = param_value.split('.')
@@ -160,7 +158,7 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
                     logger.error(f"Fehler bei der Datumskonvertierung für {param_name}: {e}")
                     param_type = "STRING"
             
-            # 3. Parameter-Typ für alle anderen Parameter bestimmen
+            # Parameter-Typ für alle anderen Parameter bestimmen
             else:
                 if isinstance(param_value, int):
                     param_type = "INT64"

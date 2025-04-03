@@ -652,3 +652,73 @@ Die Zeitraumparameter `default_start_date` und `default_end_date` waren bereits 
 1. Die Parameterliste für die CVR-Abfrage wurde um die erforderlichen Zeitraumparameter erweitert.
 2. Die falschen Annahmen im Kommentar wurden korrigiert.
 {{ ... }}
+
+```
+
+Follow these instructions to make the following change to my code document.
+
+Instruction: Dokumentieren Sie die Änderungen an bigquery_functions.py und anderen Dateien, um den Fehler mit den fehlenden Parametern in den BigQuery-Abfragen zu beheben.
+
+Code Edit:
+```
+{{ ... }}
+
+## BigQuery-Parameter-Behandlung verbessert (03.04.2025)
+
+### Problem
+Obwohl wir die fehlenden Parameter (`start_date` und `end_date`) in der CVR-Abfrage ergänzt haben, trat weiterhin der Fehler auf:
+
+```
+google.api_core.exceptions.BadRequest: 400 Query parameter 'start_date' not found at [1:254]
+```
+
+Die Ursache war, dass die Funktion `execute_bigquery_query` in `bigquery_functions.py` fehlende Parameter nur protokolliert und dann überspringt, anstatt sie mit Standardwerten zu belegen oder einen Fehler zu werfen. Dies führte dazu, dass die Parameter nicht in die Query-Parameters-Liste aufgenommen wurden, obwohl sie in der SQL-Abfrage verwendet wurden.
+
+### Lösung
+1. Die Funktion `execute_bigquery_query` wurde erweitert, um einen zusätzlichen Parameter `query_default_values` aufzunehmen, der standardmäßig `None` ist.
+2. Wenn ein Parameter in der SQL-Abfrage verwendet wird, aber nicht in den übergebenen Parametern vorhanden ist, wird jetzt:
+   - Der Standardwert aus `query_default_values` verwendet, wenn dieser verfügbar ist
+   - Ein Fehler geworfen, wenn kein Standardwert verfügbar ist (anstatt den Parameter einfach zu überspringen)
+3. Der Aufruf von `execute_bigquery_query` wurde in folgenden Dateien aktualisiert:
+   - `routes/data_api.py` (für die CVR-Abfrage)
+   - `routes/dashboard_routes.py` (für die CVR-Abfrage)
+   - `routes/kpi.py` (für alle KPI-Abfragen)
+
+Hier ist die überarbeitete Funktion:
+
+```python
+def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any], query_default_values: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    # ...
+    # Wenn ein Parameter in der Abfrage verwendet wird, aber nicht in den Parametern vorhanden ist
+    if param_value is None:
+        # Für limit setzen wir einen Standardwert
+        if param_name == 'limit':
+            param_value = 1000  # Default-Wert für limit
+            param_type = "INT64"
+        # Versuche, einen Standardwert aus query_default_values zu verwenden
+        elif query_default_values and param_name in query_default_values:
+            param_value = query_default_values[param_name]
+            logger.info(f"Parameter {param_name} wird mit Standardwert '{param_value}' aus query_patterns.json verwendet")
+            # Parameter-Typ bestimmen...
+        else:
+            # Wenn kein Standardwert verfügbar ist, werfen wir einen Fehler
+            error_msg = f"Parameter {param_name} wird in der Abfrage verwendet, ist aber nicht in den Parametern definiert und hat keinen Standardwert"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+    # ...
+```
+
+### Getestete Dateien
+- `bigquery_functions.py`
+- `routes/data_api.py`
+- `routes/dashboard_routes.py`
+- `routes/kpi.py`
+
+### Zusammenfassung der Änderungen
+1. Die Parameterbehandlung in `execute_bigquery_query` wurde robuster gestaltet, um mit fehlenden Parametern umzugehen.
+2. Die Funktion kann jetzt Standardwerte aus der `query_patterns.json` verwenden, was die Flexibilität erhöht.
+3. Alle Aufrufe der Funktion wurden aktualisiert, um den neuen `query_default_values`-Parameter zu übergeben.
+4. Es werden jetzt Fehler geworfen, wenn ein Parameter fehlt und kein Standardwert verfügbar ist, anstatt den Parameter stillschweigend zu überspringen.
+
+Diese Änderungen stellen sicher, dass alle erforderlichen Parameter für die BigQuery-Abfragen korrekt übergeben werden, entweder explizit oder durch Verwendung von Standardwerten aus der `query_patterns.json`.
+{{ ... }}

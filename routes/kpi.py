@@ -6,7 +6,7 @@ from routes.utils import login_required
 from functools import wraps
 
 # Absolute Importe statt relative Importe
-from bigquery_functions import handle_function_call
+from bigquery_functions import handle_function_call, execute_bigquery_query, query_patterns
 
 # --- Blueprint Definition ---
 kpi_bp = Blueprint('kpi', __name__)
@@ -54,13 +54,22 @@ def get_kpi_data_route():
         
         logging.info(f"Fetching KPI '{query_name}' for seller {seller_id} ({start_date_str} to {end_date_str})")
         
-        # Execute the BigQuery query using the handler function (placeholder)
-        results = handle_function_call(query_name, parameters)
+        if query_name in query_patterns['common_queries']:
+            query_pattern = query_patterns['common_queries'][query_name]
+            
+            # Execute the query
+            result = execute_bigquery_query(
+                query_pattern['sql_template'],
+                parameters,
+                query_pattern.get('default_values', {})
+            )
+        else:
+            result = handle_function_call(query_name, parameters)
 
         # --- Process the results ---
         # Adapt this based on the ACTUAL structure returned by your handle_function_call
-        if results and isinstance(results, list) and len(results) > 0:
-            data = results[0] # Assuming the first item contains the relevant counts
+        if result and isinstance(result, list) and len(result) > 0:
+            data = result[0] # Assuming the first item contains the relevant counts
             
             # Safely get counts, defaulting to 0
             net_leads = data.get('net_leads', 0)

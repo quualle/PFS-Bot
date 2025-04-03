@@ -91,7 +91,8 @@ def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> s
         # Führe die Abfrage aus
         result = execute_bigquery_query(
             query_pattern['sql_template'],
-            function_args
+            function_args,
+            query_pattern.get('default_values', {})
         )
         
         # Formatiere das Ergebnis
@@ -112,13 +113,14 @@ def handle_function_call(function_name: str, function_args: Dict[str, Any]) -> s
             "status": "error"
         })
 
-def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any], query_default_values: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     """
     Führt eine BigQuery-Abfrage mit den angegebenen Parametern aus.
     
     Args:
         sql_template (str): SQL-Abfragetemplate mit Platzhaltern
         parameters (dict): Parameter für die Abfrage
+        query_default_values (dict, optional): Standardwerte für die Parameter aus query_patterns.json
         
     Returns:
         list: Liste von Dictionaries mit den Abfrageergebnisse
@@ -144,13 +146,31 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
             
             # Wenn ein Parameter in der Abfrage verwendet wird, aber nicht in den Parametern vorhanden ist
             if param_value is None:
-                # Wir könnten standardmäßig einen Wert für limit setzen
+                # Für limit setzen wir einen Standardwert
                 if param_name == 'limit':
                     param_value = 1000  # Default-Wert für limit
                     param_type = "INT64"
+                # Versuche, einen Standardwert aus query_default_values zu verwenden
+                elif query_default_values and param_name in query_default_values:
+                    param_value = query_default_values[param_name]
+                    logger.info(f"Parameter {param_name} wird mit Standardwert '{param_value}' aus query_patterns.json verwendet")
+                    
+                    # Bestimme den Parametertyp für den Standardwert
+                    if isinstance(param_value, int):
+                        param_type = "INT64"
+                    elif isinstance(param_value, float):
+                        param_type = "FLOAT64"
+                    elif isinstance(param_value, bool):
+                        param_type = "BOOL"
+                    elif isinstance(param_value, datetime.date):
+                        param_type = "DATE"
+                    else:
+                        param_type = "STRING"
                 else:
-                    logger.warning(f"Parameter {param_name} wird in der Abfrage verwendet, ist aber nicht in den Parametern definiert")
-                    continue  # Überspringen dieses Parameters
+                    # Wenn kein Standardwert verfügbar ist, werfen wir einen Fehler
+                    error_msg = f"Parameter {param_name} wird in der Abfrage verwendet, ist aber nicht in den Parametern definiert und hat keinen Standardwert"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
             
             # Datumsparameter vom Format DD.MM.YYYY zu YYYY-MM-DD konvertieren
             if param_name in ['start_date', 'end_date', 'start_of_month', 'end_of_month'] and isinstance(param_value, str) and param_value.count('.') == 2:

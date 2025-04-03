@@ -330,8 +330,9 @@ def get_dashboard_data():
             # Führe die Abfrage aus
             logging.info("Dashboard: Führe BigQuery-Abfrage für Abschlussquote aus")
             cvr_result = execute_bigquery_query(
-                query_pattern['sql_template'],
-                parameters
+                query_pattern['sql_template'], 
+                parameters,
+                query_pattern.get('default_values', {})
             )
             
             # Formatiere das Ergebnis

@@ -125,13 +125,8 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
     """
     import re
     try:
-        # Vereinfachte Lösung: Hardcode LIMIT direkt auf 1000
-        # Ersetze LIMIT @limit durch LIMIT 1000
-        sql_template = re.sub(r'LIMIT\s+@limit', 'LIMIT 1000', sql_template)
-        
-        # Entferne den limit-Parameter aus der Parameter-Map
-        if 'limit' in parameters:
-            parameters = {k: v for k, v in parameters.items() if k != 'limit'}
+        # Anstatt einen hardcodierten LIMIT-Wert zu verwenden, behalten wir den @limit-Parameter bei
+        # und stellen sicher, dass er korrekt in den Parametern vorhanden ist
         
         # Initialisiere BigQuery-Client
         client = bigquery.Client.from_service_account_json(SERVICE_ACCOUNT_PATH)
@@ -146,6 +141,16 @@ def execute_bigquery_query(sql_template: str, parameters: Dict[str, Any]) -> Lis
         # Stellen Sie sicher, dass alle verwendeten Parameter übergeben werden
         for param_name in used_params:
             param_value = parameters.get(param_name)
+            
+            # Wenn ein Parameter in der Abfrage verwendet wird, aber nicht in den Parametern vorhanden ist
+            if param_value is None:
+                # Wir könnten standardmäßig einen Wert für limit setzen
+                if param_name == 'limit':
+                    param_value = 1000  # Default-Wert für limit
+                    param_type = "INT64"
+                else:
+                    logger.warning(f"Parameter {param_name} wird in der Abfrage verwendet, ist aber nicht in den Parametern definiert")
+                    continue  # Überspringen dieses Parameters
             
             # Datumsparameter vom Format DD.MM.YYYY zu YYYY-MM-DD konvertieren
             if param_name in ['start_date', 'end_date', 'start_of_month', 'end_of_month'] and isinstance(param_value, str) and param_value.count('.') == 2:

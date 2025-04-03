@@ -408,9 +408,9 @@ Dieser Ansatz ist pragmatisch und vermeidet mögliche Probleme mit hartnäckigen
 2. Adapter-Muster können nützlich sein, um Kompatibilität zu gewährleisten, ohne bestehenden Code zu ändern.
 3. Bei persistenten Server-Problemen sollte man alternative Lösungsansätze in Betracht ziehen.
 
-## 2025-04-02 - BigQuery SQL-Abfrage korrigiert
+## 2025-04-02: BigQuery SQL-Abfrage korrigiert
 
-### Problem
+### Fehler
 In der Dashboard-Funktion für "Aktive Kunden (Heute)" tritt ein Fehler auf, wenn die SQL-Abfrage gegen BigQuery ausgeführt wird:
 
 ```
@@ -438,54 +438,9 @@ Diese Änderung stellt sicher, dass die SQL-Abfrage korrekt formatiert ist und B
 1. In BigQuery müssen Tabellen immer mit ihrem vollständigen Dataset-Namen qualifiziert werden.
 2. Wenn mehrere Stellen im Code die gleichen Tabellen referenzieren, ist es besser, eine zentrale Konfigurationsquelle zu verwenden, anstatt die Änderungen an mehreren Stellen vorzunehmen.
 
-## 2025-04-02 - Verwendung der SQL-Abfragen aus query_patterns.json
-
-### Problem
-Der Fehler bei der BigQuery-Abfrage tritt weiterhin auf, obwohl wir die direkte Referenz auf "active_stays" in der `routes/data_api.py` korrigiert haben:
-
-```
-google.api_core.exceptions.BadRequest: 400 Table "active_stays" must be qualified with a dataset (e.g. dataset.table).
-```
-
-### Analyse
-Bei der genaueren Untersuchung des Codes in `routes/data_api.py` wurde festgestellt, dass die SQL-Abfragen nicht aus der `query_patterns.json` Datei geladen werden, sondern direkt im Code hardcodiert sind. Der Code zum Laden der JSON-Datei war auskommentiert, und stattdessen wurde ein "Dummy"-Dictionary mit SQL-Abfragen verwendet:
-
-```python
-# base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# query_path = os.path.join(base_path, 'query_patterns.json')
-# with open(query_path, 'r', encoding='utf-8') as f:
-#     query_patterns = json.load(f)
-# Dummy load for now
-query_patterns = { 
-    "common_queries": {
-        "get_active_care_stays_now": {...},
-        "get_cvr_lead_contract": {"sql_template": "SELECT rate FROM cvr WHERE seller_id=@seller_id;", ...},
-        "get_contract_count": {"sql_template": "SELECT COUNT(*) FROM contracts WHERE seller_id=@seller_id AND date BETWEEN @start_date AND @end_date;", ...},
-        ...
-    }
-}
-```
-
-Mehrere dieser hardcodierten Abfragen enthielten Tabellennamen ohne Dataset-Qualifikation, was zu dem Fehler führte.
-
-### Lösung
-Die SQL-Abfragen wurden direkt aus der `query_patterns.json` Datei geladen. Diese enthält bereits alle korrekten SQL-Abfragen mit vollständigen Dataset-Qualifikationen.
-
-```python
-base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-query_path = os.path.join(base_path, 'query_patterns.json')
-with open(query_path, 'r', encoding='utf-8') as f:
-    query_patterns = json.load(f)
-```
-
-### Gelernte Lektionen
-1. Es ist wichtig, die Quelldateien für Konfigurationen und Abfragen zu verwenden, anstatt temporäre "Dummy"-Daten im Code zu belassen.
-2. Wenn mehrere Stellen im Code die gleichen Tabellen referenzieren, ist es besser, eine zentrale Konfigurationsquelle zu verwenden, anstatt die Änderungen an mehreren Stellen vorzunehmen.
-
 ## BigQuery SQL-Abfragen beheben - Teil 2 - 02.04.2025
 
 ### Problem
-
 Nach Aktivierung des Ladens von SQL-Abfragen aus der `query_patterns.json` Datei wurden zwei neue Probleme erkannt:
 
 1. **Datumformat-Fehler**: In BigQuery wurden Datumsangaben im Format "DD.MM.YYYY" übergeben, aber BigQuery erwartet das Format "YYYY-MM-DD". Dies führte zu dem Fehler `400 Invalid timestamp: '03.03.2025'`.
@@ -524,7 +479,6 @@ Nach dem Hochladen der Änderungen wurde die Dashboard-Funktion getestet. Die Fe
 ## BigQuery SQL-Abfragen beheben - Teil 3 - 02.04.2025
 
 ### Problem
-
 Nach der Implementierung der Konvertierung von Datumsparametern und des LIMIT-Parameters tritt weiterhin ein Fehler mit dem LIMIT-Parameter auf:
 
 ```
@@ -534,11 +488,9 @@ google.api_core.exceptions.BadRequest: 400 LIMIT expects an integer literal or p
 Dies deutet darauf hin, dass die ursprüngliche Korrektur nicht ausreichend war und der Parameter trotz Konvertierung nicht als korrekter Integer an BigQuery übergeben wurde.
 
 ### Analyse
-
 Das Problem liegt vermutlich in der Art, wie BigQuery die Parameter typisiert. Obwohl wir den Wert in einen Python-Integer konvertiert haben, müssen wir auch sicherstellen, dass BigQuery diesen Wert explizit als INT64-Typ erkennt und behandelt.
 
 ### Lösung
-
 Die `execute_bigquery_query`-Funktion in `bigquery_functions.py` wurde verbessert:
 
 1. Die Parametertyp-Zuweisung wurde neu strukturiert, um spezielle Parameter früher zu erkennen.
@@ -559,3 +511,62 @@ Die `execute_bigquery_query`-Funktion in `bigquery_functions.py` wurde verbesser
 ### Test
 
 Nach dem Hochladen der Änderungen wurde die Dashboard-Funktion erneut getestet, um zu überprüfen, ob die SQL-Parameter-Probleme behoben wurden.
+
+## BigQuery SQL-Abfragen beheben - Teil 4 - 02.04.2025
+
+### Problem
+Nach der Implementierung mehrerer Lösungsversuche für das LIMIT-Parameter-Problem tritt der Fehler weiterhin auf:
+
+```
+google.api_core.exceptions.BadRequest: 400 LIMIT expects an integer literal or parameter at [1:1059]
+```
+
+Die bisherigen Ansätze, den Parameter korrekt als Integer zu typisieren oder ihn dynamisch zu ersetzen, haben nicht zum Erfolg geführt.
+
+### Lösung
+Um das Problem endgültig zu lösen, haben wir einen einfacheren und robusteren Ansatz gewählt:
+
+1. Die LIMIT-Parameter werden direkt mit einem festen Wert von 1000 hardcodiert:
+   ```python
+   # Vereinfachte Lösung: Hardcode LIMIT direkt auf 1000
+   # Ersetze LIMIT @limit durch LIMIT 1000
+   sql_template = re.sub(r'LIMIT\s+@limit', 'LIMIT 1000', sql_template)
+   
+   # Entferne den limit-Parameter aus der Parameter-Map
+   if 'limit' in parameters:
+       parameters = {k: v for k, v in parameters.items() if k != 'limit'}
+   
+
+```
+
+Follow these instructions to make the following change to my code document.
+
+Instruction: Dokumentiere die Änderung an der bigquery_functions.py, um die LIMIT-Parameter korrekt zu verarbeiten
+
+Code Edit:
+```
+{{ ... }}
+
+## 2025-04-02: Verbesserung der LIMIT-Parameter-Verarbeitung in BigQuery-Abfragen
+
+### Problem
+Die BigQuery-Abfragen in der Anwendung schlugen fehl, da der `LIMIT`-Parameter in SQL-Abfragen nicht korrekt verarbeitet wurde. Die ursprüngliche Lösung hatte alle `LIMIT @limit`-Anweisungen hardcodiert durch `LIMIT 1000` ersetzt, was jedoch nicht optimal war, da verschiedene Abfragen unterschiedliche LIMIT-Werte benötigen können.
+
+### Lösung
+Anstatt die SQL-Abfragen zu modifizieren und `@limit` durch einen festen Wert zu ersetzen, wurde die `execute_bigquery_query`-Funktion in `bigquery_functions.py` überarbeitet:
+
+1. Der Parameter `@limit` wird nun in den Abfragen beibehalten.
+2. Die Funktion prüft, ob alle in der SQL-Abfrage verwendeten Parameter in den übergebenen Parametern vorhanden sind.
+3. Wenn ein Parameter (wie `limit`) in der Abfrage verwendet wird, aber nicht in den übergebenen Parametern vorhanden ist, wird ein default Wert von 1000 gesetzt.
+4. Dadurch können die Standardwerte aus `query_patterns.json` korrekt verwendet werden, ohne dass die SQL-Abfragen modifiziert werden müssen.
+
+### Vorteile der neuen Lösung
+- Die SQL-Abfragen in `query_patterns.json` bleiben unverändert und behalten ihre ursprüngliche, korrekte Form.
+- Jede Abfrage kann ihren eigenen LIMIT-Standardwert in der `default_values`-Sektion von `query_patterns.json` definieren.
+- Falls kein Wert definiert ist, wird ein sicherer Standardwert (1000) verwendet.
+- Die Lösung ist flexibler und unterstützt auch andere fehlende Parameter durch Warnmeldungen.
+
+### Nächste Schritte
+- Die Änderungen testen und sicherstellen, dass alle Abfragen korrekt ausgeführt werden.
+- Die Logs auf mögliche weitere Fehler überwachen.
+{{ ... }}

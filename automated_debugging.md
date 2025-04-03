@@ -374,7 +374,7 @@ Diese Änderung sollte sicherstellen, dass die Funktion korrekt importiert wird 
 ## 2025-04-02 - Import-Fehler in Blueprint-Dateien behoben, Teil 3
 
 ### Problem
-Trotz der Korrektur des Imports in der Datei `routes/data_api.py` (von `from wissensbasis_manager import lade_themen` zu `from routes.kb_utils import lade_themen`) wird auf dem Server immer noch der alte Import verwendet und der Fehler besteht fort:
+Nach der Korrektur des Imports in der Datei `routes/data_api.py` (von `from wissensbasis_manager import lade_themen` zu `from routes.kb_utils import lade_themen`) wird auf dem Server immer noch der alte Import verwendet und der Fehler besteht fort:
 ```
 ModuleNotFoundError: No module named 'wissensbasis_manager'
 ```
@@ -493,24 +493,20 @@ Das Problem liegt vermutlich in der Art, wie BigQuery die Parameter typisiert. O
 ### Lösung
 Die `execute_bigquery_query`-Funktion in `bigquery_functions.py` wurde verbessert:
 
-1. Die Parametertyp-Zuweisung wurde neu strukturiert, um spezielle Parameter früher zu erkennen.
-2. Der LIMIT-Parameter wird jetzt explizit als INT64 typisiert, unabhängig von der späteren Typbestimmung:
-   ```python
-   if param_name == 'limit' and param_value is not None:
-       try:
-           param_value = int(param_value)
-           param_type = "INT64"  # Explizite Typzuweisung
-       except (ValueError, TypeError):
-           param_value = 100  # Default fallback
-           param_type = "INT64"  # Auch für den Fallback-Wert
-   ```
+1. Der Parameter `@limit` wird nun in den Abfragen beibehalten.
+2. Die Funktion prüft, ob alle in der SQL-Abfrage verwendeten Parameter in den übergebenen Parametern vorhanden sind.
+3. Wenn ein Parameter (wie `limit`) in der Abfrage verwendet wird, aber nicht in den übergebenen Parametern vorhanden ist, wird ein default Wert von 1000 gesetzt.
+4. Dadurch können die Standardwerte aus `query_patterns.json` korrekt verwendet werden, ohne dass die SQL-Abfragen modifiziert werden müssen.
 
-3. Die Datumserkennung wurde erweitert, um auch andere Datumsparameter wie `start_of_month` und `end_of_month` zu erfassen und korrekt zu konvertieren.
-4. Die Logik für die Typbestimmung wurde verbessert, sodass Parameter-Typen jetzt direkt während der Vorverarbeitung gesetzt werden.
+### Vorteile der neuen Lösung
+- Die SQL-Abfragen in `query_patterns.json` bleiben unverändert und behalten ihre ursprüngliche, korrekte Form.
+- Jede Abfrage kann ihren eigenen LIMIT-Standardwert in der `default_values`-Sektion von `query_patterns.json` definieren.
+- Falls kein Wert definiert ist, wird ein sicherer Standardwert (1000) verwendet.
+- Die Lösung ist flexibler und unterstützt auch andere fehlende Parameter durch Warnmeldungen.
 
-### Test
-
-Nach dem Hochladen der Änderungen wurde die Dashboard-Funktion erneut getestet, um zu überprüfen, ob die SQL-Parameter-Probleme behoben wurden.
+### Nächste Schritte
+- Die Änderungen testen und sicherstellen, dass alle Abfragen korrekt ausgeführt werden.
+- Die Logs auf mögliche weitere Fehler überwachen.
 
 ## BigQuery SQL-Abfragen beheben - Teil 4 - 02.04.2025
 
@@ -569,4 +565,46 @@ Anstatt die SQL-Abfragen zu modifizieren und `@limit` durch einen festen Wert zu
 ### Nächste Schritte
 - Die Änderungen testen und sicherstellen, dass alle Abfragen korrekt ausgeführt werden.
 - Die Logs auf mögliche weitere Fehler überwachen.
+{{ ... }}
+
+```
+
+Follow these instructions to make the following change to my code document.
+
+Instruction: Dokumentation der Änderung an der data_api.py hinzufügen, um das Dashboard-Problem mit 'active_customers_count' zu beheben.
+
+Code Edit:
+```
+{{ ... }}
+
+## Dashboard-API-Fehlerbehebung (03.04.2025)
+
+### Problem
+Nach dem Deployment der LIMIT-Parameter-Verbesserungen gab es immer noch einen Fehler im Dashboard. Die Logs zeigten den folgenden Fehler:
+```
+Error in get_dashboard_data_route: 'active_customers_count'
+KeyError: 'active_customers_count'
+```
+
+Dies trat auf, weil in der `get_dashboard_data_route`-Funktion versucht wurde, auf einen Schlüssel `active_customers_count` zuzugreifen, der in den Ergebnissen der SQL-Abfrage "get_active_care_stays_now" nicht existiert. Diese Abfrage liefert stattdessen einzelne Care-Stay-Datensätze zurück.
+
+### Lösung
+Die `data_api.py` wurde angepasst, um die Anzahl der aktiven Kunden durch Zählen der zurückgegebenen Datensätze zu berechnen, anstatt auf einen nicht existierenden Schlüssel zuzugreifen:
+
+```python
+# Anstatt auf 'active_customers_count' zuzugreifen, verwenden wir die Länge der Liste
+dashboard_result['active_customers'] = {
+    'data': formatted_active, # Rohdaten für mögliche weitere Verwendung
+    'count': len(formatted_active) if formatted_active else 0
+}
+```
+
+Diese Lösung ist robuster, da sie nicht von einer bestimmten Spalte in den Abfrageergebnissen abhängt, sondern einfach die Anzahl der zurückgegebenen Datensätze zählt, was genau der Anzahl der aktiven Kunden entspricht.
+
+### Getestete Dateien
+- `routes/data_api.py`
+
+### Zusammenfassung der Änderungen
+1. Die Methode zum Berechnen der Anzahl aktiver Kunden wurde korrigiert, indem die Länge der Ergebnisliste verwendet wird.
+2. Das Dashboard sollte nun korrekt die Anzahl der aktiven Kunden anzeigen, ohne Fehler zu werfen.
 {{ ... }}

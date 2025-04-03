@@ -51,10 +51,10 @@ def get_dashboard_data_route():
             pattern_active = query_patterns['common_queries'][query_name_active]
             result_active = execute_bigquery_query(pattern_active['sql_template'], {'seller_id': seller_id})
             formatted_active = format_query_result(result_active, pattern_active.get('result_structure'))
-            # Assuming the structure provides 'active_customers_count'
+            # Anstatt auf 'active_customers_count' zuzugreifen, verwenden wir die Länge der Liste
             dashboard_result['active_customers'] = {
-                'data': formatted_active, # Keep raw formatted data if needed
-                'count': formatted_active[0]['active_customers_count'] if formatted_active else 0
+                'data': formatted_active, # Rohdaten für mögliche weitere Verwendung
+                'count': len(formatted_active) if formatted_active else 0
             }
         else:
             logging.error(f"Dashboard: Query '{query_name_active}' not found.")

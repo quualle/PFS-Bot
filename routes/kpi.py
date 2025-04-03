@@ -2,15 +2,24 @@
 
 from flask import Blueprint, jsonify, request, session, current_app
 import logging
+import os
+import json
 from routes.utils import login_required
 from functools import wraps
-
-# Absolute Importe statt relative Importe
-from bigquery_functions import handle_function_call, execute_bigquery_query, query_patterns
+from bigquery_functions import handle_function_call, execute_bigquery_query
 
 # --- Blueprint Definition ---
 kpi_bp = Blueprint('kpi', __name__)
 
+# Hilfsfunktion zum Laden der Query-Patterns
+def load_query_patterns():
+    try:
+        query_patterns_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'query_patterns.json')
+        with open(query_patterns_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logging.error(f"Fehler beim Laden der query_patterns.json: {e}")
+        return {"common_queries": {}}
 
 # --- API Route ---
 
@@ -53,6 +62,9 @@ def get_kpi_data_route():
         }
         
         logging.info(f"Fetching KPI '{query_name}' for seller {seller_id} ({start_date_str} to {end_date_str})")
+        
+        # Lade die Query-Patterns
+        query_patterns = load_query_patterns()
         
         if query_name in query_patterns['common_queries']:
             query_pattern = query_patterns['common_queries'][query_name]

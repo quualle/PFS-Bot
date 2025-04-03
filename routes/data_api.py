@@ -64,8 +64,12 @@ def get_dashboard_data_route():
         query_name_cvr = "get_cvr_lead_contract"
         if query_name_cvr in query_patterns['common_queries']:
              pattern_cvr = query_patterns['common_queries'][query_name_cvr]
-             # Assuming CVR query doesn't need date range, only seller_id
-             result_cvr = execute_bigquery_query(pattern_cvr['sql_template'], {'seller_id': seller_id})
+             # Die CVR-Abfrage benötigt auch Zeitraumparameter (start_date und end_date)
+             result_cvr = execute_bigquery_query(pattern_cvr['sql_template'], {
+                 'seller_id': seller_id,
+                 'start_date': default_start_date,
+                 'end_date': default_end_date
+             })
              formatted_cvr = format_query_result(result_cvr, pattern_cvr.get('result_structure'))
              dashboard_result['conversion_rate'] = formatted_cvr[0]['conversion_rate'] if formatted_cvr else 0
         else:

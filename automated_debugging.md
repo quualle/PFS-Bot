@@ -608,3 +608,47 @@ Diese Lösung ist robuster, da sie nicht von einer bestimmten Spalte in den Abfr
 1. Die Methode zum Berechnen der Anzahl aktiver Kunden wurde korrigiert, indem die Länge der Ergebnisliste verwendet wird.
 2. Das Dashboard sollte nun korrekt die Anzahl der aktiven Kunden anzeigen, ohne Fehler zu werfen.
 {{ ... }}
+
+```
+
+Follow these instructions to make the following change to my code document.
+
+Instruction: Dokumentation der Änderung an data_api.py hinzufügen, um die fehlenden Parameter für die CVR-Abfrage zu beheben.
+
+Code Edit:
+```
+{{ ... }}
+
+## Dashboard-API CVR-Parameter-Fehler behoben (03.04.2025)
+
+### Problem
+Nach dem Beheben des ersten Dashboard-Fehlers (active_customers_count) wurde ein weiterer Fehler in den Logs gefunden:
+```
+Parameter start_date wird in der Abfrage verwendet, ist aber nicht in den Parametern definiert
+Parameter end_date wird in der Abfrage verwendet, ist aber nicht in den Parametern definiert
+Error executing BigQuery query: 400 Query parameter 'start_date' not found at [1:254]
+```
+
+Dieser Fehler trat auf, weil die Abfrage für die Conversion Rate (`get_cvr_lead_contract`) die Parameter `start_date` und `end_date` benötigt, diese aber in der `get_dashboard_data_route`-Funktion nicht übergeben wurden.
+
+### Lösung
+Die `data_api.py` wurde angepasst, um die erforderlichen Zeitraumparameter zur CVR-Abfrage hinzuzufügen:
+
+```python
+# Die CVR-Abfrage benötigt auch Zeitraumparameter (start_date und end_date)
+result_cvr = execute_bigquery_query(pattern_cvr['sql_template'], {
+    'seller_id': seller_id,
+    'start_date': default_start_date,
+    'end_date': default_end_date
+})
+```
+
+Die Zeitraumparameter `default_start_date` und `default_end_date` waren bereits weiter oben in der Funktion definiert und werden nun auch für die CVR-Abfrage verwendet. Diese Änderung stellt sicher, dass alle erforderlichen Parameter übergeben werden, sodass die Abfrage erfolgreich ausgeführt werden kann.
+
+### Getestete Dateien
+- `routes/data_api.py`
+
+### Zusammenfassung der Änderungen
+1. Die Parameterliste für die CVR-Abfrage wurde um die erforderlichen Zeitraumparameter erweitert.
+2. Die falschen Annahmen im Kommentar wurden korrigiert.
+{{ ... }}

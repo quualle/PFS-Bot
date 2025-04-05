@@ -9,10 +9,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- CSRF-Token Meta-Tag -->
     <meta name="csrf-token" content="{{ csrf_token }}">
-    
+
     <!-- My Business Styles - Inline statt externer CSS-Datei -->
     <style id="myBusinessStyles">
         /* My Business Styles */
@@ -29,7 +29,7 @@
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
         }
-        
+
         .my-business-overlay.active {
             opacity: 1;
         }
@@ -48,7 +48,7 @@
             opacity: 0;
             animation: slideIn 0.3s forwards 0.1s;
         }
-        
+
         @keyframes slideIn {
             to {
                 transform: translateY(0);
@@ -358,17 +358,17 @@
                 margin: 10px auto;
                 padding: 15px;
             }
-            
+
             .widget-row {
                 flex-direction: column;
                 gap: 15px;
             }
-            
+
             .widget, .wide-widget {
                 width: 100%;
                 min-width: unset;
             }
-            
+
             .business-tabs {
                 flex-wrap: wrap;
             }
@@ -377,21 +377,21 @@
     <style>
         /* GRUNDLEGENDE STILE FÜR DAS GESAMTE DOKUMENT */
         body {
-            font-family: 'Inter', sans-serif; 
+            font-family: 'Inter', sans-serif;
             background: radial-gradient(circle at top left, #1f1c2c, #928dab, #1f1c2c);
             color: #ffffff;
             margin: 0;
             padding: 0;
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            text-align: center; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
         }
 
         /* NOTFALLMODUS (ROT) */
         .notfall-active {
-            background: linear-gradient(135deg, #8b0000, #ff0000) !important; 
+            background: linear-gradient(135deg, #8b0000, #ff0000) !important;
         }
         .notfall-active .chat-box {
             border: 3px solid red;
@@ -399,26 +399,30 @@
 
         /* HAUPTCONTAINER FÜR CHAT & STATS */
         .chat-container {
-            display: block;
-            position: relative;
-            width: 100%;
-            padding: 0 10%;
+            display: block; /* Geändert von flex zu block für einfacheres Layout */
+            position: relative; /* Für absolute Positionierung von Buttons */
+            width: 100%; /* Volle Breite nutzen */
+            padding: 0 10%; /* Horizontaler Abstand */
+            box-sizing: border-box; /* Padding in die Breite einbeziehen */
         }
+
 
         /* CHAT-BOX */
         .chat-box {
             background: rgba(0, 0, 0, 0.8);
-            padding: 15px 21px; 
+            padding: 15px 21px;
             border-radius: 15px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-            width: 80vw; 
-            height: 80vh; 
-            display: flex; 
-            flex-direction: column; 
-            margin: 0 auto; 
-            text-align: left; 
-            position: relative; 
+            width: 80vw;
+            max-width: 1200px; /* Maximale Breite hinzugefügt */
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+            text-align: left;
+            position: relative;
         }
+
 
         /* TITEL (XORA) */
         h1.main-title {
@@ -427,7 +431,7 @@
             color: #00ffff;
             margin-bottom: 0px;
             text-shadow: 0 0 10px #00ffff;
-            white-space: pre-line; 
+            white-space: pre-line;
         }
 
         /* UNTERTITEL (Pflegehilfe für Senioren Companion) */
@@ -436,7 +440,7 @@
             text-shadow: 0 0 10px #00ffff;
             font-family: 'Inter', sans-serif;
             font-style: italic;
-            margin-top: 0px; 
+            margin-top: 0px;
             margin-bottom: 20px;
             font-size: 1.2em;
             text-align: center;
@@ -469,7 +473,7 @@
             scrollbar-width: thin;
             scrollbar-color: rgba(0, 255, 255, 0.5) rgba(0, 0, 0, 0.5);
         }
-        
+
         /* CUSTOM SCROLLBAR FÜR WEBKIT-BASIERTE BROWSER */
         .chat-history::-webkit-scrollbar {
             width: 8px;
@@ -496,29 +500,45 @@
             max-width: 85%;
             animation: fadeIn 0.3s ease-in-out;
             line-height: 1.4;
+            display: flex; /* Flexbox für Layout innerhalb der Bubble */
+            flex-direction: column; /* Inhalt untereinander */
         }
-        
+
         /* USER-NACHRICHT (RECHTS, BLAU) */
         .message.user {
             background-color: #2a547c;
             align-self: flex-end;
             margin-left: auto;
         }
-        
+
         /* BOT-NACHRICHT (LINKS, DUNKLER) */
         .message.bot {
             background-color: #202936;
             align-self: flex-start;
             margin-right: auto;
-            position: relative;
         }
-        
+
+
+        /* Starker Text für Absender */
+        .message strong {
+            font-weight: 600;
+            margin-bottom: 5px; /* Kleiner Abstand zum Text */
+            display: block; /* Eigene Zeile */
+        }
+
+        /* Nachrichteninhalt */
+        .message span {
+            word-wrap: break-word; /* Langer Textumbruch */
+            white-space: pre-wrap; /* Zeilenumbrüche aus Text übernehmen */
+        }
+
+
         /* ANIMATION FÜR ERSCHEINEN */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         /* TIPP-ANIMATION */
         .typing span::after {
             content: '▋';
@@ -535,7 +555,7 @@
             display: flex;
             margin-top: 10px;
         }
-        
+
         /* NACHRICHTENFELD */
         .message-input {
             flex-grow: 1;
@@ -553,7 +573,7 @@
             background: rgba(255, 255, 255, 0.15);
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 255, 255, 0.2);
         }
-        
+
         /* SENDEN-BUTTON */
         .send-button {
             background: linear-gradient(135deg, #2d6a9a, #0f4c81);
@@ -578,7 +598,7 @@
         .send-button:active {
             transform: scale(0.97);
         }
-        
+
         /* SENDEPFEIL-ICON */
         .send-icon {
             display: inline-block;
@@ -606,7 +626,7 @@
             z-index: 100;
             backdrop-filter: blur(5px);
         }
-        
+
         /* OVERLAY BOX */
         .overlay-content {
             background: rgba(22, 33, 46, 0.95);
@@ -628,7 +648,7 @@
             margin-bottom: 25px;
             line-height: 1.5;
         }
-        
+
         /* OVERLAY-EINGABEFELD */
         .overlay input {
             width: 100%;
@@ -646,7 +666,7 @@
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
             background: rgba(255, 255, 255, 0.15);
         }
-        
+
         /* OVERLAY-BUTTON */
         .overlay button {
             padding: 12px 30px;
@@ -672,10 +692,12 @@
         /* FEEDBACK-OPTIONEN */
         .feedback-icons {
             display: flex;
-            justify-content: flex-end;
+            justify-content: flex-end; /* Rechts ausrichten */
             margin-top: 8px;
             gap: 10px;
+            align-self: flex-end; /* Am unteren Rand der Bubble ausrichten */
         }
+
         .feedback-icons span {
             cursor: pointer;
             padding: 5px;
@@ -698,6 +720,7 @@
         .thumb-down:hover {
             background: rgba(220, 53, 69, 0.3) !important;
         }
+
 
         /* LINK-FORMATTIERUNG */
         a {
@@ -782,26 +805,26 @@
             margin-bottom: 5px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-        
+
         .clarification-title {
             font-weight: bold;
             margin-bottom: 10px;
             font-size: 16px;
             color: #00ffff;
         }
-        
+
         .clarification-message {
             margin-bottom: 15px;
             line-height: 1.4;
         }
-        
+
         .clarification-options {
             display: flex;
             flex-direction: column;
             gap: 8px;
             margin-top: 10px;
         }
-        
+
         .option-button {
             padding: 10px 15px;
             background-color: #00476b;
@@ -813,7 +836,7 @@
             text-align: left;
             transition: background-color 0.2s ease;
         }
-        
+
         .option-button:hover {
             background-color: #0077b3;
         }
@@ -921,7 +944,7 @@
             z-index: 100;
             overflow-y: auto;
         }
-        
+
         /* DASHBOARD CONTENT */
         .business-content {
             background: rgba(22, 33, 46, 0.95);
@@ -934,7 +957,7 @@
             position: relative;
             min-height: 80vh;
         }
-        
+
         /* DASHBOARD HEADER */
         .business-header {
             display: flex;
@@ -944,14 +967,14 @@
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
-        
+
         .business-header h2 {
             color: #00ffff;
             margin: 0;
             text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
             font-size: 28px;
         }
-        
+
         .close-business-btn {
             background: none;
             border: none;
@@ -960,19 +983,19 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        
+
         .close-business-btn:hover {
             color: #00ffff;
             transform: scale(1.1);
         }
-        
+
         /* TAB NAVIGATION */
         .business-tabs {
             display: flex;
             border-bottom: 1px solid rgba(0, 255, 255, 0.3);
             margin-bottom: 20px;
         }
-        
+
         .business-tab {
             padding: 10px 20px;
             margin-right: 10px;
@@ -983,34 +1006,34 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        
+
         .business-tab:hover {
             background: rgba(0, 255, 255, 0.1);
         }
-        
+
         .business-tab.active {
             background: rgba(0, 255, 255, 0.2);
             color: #ffffff;
             font-weight: bold;
         }
-        
+
         /* TAB CONTENT */
         .tab-content {
             display: none;
         }
-        
+
         .tab-content.active {
             display: block;
             animation: fadeIn 0.3s ease-in-out;
         }
-        
+
         /* DASHBOARD WIDGETS */
         .widget-row {
             display: flex;
             flex-wrap: wrap;
             margin: 0 -10px;
         }
-        
+
         .widget {
             flex: 1 1 300px;
             background: rgba(0, 0, 0, 0.3);
@@ -1020,12 +1043,12 @@
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
         }
-        
+
         .widget:hover {
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
             transform: translateY(-5px);
         }
-        
+
         .widget-header {
             font-size: 18px;
             color: #00ffff;
@@ -1033,29 +1056,30 @@
             padding-bottom: 10px;
             border-bottom: 1px solid rgba(0, 255, 255, 0.3);
         }
-        
+
         .widget-content {
             min-height: 150px;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* Geändert für bessere vertikale Ausrichtung */
             align-items: center;
             justify-content: center;
             color: #ffffff;
             padding: 10px;
         }
-        
+
+
         .placeholder-text {
             color: #aaaaaa;
             font-style: italic;
         }
-        
+
         /* BUSINESS DASHBOARD */
         .business-tabs {
             display: flex;
             border-bottom: 1px solid rgba(0, 255, 255, 0.3);
             margin-bottom: 20px;
         }
-        
+
         .business-tab {
             padding: 10px 20px;
             margin-right: 10px;
@@ -1066,22 +1090,22 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        
+
         .business-tab.active {
             background: rgba(0, 255, 255, 0.2);
             color: #ffffff;
             font-weight: bold;
         }
-        
+
         .tab-content {
             display: none;
         }
-        
+
         .tab-content.active {
             display: block;
             animation: fadeIn 0.3s ease-in-out;
         }
-        
+
         .widget {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
@@ -1090,7 +1114,7 @@
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
         }
-        
+
         .widget-header {
             font-size: 18px;
             color: #00ffff;
@@ -1098,7 +1122,7 @@
             padding-bottom: 10px;
             border-bottom: 1px solid rgba(0, 255, 255, 0.3);
         }
-        
+
         .widget-content {
             min-height: 150px;
             display: flex;
@@ -1107,7 +1131,7 @@
             color: #ffffff;
             padding: 10px;
         }
-        
+
         .metric-value {
             font-size: 28px;
             font-weight: bold;
@@ -1115,44 +1139,44 @@
             margin-bottom: 10px;
             text-align: center;
         }
-        
+
         .metric-label {
             color: #e0e0e0;
             font-size: 16px;
             text-align: center;
             margin-bottom: 10px;
         }
-        
+
         .customer-count {
             font-size: 36px;
             font-weight: bold;
             color: #00ffff;
             margin-bottom: 5px;
         }
-        
+
         .customer-label {
             color: rgba(255, 255, 255, 0.7);
             margin-bottom: 20px;
         }
-        
+
         .dual-metric {
             display: flex;
             justify-content: space-around;
             width: 100%;
             margin-bottom: 20px;
         }
-        
+
         .dual-metric-item {
             flex: 0 0 40%;
             text-align: center;
             padding: 0 20px;
             margin: 0 5px;
         }
-        
+
         .month-selector {
             margin-top: 10px;
         }
-        
+
         .month-select {
             padding: 8px 12px;
             border: none;
@@ -1162,11 +1186,11 @@
             font-size: 16px;
             cursor: pointer;
         }
-        
+
         .date-range-selector {
             margin-bottom: 20px;
         }
-        
+
         .date-input {
             padding: 8px 12px;
             border: none;
@@ -1178,7 +1202,7 @@
             width: 150px;
             margin-right: 10px;
         }
-        
+
         .date-range-button {
             padding: 8px 12px;
             border: none;
@@ -1189,12 +1213,12 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        
+
         .date-range-button:hover {
             background: linear-gradient(135deg, #3a7dae, #1b5e91);
             transform: scale(1.05);
         }
-        
+
         /* Verbesserung der customer-count und customer-label Stile für bessere Lesbarkeit und Abstand */
         .customer-count {
             font-size: 36px;
@@ -1203,13 +1227,13 @@
             margin-bottom: 10px;
             text-align: center;
         }
-        
+
         .customer-label {
             color: rgba(255, 255, 255, 0.7);
             margin-bottom: 20px;
             text-align: center;
         }
-        
+
         /* Kundenliste Stile */
         .customer-list {
             max-height: 300px;
@@ -1218,7 +1242,7 @@
             padding-top: 10px;
             width: 100%;
         }
-        
+
         .customer-item {
             padding: 12px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1226,34 +1250,34 @@
             flex-direction: column;
             transition: background-color 0.2s ease;
         }
-        
+
         .customer-item:hover {
             background: rgba(0, 255, 255, 0.05);
         }
-        
+
         .customer-name {
             font-weight: bold;
             margin-bottom: 5px;
         }
-        
+
         .customer-agency {
             color: rgba(255, 255, 255, 0.7);
             font-size: 0.9em;
             margin-bottom: 5px;
         }
-        
+
         .customer-duration {
             color: rgba(0, 255, 255, 0.8);
             font-size: 0.85em;
         }
-        
+
         .no-customers {
             color: rgba(255, 255, 255, 0.5);
             font-style: italic;
             padding: 20px 0;
             text-align: center;
         }
-        
+
         .loading-spinner {
             display: flex;
             flex-direction: column;
@@ -1261,7 +1285,7 @@
             justify-content: center;
             padding: 30px 0;
         }
-        
+
         .spinner {
             width: 40px;
             height: 40px;
@@ -1271,12 +1295,12 @@
             animation: spin 1s linear infinite;
             margin-bottom: 15px;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         .error-message {
             color: #ff6b6b;
             padding: 15px;
@@ -1284,12 +1308,12 @@
             background: rgba(255, 0, 0, 0.1);
             border-radius: 5px;
         }
-        
+
         /* Logout Button Styles */
         .logout-btn {
-            position: fixed;
-            right: 20px;
-            bottom: 130px;
+            position: fixed; /* Positioniert relativ zum Viewport */
+            bottom: 20px; /* Abstand von unten */
+            right: 20px; /* Abstand von rechts */
             background: rgba(255, 107, 107, 0.1);
             border: 1px solid rgba(255, 107, 107, 0.3);
             color: #ff6b6b;
@@ -1300,23 +1324,24 @@
             cursor: pointer;
             font-size: 14px;
             transition: all 0.2s ease;
-            z-index: 10;
+            z-index: 10; /* Sicherstellen, dass er über anderen Elementen liegt */
         }
-        
+
         .logout-btn:hover {
             background: rgba(255, 107, 107, 0.2);
             transform: translateY(-2px);
         }
-        
+
         /* Styles für Aktionsbuttons unter dem Chat */
-        .action-buttons {
+         .action-buttons {
             display: flex;
             justify-content: flex-end; /* Buttons nach rechts */
             gap: 10px; /* Abstand zwischen Buttons */
             margin-top: 15px; /* Abstand zum Eingabefeld */
-            padding: 0 20px; /* Horizontaler Innenabstand */
+            padding: 0 20px; /* Horizontaler Innenabstand, kann angepasst werden */
         }
-        
+
+
         .action-btn {
             padding: 8px 15px;
             border-radius: 20px;
@@ -1329,14 +1354,57 @@
             text-decoration: none; /* Für a-Tags */
             display: inline-block; /* Für a-Tags */
         }
-        
+
         .action-btn:hover {
             background: rgba(255, 255, 255, 0.2);
         }
-        
+
         /* Spezifisches Hover für Logout (falls gewünscht, kann auch action-btn:hover nutzen) */
         .logout-btn.action-btn:hover {
              background: rgba(255, 107, 107, 0.3);
+        }
+
+         /* Open Chat Button */
+        .open-chat-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #2d6a9a, #0f4c81);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            transition: all 0.2s ease;
+            z-index: 99; /* Unter dem Overlay, aber über anderem Inhalt */
+        }
+        .open-chat-button:hover {
+            background: linear-gradient(135deg, #3a7dae, #1b5e91);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+         /* Close Chat Button */
+        .close-chat-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 110; /* Über Chat-Inhalt */
+            transition: color 0.2s ease;
+        }
+        .close-chat-btn:hover {
+            color: #fff;
         }
     </style>
 </head>
@@ -1364,18 +1432,24 @@
         </div>
     </div>
 
-    <!-- MY BUSINESS OVERLAY - Neue modulare Struktur -->
-    <div class="main-container">
-        {% include 'components/my_business/container.html' %}
+    <!-- MY BUSINESS OVERLAY Container -->
+     <div id="myBusinessOverlay" class="my-business-overlay"> <!-- ID hinzugefügt -->
+        <div class="main-container">
+            {% include 'components/my_business/container.html' %}
+             <!-- Schließen-Button für das My Business Overlay -->
+             <button id="closeMyBusinessBtn" class="close-business-btn" style="position: absolute; top: 15px; right: 15px;">×</button>
+        </div>
     </div>
 
-    <!-- BUTTON ZUM ÖFFNEN DES CHAT-OVERLAYS -->
-    <button id="openChatBtn" class="open-chat-button" title="Chat öffnen">💬</button>
+
+    <!-- BUTTON ZUM ÖFFNEN DES MY BUSINESS OVERLAYS -->
+    <button id="openMyBusinessBtn" class="my-business-button" title="My Business">My Business</button>
+
 
     <!-- CHAT OVERLAY -->
-    <div id="chatOverlay" class="overlay" style="display: none;">
+    <div id="chatOverlay" class="overlay" style="display: none;"> <!-- Standardmäßig ausgeblendet -->
         <div class="chat-container">
-            <button id="closeChatBtn" class="close-chat-btn" title="Chat schließen">&times;</button>
+            <button id="closeChatBtn" class="close-chat-btn" title="Chat schließen">×</button>
 
             <!-- HAUPTTITEL & UNTERTITEL -->
             <h1 class="main-title">XORA</h1>
@@ -1397,12 +1471,16 @@
                 <!-- NOTFALL-BUTTON (immer sichtbar) -->
                 <button id="notfallBtn" class="notfall-button">Ich habe einen Notfall</button>
 
+                 <!-- BUTTON ZUM ÖFFNEN DES MY BUSINESS OVERLAYS IM CHAT -->
+                <button id="openMyBusinessBtnChat" class="my-business-button" title="My Business">My Business</button>
+
+
                 <!-- CHAT-HISTORY (scrollbar) -->
                 <div id="chatHistory" class="chat-history">
                     {% for message in chat_history %}
                     <div class="message {{ message.role }}">
                         <strong>{% if message.role == 'user' %}Sie{% else %}XORA{% endif %}:</strong>
-                        <span>{{ message.content }}</span>
+                        <span>{{ message.content | safe }}</span> <!-- safe filter hinzugefügt -->
                         {% if message.role == 'bot' %}
                         <div class="feedback-icons">
                             <span class="thumb-up" data-message-id="{{ loop.index }}" data-type="positive">👍</span>
@@ -1416,7 +1494,7 @@
                     <!-- Text-based clarification is now handled in the regular chat flow -->
                     <div class="message bot">
                         <strong>XORA:</strong>
-                        <span>{{ human_in_loop.message }}</span>
+                        <span>{{ human_in_loop.message | safe }}</span> <!-- safe filter hinzugefügt -->
                         <div class="feedback-icons">
                             <span class="thumb-up" data-type="positive">👍</span>
                             <span class="thumb-down" data-type="negative">👎</span>
@@ -1442,1461 +1520,650 @@
                 <!-- AKTION-BUTTONS UNTER DEM FORMULAR -->
                 <div class="action-buttons">
                     <button id="clearChatBtn" class="action-btn">Chat löschen</button>
+                     <button id="showStatsBtn" class="action-btn statistics-button">Statistiken</button> <!-- Statistik Button hier platziert -->
                     <a href="/logout" class="logout-btn action-btn">Ausloggen</a>
                 </div>
             </div>
         </div>
     </div>
 
+
     <script>
-    let pendingSecondMessage = false;
-    let secondMessageTimeout = null;
-
-    document.addEventListener("DOMContentLoaded", function() {
-        const chatHistory = document.getElementById('chatHistory');
-        const chatForm = document.getElementById('chatForm');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
-        // Name-Overlay-Elemente
-        const nameOverlay = document.getElementById('nameOverlay');
-        const userNameInput = document.getElementById('userNameInput');
-        const startBtn = document.getElementById('startBtn');
-
-        // Feedback Modal Elemente
-        const feedbackOverlay = document.getElementById('feedbackOverlay');
-        const feedbackTitle = document.getElementById('feedbackTitle');
-        const feedbackComment = document.getElementById('feedbackComment');
-        const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
-        const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
-
-        let currentFeedbackType = null;
-        let userName = null;
-
-        // Funktion zum Scrollen
-        function forceScrollToBottom() {
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-            if (chatHistory.lastElementChild) {
-                chatHistory.lastElementChild.scrollIntoView({ block: "end", inline: "nearest" });
-            }
-        }
-
-        // TIPP-ANIMATION
-        function typeMessage(element, message, callback) {
-            let index = 0;
-            const speed = 20;
-
-            function typeChar() {
-                if (index < message.length) {
-                    element.textContent += message.charAt(index);
-                    index++;
-                    forceScrollToBottom();
-                    setTimeout(typeChar, speed);
-                } else {
-                    element.classList.remove('typing');
-                    if (callback) callback();
-                }
-            }
-            typeChar();
-        }
-
-        function showTypingIndicator() {
-            const bubble = document.createElement('div');
-            bubble.classList.add('message', 'bot', 'typing');
-            bubble.innerHTML = "<strong>XORA:</strong><span>...schreibt gerade...</span>";
-            chatHistory.appendChild(bubble);
-            forceScrollToBottom();
-            return bubble;
-        }
-
-        // Namens-Check
-        function checkUserName() {
-            fetch("{{ url_for('get_username') }}", {
-                method: 'GET',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.user_name) {
-                    userName = data.user_name;
-                    if (chatHistory.children.length === 0) {
-                        // Erste Nachricht anzeigen
-                        const botDiv = document.createElement('div');
-                        botDiv.classList.add('message', 'bot');
-                        botDiv.innerHTML = `
-                            <strong>XORA:</strong>
-                            <span>Hi ${userName}, schön dass du vorbeischaust! Wie kann ich dir heute helfen?<br><br>
-Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
-- Wie war meine Abschlussquote im Januar 2024?<br>
-- Wie viele Kündigungen und Agenturwechsel hatte ich im Januar 2024?<br>
-- Wie viele aktive Kunden habe ich gerade eben?<br>
-- Wie viele Pausen habe ich gerade?</span>
-                        `;
-                        chatHistory.appendChild(botDiv);
-                        forceScrollToBottom();
-                    }
-                } else {
-                    // Overlay anzeigen
-                    nameOverlay.style.display = 'flex';
-                }
-            })
-            .catch(err => console.error('Fehler beim Abrufen des Nutzernamens:', err));
-        }
-
-        function updateSessionWithChatMessage(userMessage, botResponse) {
-            fetch("{{ url_for('update_stream_chat_history') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    'user_message': userMessage,
-                    'bot_response': botResponse
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    console.error('Error updating session:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error updating session:', error);
-            });
-        }
-
-        userNameInput.addEventListener('input', () => {
-            if (userNameInput.value.trim().length >= 3) {
-                startBtn.disabled = false;
-            } else {
-                startBtn.disabled = true;
-            }
-        });
-
-        startBtn.addEventListener('click', () => {
-            const nameValue = userNameInput.value.trim();
-            if (nameValue.length < 3) return; 
-
-            fetch("{{ url_for('set_username') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfToken
-                },
-                body: new URLSearchParams({ 'username': nameValue })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    userName = nameValue;
-                    nameOverlay.style.display = 'none';
-
-                    const botDiv = document.createElement('div');
-                    botDiv.classList.add('message', 'bot');
-                    botDiv.innerHTML = `
-                        <strong>XORA:</strong>
-                        <span>Hi ${userName}, wie kann ich dir behilflich sein?<br><br>
-Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
-- Wie war meine Abschlussquote im Januar 2024?<br>
-- Wie viele Kündigungen und Agenturwechsel hatte ich im Januar 2024?<br>
-- Wie viele aktive Kunden habe ich gerade eben?<br>
-- Wie viele Pausen habe ich gerade?</span>
-                    `;
-                    chatHistory.appendChild(botDiv);
-                    forceScrollToBottom();
-                } else {
-                    alert(data.message || 'Fehler beim Setzen des Namens.');
-                }
-            })
-            .catch(err => console.error('Fehler beim Senden des Namens:', err));
-        });
-
-        // NOTFALL-BUTTON
-        const notfallBtn = document.getElementById('notfallBtn');
-        let notfallActive = false;
-        let selectedNotfallOptions = [];
-
-        notfallBtn.addEventListener('click', function() {
-            notfallActive = !notfallActive;
-            if (notfallActive) {
-                document.body.classList.add('notfall-active');
-                notfallBtn.textContent = "Notfall beenden";
-            } else {
-                document.body.classList.remove('notfall-active');
-                selectedNotfallOptions = [];
-                notfallBtn.textContent = "Ich habe einen Notfall";
-            }
-        });
-
-        forceScrollToBottom();
-
-        // CHAT-FORM
-        // Replace the existing form submit listener with this one
-        chatForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            const userMessageText = new FormData(chatForm).get('message').trim();
-            if (!userMessageText) return;
-
-            // User Bubble
-            const userDiv = document.createElement('div');
-            userDiv.classList.add('message', 'user', 'typing');
-            userDiv.innerHTML = "<strong>Sie:</strong><span></span>";
-            chatHistory.appendChild(userDiv);
-
-            forceScrollToBottom();
-
-            typeMessage(userDiv.querySelector('span'), userMessageText, function() {
-                // Remove typing class when typing is complete
-                userDiv.classList.remove('typing');
-                    // Create bot message container
-                const botDiv = document.createElement('div');
-                botDiv.className = 'message bot';
-
-                // Wichtige Initialisierung direkt beim Erstellen
-                botDiv.style.display = 'flex';
-                botDiv.style.flexDirection = 'column';
-
-                // Add strong label with proper positioning
-                const strongLabel = document.createElement('strong');
-                strongLabel.textContent = 'XORA:';
-                strongLabel.style.position = 'absolute';
-                strongLabel.style.top = '12px';
-                strongLabel.style.left = '16px';
-                botDiv.appendChild(strongLabel);
-
-                // Add content span with proper styling
-                // Add content span with proper styling
-                const contentSpan = document.createElement('span');
-                contentSpan.style.display = 'block';
-                contentSpan.style.position = 'relative';
-                contentSpan.style.marginTop = '30px';
-                contentSpan.style.marginLeft = '16px';
-                contentSpan.style.padding = '0 10px 0 0';
-                contentSpan.style.minHeight = '20px';
-                contentSpan.style.width = 'calc(100% - 40px)';
-                contentSpan.style.wordBreak = 'break-word';
-                contentSpan.style.whiteSpace = 'pre-wrap';
-                contentSpan.style.visibility = 'visible';
-                contentSpan.style.opacity = '1';
-                contentSpan.style.color = '#ffffff';
-                // Füge einen sichtbaren Initialtext hinzu
-                contentSpan.innerHTML = '<em style="color: #88ccff; font-style: italic;">Erstelle Antwort...</em>';
-                botDiv.appendChild(contentSpan);
-                
-                // Add feedback icons
-                const iconsDiv = document.createElement('div');
-                iconsDiv.className = 'feedback-icons';
-                iconsDiv.innerHTML = `
-                    <span class="thumb-up" data-type="positive">👍</span>
-                    <span class="thumb-down" data-type="negative">👎</span>
-                `;
-                botDiv.appendChild(iconsDiv);
-                
-                // Append to chat history
-                chatHistory.appendChild(botDiv);
-                
-                // Force scroll after creating bubble
-                forceScrollToBottom();
-                
-                // Remaining code uses contentSpan
-                const botResponseSpan = contentSpan;
+        let pendingSecondMessage = false;
+        let secondMessageTimeout = null;
     
-                
-                // Setup for either streaming or regular response
-                const isNotfall = notfallActive ? '1' : '0';
-                const joinedNotfallOptions = selectedNotfallOptions.join(', ');
-                
-                // Determine if we should use streaming
-                const useStreaming = true; // Set to true to always use streaming
-                
-                // Hier den alten Code ersetzen - ein sehr vereinfachter Stream-Handler zum Debugging
-                if (useStreaming) {
-                    console.log("Simplified streaming test starting...");
-                    
+        document.addEventListener("DOMContentLoaded", function() {
+            // === BEGINN: Essential Elements & Variables ===
+            const chatHistory = document.getElementById('chatHistory');
+            const chatForm = document.getElementById('chatForm');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const nameOverlay = document.getElementById('nameOverlay');
+            const userNameInput = document.getElementById('userNameInput');
+            const startBtn = document.getElementById('startBtn');
+            const feedbackOverlay = document.getElementById('feedbackOverlay');
+            const feedbackTitle = document.getElementById('feedbackTitle');
+            const feedbackComment = document.getElementById('feedbackComment');
+            const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
+            const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
+            const notfallBtn = document.getElementById('notfallBtn');
+            const openChatBtn = document.getElementById('openChatBtn'); // Button außerhalb des Chat-Overlays
+            const chatOverlay = document.getElementById('chatOverlay');
+            const closeChatBtn = document.getElementById('closeChatBtn');
+            const clearChatBtn = document.getElementById('clearChatBtn');
+            const showStatsBtn = document.getElementById('showStatsBtn'); // Statistik-Button im Chat-Overlay
+            const statsModal = document.getElementById('statsModal'); // Referenz zum Statistik-Modal
+            const closeStatsBtn = document.getElementById('closeStatsBtn'); // Referenz zum Schließen-Button im Modal
+            const openMyBusinessBtn = document.getElementById('openMyBusinessBtn'); // Button außerhalb
+            const openMyBusinessBtnChat = document.getElementById('openMyBusinessBtnChat'); // Button im Chat
+            const myBusinessOverlay = document.getElementById('myBusinessOverlay');
+            const closeMyBusinessBtn = document.getElementById('closeMyBusinessBtn');
+    
+    
+            let currentFeedbackType = null;
+            let userName = null;
+            let notfallActive = false;
+            let selectedNotfallOptions = [];
+            // === ENDE: Essential Elements & Variables ===
+    
+            // === BEGINN: Utility Functions ===
+            function getCSRFToken() {
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                return meta ? meta.getAttribute('content') : '';
+            }
+    
+            function forceScrollToBottom() {
+                if (chatHistory) {
+                    setTimeout(() => {
+                        chatHistory.scrollTop = chatHistory.scrollHeight;
+                    }, 50);
+                }
+            }
+            // === ENDE: Utility Functions ===
+    
+            // === BEGINN: Chat, Name, Feedback, Notfall, Overlay Logic ===
+    
+            // Funktion zum Tippen der Nachricht
+            function typeMessage(element, message, callback) {
+                let index = 0;
+                const speed = 15;
+                element.textContent = ''; // Clear initial content
+    
+                function typeChar() {
+                    if (index < message.length) {
+                        if (message.charAt(index) === '<') {
+                            const tagEndIndex = message.indexOf('>', index);
+                            if (tagEndIndex !== -1) {
+                                element.innerHTML += message.substring(index, tagEndIndex + 1);
+                                index = tagEndIndex + 1;
+                            } else {
+                                element.textContent += message.charAt(index); index++;
+                            }
+                        } else {
+                            element.textContent += message.charAt(index); index++;
+                        }
+                        forceScrollToBottom();
+                        setTimeout(typeChar, speed);
+                    } else {
+                        element.classList.remove('typing');
+                        if (callback) callback();
+                        attachFeedbackHandlers();
+                    }
+                }
+                typeChar();
+            }
+    
+    
+            // Funktion zum Anzeigen des Tipp-Indikators
+            function showTypingIndicator() {
+                const bubble = document.createElement('div');
+                bubble.classList.add('message', 'bot', 'typing');
+                bubble.innerHTML = `<strong>XORA:</strong><span></span>`;
+                const span = bubble.querySelector('span');
+                span.style.display = 'inline';
+                span.style.marginLeft = '5px';
+                chatHistory.appendChild(bubble);
+                forceScrollToBottom();
+                return bubble;
+            }
+    
+            // Funktion zum Entfernen des Tipp-Indikators
+             function removeTypingIndicator(indicatorElement) {
+                if (indicatorElement && indicatorElement.parentNode === chatHistory) {
+                    chatHistory.removeChild(indicatorElement);
+                }
+            }
+    
+    
+            // Namens-Check beim Laden
+            function checkUserName() {
+                 fetch("{{ url_for('get_username') }}", { headers: { 'X-CSRFToken': csrfToken } })
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.user_name) {
+                         userName = data.user_name;
+                         console.log("Benutzername geladen:", userName);
+                         // Willkommensnachricht (optional, nur wenn Chat leer ist)
+                         if (chatHistory && chatHistory.children.length === 0) {
+                            const botDiv = document.createElement('div');
+                            botDiv.classList.add('message', 'bot');
+                            botDiv.innerHTML = `
+                                <strong>XORA:</strong>
+                                <span>Hi ${userName}, schön dass du vorbeischaust! Wie kann ich dir heute helfen?<br><br>
+    Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
+    - Wie war meine Abschlussquote im Januar 2024?<br>
+    - Wie viele Kündigungen und Agenturwechsel hatte ich im Januar 2024?<br>
+    - Wie viele aktive Kunden habe ich gerade eben?<br>
+    - Wie viele Pausen habe ich gerade?</span>`;
+                            chatHistory.appendChild(botDiv);
+                            forceScrollToBottom();
+                            attachFeedbackHandlers(); // Handler für die erste Nachricht
+                         }
+                     } else {
+                         if (nameOverlay) nameOverlay.style.display = 'flex'; // Zeige Namens-Overlay
+                     }
+                 })
+                 .catch(err => console.error('Fehler beim Abrufen des Nutzernamens:', err));
+            }
+    
+    
+            // Session mit Chat-Nachrichten aktualisieren
+            function updateSessionWithChatMessage(userMessage, botResponse) {
+                fetch("{{ url_for('update_stream_chat_history') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ 'user_message': userMessage, 'bot_response': botResponse })
+                })
+                .then(response => response.json())
+                .then(data => { if (!data.success) console.error('Error updating session:', data.error); })
+                .catch(error => console.error('Error updating session:', error));
+            }
+    
+            // Event Listener für Namenseingabe und Start-Button
+            if (userNameInput) {
+                userNameInput.addEventListener('input', () => { startBtn.disabled = userNameInput.value.trim().length < 3; });
+            }
+            if (startBtn) {
+                startBtn.addEventListener('click', () => {
+                     const nameValue = userNameInput.value.trim();
+                     if (nameValue.length < 3) return;
+                     fetch("{{ url_for('set_username') }}", {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+                         body: new URLSearchParams({ 'username': nameValue })
+                     })
+                     .then(r => r.json())
+                     .then(data => {
+                         if (data.success) {
+                             userName = nameValue;
+                             nameOverlay.style.display = 'none';
+                             // Willkommensnachricht nach Namenssetzung
+                             const botDiv = document.createElement('div');
+                             botDiv.classList.add('message', 'bot');
+                             botDiv.innerHTML = `
+                                <strong>XORA:</strong>
+                                <span>Hi ${userName}, wie kann ich dir behilflich sein?<br><br>
+    Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
+    - Wie war meine Abschlussquote im Januar 2024?<br>
+    - Wie viele Kündigungen und Agenturwechsel hatte ich im Januar 2024?<br>
+    - Wie viele aktive Kunden habe ich gerade eben?<br>
+    - Wie viele Pausen habe ich gerade?</span>`;
+                             chatHistory.appendChild(botDiv);
+                             forceScrollToBottom();
+                             attachFeedbackHandlers(); // Handler für die erste Nachricht
+                         } else { alert(data.message || 'Fehler beim Setzen des Namens.'); }
+                     })
+                     .catch(err => console.error('Fehler beim Senden des Namens:', err));
+                });
+            }
+    
+    
+            // Notfall-Button Logik
+            if (notfallBtn) {
+                notfallBtn.addEventListener('click', function() {
+                     notfallActive = !notfallActive;
+                     const notfallInput = document.getElementById('notfallInput');
+                     if (notfallActive) {
+                         document.body.classList.add('notfall-active');
+                         notfallBtn.textContent = "Notfall beenden";
+                         if(notfallInput) notfallInput.value = "1";
+                         selectedNotfallOptions = prompt("Bitte Notfallart(en) angeben (z.B. 'Kunde nicht erreichbar'):", "")?.split(',') || [];
+                         const notfallArtInput = document.getElementById('notfallArtInput');
+                          if(notfallArtInput) notfallArtInput.value = selectedNotfallOptions.join(', ');
+                     } else {
+                         document.body.classList.remove('notfall-active');
+                         notfallBtn.textContent = "Ich habe einen Notfall";
+                         if(notfallInput) notfallInput.value = "0";
+                         selectedNotfallOptions = [];
+                          const notfallArtInput = document.getElementById('notfallArtInput');
+                         if(notfallArtInput) notfallArtInput.value = "";
+                     }
+                });
+            }
+    
+           // Chat-Formular Absenden
+            if (chatForm) {
+                chatForm.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    const userMessageInput = chatForm.querySelector('input[name="message"]');
+                    const userMessageText = userMessageInput.value.trim();
+                    if (!userMessageText) return;
+    
+                    // User Bubble
+                    const userDiv = document.createElement('div');
+                    userDiv.classList.add('message', 'user');
+                    userDiv.innerHTML = `<strong>Sie:</strong> <span>${userMessageText}</span>`; // Nachricht sofort anzeigen
+                    chatHistory.appendChild(userDiv);
+                    forceScrollToBottom();
+    
+                    // Bot Tipp-Indikator
+                    const xoraTyping = showTypingIndicator();
+    
+                    // Streaming Payload
                     const payload = new URLSearchParams({
                         'csrf_token': csrfToken,
                         'message': userMessageText,
-                        'notfallmodus': isNotfall,
-                        'notfallart': joinedNotfallOptions,
+                        'notfallmodus': notfallActive ? '1' : '0',
+                        'notfallart': selectedNotfallOptions.join(', '),
                         'stream': '1'
                     });
-                    
-                    fetch("{{ url_for('chat') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'text/event-stream'
-                        },
-                        body: payload
-                    }).then(response => {
-                        console.log("Response received:", response.status, response.headers.get('content-type'));
-                        
-                        // Check for HTTP errors, including CSRF token errors (status 400)
-                        if (!response.ok) {
-                            // First clone the response so we can read it twice
-                            return response.clone().text().then(text => {
-                                // Check if the response contains CSRF token error messages
-                                if (text.includes('CSRF') || text.includes('csrf') || text.includes('token expired')) {
-                                    throw new Error('CSRF token has expired');
-                                } else {
-                                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-                                }
-                            }).catch(e => {
-                                throw e; // Re-throw the error after checking
-                            });
-                        }
-                        
-                        // Extrem einfacher Reader
-                        const reader = response.body.getReader();
-                        const decoder = new TextDecoder();
-                        let buffer = '';
-                        let simpleText = '';
-                        
-                        function readChunk() {
-                            reader.read().then(({done, value}) => {
-                                if (done) {
-                                    console.log("Stream complete");
-                                    return;
-                                }
-                                
-                                // Dekodiere den Chunk
-                                const chunk = decoder.decode(value, {stream: true});
-                                buffer += chunk;
-                                
-                                // Log kompletten Chunk für Debugging
-                                console.log("RAW CHUNK:", chunk);
-                                
-                                // Extrem einfache Event-Verarbeitung
-                                const lines = chunk.split('\n\n');
-                                lines.forEach(line => {
-                                    if (line.startsWith('data: ')) {
-                                        try {
-                                            // Teste nur, ob wir den Text extrahieren können
-                                            const json = JSON.parse(line.substring(6));
-                                            console.log("EVENT TYPE:", json.type);
-                                            
-                                            // Verschiedene Event-Typen verarbeiten
-                                            if (json.type === 'text' && json.content) {
-                                                simpleText += json.content;
-                                                botResponseSpan.innerHTML = simpleText;
-                                                console.log("TEXT UPDATE:", simpleText.length, "characters total");
-                                            } 
-                                            // Human-in-the-Loop Rückfrage
-                                            else if (json.type === 'clarification_start') {
-                                                console.log("Clarification started");
-                                                simpleText = '';
-                                                botResponseSpan.innerHTML = '';
-                                                
-                                                // Container für Rückfrage erstellen mit klarem Design
-                                                const clarificationBox = document.createElement('div');
-                                                clarificationBox.className = 'clarification-box';
-                                                clarificationBox.style.backgroundColor = 'rgba(52, 73, 94, 0.8)';
-                                                clarificationBox.style.border = '1px solid #4a6b8c';
-                                                clarificationBox.style.borderRadius = '10px';
-                                                clarificationBox.style.padding = '15px';
-                                                clarificationBox.style.marginTop = '15px';
-                                                clarificationBox.style.marginBottom = '5px';
-                                                clarificationBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-                                                botDiv.appendChild(clarificationBox);
-                                                
-                                                // Titel für die Rückfrage
-                                                const title = document.createElement('div');
-                                                title.className = 'clarification-title';
-                                                title.style.fontWeight = 'bold';
-                                                title.style.marginBottom = '10px';
-                                                title.style.fontSize = '16px';
-                                                title.style.color = '#00ffff';
-                                                title.textContent = 'Präzisierung erforderlich';
-                                                clarificationBox.appendChild(title);
-                                                
-                                                // Container für die Nachricht
-                                                const messageContainer = document.createElement('div');
-                                                messageContainer.className = 'clarification-message';
-                                                messageContainer.style.marginBottom = '15px';
-                                                messageContainer.style.lineHeight = '1.4';
-                                                clarificationBox.appendChild(messageContainer);
-                                                
-                                                // Container für Buttons
-                                                const optionsContainer = document.createElement('div');
-                                                optionsContainer.className = 'clarification-options';
-                                                optionsContainer.style.display = 'flex';
-                                                optionsContainer.style.flexDirection = 'column';
-                                                optionsContainer.style.gap = '8px';
-                                                optionsContainer.style.marginTop = '10px';
-                                                clarificationBox.appendChild(optionsContainer);
-                                            }
-                                            else if (json.type === 'clarification_message' && json.content) {
-                                                const messageContainer = botDiv.querySelector('.clarification-message');
-                                                if (messageContainer) {
-                                                    messageContainer.textContent = json.content;
-                                                    console.log("CLARIFICATION MESSAGE:", json.content);
-                                                }
-                                            }
-                                            else if (json.type === 'clarification_option') {
-                                                // Bugfix: Wir suchen nach dem richtigen Container
-                                                const optionsContainer = botDiv.querySelector('.clarification-options');
-                                                if (optionsContainer) {
-                                                    // Button erstellen
-                                                    const optionButton = document.createElement('button');
-                                                    optionButton.className = 'option-button';
-                                                    optionButton.textContent = json.text;
-                                                    optionButton.setAttribute('data-option-index', json.index);
-                                                    
-                                                    // Button-Styling
-                                                    optionButton.style.padding = '10px 15px';
-                                                    optionButton.style.backgroundColor = '#00476b';
-                                                    optionButton.style.color = 'white';
-                                                    optionButton.style.border = '1px solid #0077b3';
-                                                    optionButton.style.borderRadius = '5px';
-                                                    optionButton.style.cursor = 'pointer';
-                                                    optionButton.style.width = '100%';
-                                                    optionButton.style.textAlign = 'left';
-                                                    optionButton.style.transition = 'background-color 0.2s ease';
-                                                    
-                                                    // Hover-Effekt
-                                                    optionButton.addEventListener('mouseover', function() {
-                                                        this.style.backgroundColor = '#0077b3';
-                                                    });
-                                                    optionButton.addEventListener('mouseout', function() {
-                                                        this.style.backgroundColor = '#00476b';
-                                                    });
-                                                    
-                                                    // Event-Listener
-                                                    optionButton.addEventListener('click', function() {
-                                                        const optionIndex = this.getAttribute('data-option-index');
-                                                        
-                                                        // Visuelles Feedback
-                                                        this.style.backgroundColor = '#005e8a';
-                                                        this.textContent = 'Wird verarbeitet...';
-                                                        
-                                                        // Alle Option-Buttons deaktivieren
-                                                        const allButtons = botDiv.querySelectorAll('.option-button');
-                                                        allButtons.forEach(btn => {
-                                                            btn.disabled = true;
-                                                            btn.style.opacity = '0.7';
-                                                            btn.style.cursor = 'default';
-                                                        });
-                                                        
-                                                        // Formular erstellen
-                                                        const form = document.createElement('form');
-                                                        form.method = 'post';
-                                                        form.action = "{{ url_for('handle_clarification') }}";
-                                                        
-                                                        // CSRF Token
-                                                        const csrfInput = document.createElement('input');
-                                                        csrfInput.type = 'hidden';
-                                                        csrfInput.name = 'csrf_token';
-                                                        csrfInput.value = csrfToken;
-                                                        
-                                                        // Option Index
-                                                        const optionInput = document.createElement('input');
-                                                        optionInput.type = 'hidden';
-                                                        optionInput.name = 'option_index';
-                                                        optionInput.value = optionIndex;
-                                                        
-                                                        // Formular zusammenbauen
-                                                        form.appendChild(csrfInput);
-                                                        form.appendChild(optionInput);
-                                                        document.body.appendChild(form);
-                                                        
-                                                        // Kleine Verzögerung
-                                                        // Instead of form submission, use fetch API to handle without page refresh
-                                                        fetch(form.action, {
-                                                            method: 'POST',
-                                                            headers: {
-                                                                'Content-Type': 'application/x-www-form-urlencoded',
-                                                                'X-Requested-With': 'XMLHttpRequest'
-                                                            },
-                                                            body: new URLSearchParams(new FormData(form))
-                                                        })
-                                                        .then(response => response.json())
-                                                        .then(data => {
-                                                            if (data.success) {
-                                                                // Option 1: If we have a direct response, show it immediately
-                                                                if (data.response) {
-                                                                    // Create a new bot message with the response
-                                                                    const botResponse = document.createElement('div');
-                                                                    botResponse.className = 'message bot';
-                                                                    botResponse.innerHTML = `
-                                                                        <strong>XORA:</strong>
-                                                                        <span>${data.response}</span>
-                                                                        <div class="feedback-icons">
-                                                                            <span class="thumb-up" data-type="positive">👍</span>
-                                                                            <span class="thumb-down" data-type="negative">👎</span>
-                                                                        </div>
-                                                                    `;
-                                                                    chatHistory.appendChild(botResponse);
-                                                                    
-                                                                    // Scroll to the new message
-                                                                    forceScrollToBottom();
-                                                                    
-                                                                    // Attach feedback handlers to the new message
-                                                                    attachFeedbackHandlers();
-                                                                }
-                                                                // Option 2: If we need to follow up with another request to get the actual answer
-                                                                else if (data.need_followup) {
-                                                                    console.log("Selected option:", data.selected_option);
-                                                                    
-                                                                    // Add a processing message
-                                                                    const processingMsg = document.createElement('div');
-                                                                    processingMsg.className = 'message bot';
-                                                                    processingMsg.innerHTML = `
-                                                                        <strong>XORA:</strong>
-                                                                        <span>Verarbeite Anfrage...</span>
-                                                                    `;
-                                                                    chatHistory.appendChild(processingMsg);
-                                                                    forceScrollToBottom();
-                                                                    
-                                                                    // Now fetch the actual response using our new endpoint
-                                                                    fetch("{{ url_for('get_clarification_response') }}", {
-                                                                        method: 'GET',
-                                                                        headers: {
-                                                                            'X-Requested-With': 'XMLHttpRequest',
-                                                                            'Accept': 'application/json'
-                                                                        }
-                                                                    })
-                                                                    .then(response => {
-                                                                        if (!response.ok) {
-                                                                            return response.json().then(data => {
-                                                                                throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
-                                                                            });
-                                                                        }
-                                                                        return response.json();
-                                                                    })
-                                                                    .then(followupData => {
-                                                                        // Remove the processing message
-                                                                        processingMsg.remove();
-                                                                        
-                                                                        // Create the actual response message
-                                                                        const botResponse = document.createElement('div');
-                                                                        botResponse.className = 'message bot';
-                                                                        botResponse.innerHTML = `
-                                                                            <strong>XORA:</strong>
-                                                                            <span>${followupData.response || "Ihre Anfrage wurde verarbeitet."}</span>
-                                                                            <div class="feedback-icons">
-                                                                                <span class="thumb-up" data-type="positive">👍</span>
-                                                                                <span class="thumb-down" data-type="negative">👎</span>
-                                                                            </div>
-                                                                        `;
-                                                                        chatHistory.appendChild(botResponse);
-                                                                        forceScrollToBottom();
-                                                                        attachFeedbackHandlers();
-                                                                    })
-                                                                    .catch(error => {
-                                                                        console.error("Followup error:", error);
-                                                                        // Parse the error response if possible
-                                                                        let errorMessage = "Fehler bei der Verarbeitung. Bitte versuchen Sie es erneut.";
-                                                                        
-                                                                        if (error.message && error.message.includes("No data found")) {
-                                                                            errorMessage = "Es wurden keine Daten zu Ihrer Anfrage gefunden.";
-                                                                        } else if (error.message && error.message.includes("customer")) {
-                                                                            errorMessage = "Es wurden keine Kundendaten gefunden.";
-                                                                        }
-                                                                        
-                                                                        // Update the processing message with error
-                                                                        processingMsg.innerHTML = `
-                                                                            <strong>XORA:</strong>
-                                                                            <span>${errorMessage}</span>
-                                                                        `;
-                                                                        
-                                                                        // Try fallback to chat endpoint 
-                                                                        console.log("Trying fallback to chat endpoint");
-                                                                        
-                                                                        // This will refresh the page as a last resort if after 2 seconds
-                                                                        // we still can't get a response via AJAX
-                                                                        setTimeout(() => {
-                                                                            window.location.href = "{{ url_for('chat') }}";
-                                                                        }, 2000);
-                                                                    });
-                                                                }
-                                                            } else {
-                                                                throw new Error(data.error || 'Error processing selection');
-                                                            }
-                                                        })
-                                                        .catch(error => {
-                                                            console.error('Error:', error);
-                                                            // Visual error feedback
-                                                            this.textContent = 'Fehler! Bitte erneut versuchen.';
-                                                            this.style.backgroundColor = '#d32f2f';
-                                                            
-                                                            // Re-enable buttons after timeout
-                                                            setTimeout(() => {
-                                                                const allButtons = document.querySelectorAll('.option-button');
-                                                                allButtons.forEach(btn => {
-                                                                    btn.disabled = false;
-                                                                    btn.style.opacity = '1';
-                                                                    btn.style.cursor = 'pointer';
-                                                                });
-                                                            }, 2000);
-                                                        });
-                                                    });
-                                                    
-                                                    // Button hinzufügen
-                                                    optionsContainer.appendChild(optionButton);
-                                                } else {
-                                                    console.error("Fehler: Options-Container nicht gefunden!");
-                                                }
-                                            }
-                                        } catch (e) {
-                                            console.error("PARSE ERROR:", e);
-                                        }
+    
+                    // EventSource für Streaming
+                    const eventSource = new EventSource("{{ url_for('chat') }}?" + payload.toString());
+                    let botResponseText = '';
+                    let currentBotBubble = xoraTyping;
+    
+                     eventSource.onopen = () => console.log("SSE Verbindung geöffnet.");
+    
+                     eventSource.onmessage = function(event) {
+                        console.log("SSE Daten empfangen:", event.data);
+                        try {
+                            const data = JSON.parse(event.data);
+    
+                            if (data.type === 'text' || data.type === 'clarification_message') {
+                                 // Beim ersten Text-Chunk: Tipp-Indikator entfernen und finale Bubble erstellen
+                                 if (currentBotBubble === xoraTyping) {
+                                    removeTypingIndicator(xoraTyping);
+                                    const botDiv = document.createElement('div');
+                                    botDiv.className = 'message bot';
+                                    // Basisstruktur für Bot-Antwort oder Clarification
+                                    if (data.type === 'clarification_start' || data.type === 'clarification_message' || data.type === 'clarification_option'){
+                                         // Spezifische Struktur für Clarification wird unten gehandhabt
+                                    } else {
+                                        botDiv.innerHTML = `<strong>XORA:</strong> <span></span>
+                                                            <div class="feedback-icons">
+                                                                <span class="thumb-up" data-type="positive">👍</span>
+                                                                <span class="thumb-down" data-type="negative">👎</span>
+                                                            </div>`;
                                     }
-                                });
-                                
-                                // Weiter lesen
-                                readChunk();
-                            }).catch(error => {
-                                console.error("READ ERROR:", error);
-                            });
-                        }
-                        
-                        // Starte Lesevorgang
-                        readChunk();
-                    }).catch(error => {
-                        console.error("FETCH ERROR:", error);
-                        
-                        // Check for CSRF token expiration in the error response
-                        if (error.message && error.message.includes('CSRF token') || 
-                            error.message && error.message.includes('csrf') || 
-                            error.message && error.message.includes('token expired')) {
-                            // Create a user-friendly message with reload button for CSRF errors
-                            const refreshButton = document.createElement('button');
-                            refreshButton.textContent = 'Seite aktualisieren';
-                            refreshButton.className = 'refresh-button';
-                            refreshButton.style.backgroundColor = '#3498db';
-                            refreshButton.style.color = 'white';
-                            refreshButton.style.border = 'none';
-                            refreshButton.style.borderRadius = '5px';
-                            refreshButton.style.padding = '8px 16px';
-                            refreshButton.style.margin = '10px 0';
-                            refreshButton.style.cursor = 'pointer';
-                            refreshButton.onclick = function() {
-                                window.location.reload();
-                            };
-                            
-                            botResponseSpan.innerHTML = `
-                                <div style="color: #ff6b6b;">
-                                    <strong>Deine Sitzung ist abgelaufen.</strong><br>
-                                    Bitte aktualisiere die Seite, um fortzufahren.
-                                </div>`;
-                            botResponseSpan.appendChild(refreshButton);
-                        } else {
-                            // Handle other errors
-                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">Fehler: ${error.message}</div>`;
-                        }
-                    });
-                } else {
-                    // Non-streaming code
-                
-                    // Regular, non-streaming approach (fallback)
-                    const xoraTyping = showTypingIndicator();
-                    const payload = new URLSearchParams({
-                        'csrf_token': csrfToken,
-                        'message': userMessageText,
-                        'notfallmodus': isNotfall,
-                        'notfallart': joinedNotfallOptions
-                    });
-
-                    fetch("{{ url_for('chat') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: payload
-                    })
-                    .then(response => {
-                        // Check for HTTP errors, including CSRF token errors (status 400)
-                        if (!response.ok) {
-                            // First clone the response so we can read it twice
-                            return response.clone().text().then(text => {
-                                // Check if the response contains CSRF token error messages
-                                if (text.includes('CSRF') || text.includes('csrf') || text.includes('token expired')) {
-                                    throw new Error('CSRF token has expired');
-                                } else {
-                                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                                    chatHistory.appendChild(botDiv);
+                                    currentBotBubble = botDiv;
+                                    forceScrollToBottom();
                                 }
-                            }).catch(e => {
-                                throw e; // Re-throw the error after checking
-                            });
+    
+                                // Textinhalt hinzufügen oder aktualisieren
+                                 const botResponseSpan = currentBotBubble.querySelector('span'); // Reguläres Span für Text
+                                 const clarificationMsgContainer = currentBotBubble.querySelector('.clarification-message'); // Span für Klärungsnachricht
+    
+                                 if (data.type === 'text' && data.content && botResponseSpan) {
+                                    botResponseText += data.content;
+                                    botResponseSpan.innerHTML = botResponseText.replace(/\n/g, '<br>');
+                                    forceScrollToBottom();
+                                } else if (data.type === 'clarification_message' && data.content && clarificationMsgContainer) {
+                                    clarificationMsgContainer.textContent = data.content;
+                                    console.log("CLARIFICATION MESSAGE:", data.content);
+                                }
+    
+                            } else if (data.type === 'complete') {
+                                console.log("SSE Stream abgeschlossen.");
+                                eventSource.close();
+                                updateSessionWithChatMessage(userMessageText, data.bot || botResponseText);
+                                attachFeedbackHandlers(); // Wichtig: Nach Abschluss neu anhängen
+                            } else if (data.type === 'error') {
+                                console.error("SSE Fehler:", data.content);
+                                const errorSpan = currentBotBubble.querySelector('span') || currentBotBubble.querySelector('.clarification-message');
+                                if (errorSpan) errorSpan.innerHTML = `<span style="color: #ff6b6b;">Fehler: ${data.content}</span>`;
+                                eventSource.close();
+                            } else if (data.type === 'debug') {
+                                console.log("SSE Debug:", data.message);
+                            }
+                            // --- Clarification Handling ---
+                            else if (data.type === 'clarification_start') {
+                                console.log("SSE Clarification gestartet");
+                                if (currentBotBubble === xoraTyping) removeTypingIndicator(xoraTyping);
+    
+                                const clarificationDiv = document.createElement('div');
+                                clarificationDiv.className = 'message bot clarification-box';
+                                clarificationDiv.innerHTML = `
+                                    <strong class="clarification-title">Präzisierung erforderlich</strong>
+                                    <div class="clarification-message"></div>
+                                    <div class="clarification-options"></div>
+                                     <div class="feedback-icons">
+                                            <span class="thumb-up" data-type="positive">👍</span>
+                                            <span class="thumb-down" data-type="negative">👎</span>
+                                    </div>`;
+                                chatHistory.appendChild(clarificationDiv);
+                                currentBotBubble = clarificationDiv;
+                                forceScrollToBottom();
+                            } else if (data.type === 'clarification_option') {
+                                const optionsContainer = currentBotBubble.querySelector('.clarification-options');
+                                if (optionsContainer) {
+                                    const optionButton = document.createElement('button');
+                                    optionButton.className = 'option-button';
+                                    optionButton.textContent = data.text;
+                                    optionButton.setAttribute('data-option-index', data.index);
+                                    optionButton.addEventListener('click', handleClarificationOptionClick); // Handler auslagern
+                                    optionsContainer.appendChild(optionButton);
+                                }
+                            }
+                            // --- Ende Clarification Handling ---
+    
+                        } catch (e) {
+                            console.error("Fehler beim Parsen der SSE-Daten:", e, "Daten:", event.data);
+                            const errorSpan = currentBotBubble.querySelector('span') || currentBotBubble.querySelector('.clarification-message');
+                            if (errorSpan) errorSpan.innerHTML = `<span style="color: #ff6b6b;">Fehler beim Verarbeiten der Antwort.</span>`;
+                            eventSource.close();
                         }
-                        
-                        return response.json();
-                    })
-                    .then(data => {
+                    }; // Ende onmessage
+    
+                    eventSource.onerror = function(error) {
+                        console.error("EventSource Fehler:", error);
                         removeTypingIndicator(xoraTyping);
-                        if (data.error) {
-                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">${data.error}</div>`;
-                        } else if (data.response) {
-                            botResponseSpan.innerHTML = data.response;
-                            // Update session with chat messages
-                            updateSessionWithChatMessage(userMessageText, data.response);
+                        const lastBotBubble = chatHistory.querySelector('.message.bot:last-child');
+                        const errorSpan = lastBotBubble ? (lastBotBubble.querySelector('span') || lastBotBubble.querySelector('.clarification-message')) : null;
+                        let errorMsg = "Verbindung zum Server verloren oder Serverfehler.";
+                        if (error.target && error.target.readyState === EventSource.CLOSED) errorMsg = "Verbindung geschlossen.";
+                        else if (error.message) errorMsg = error.message;
+    
+                        if (errorSpan) errorSpan.innerHTML = `<span style="color: #ff6b6b;">Fehler: ${errorMsg}</span>`;
+                        else {
+                             const errorBubble = document.createElement('div');
+                             errorBubble.className = 'message bot';
+                             errorBubble.innerHTML = `<strong>XORA:</strong> <span style="color: #ff6b6b;">Fehler: ${errorMsg}</span>`;
+                             chatHistory.appendChild(errorBubble);
                         }
-                    })
-                    .catch(error => {
-                        console.error("Error in non-streaming mode:", error);
-                        removeTypingIndicator(xoraTyping);
-                        
-                        // Check for CSRF token expiration in the error response
-                        if (error.message && error.message.includes('CSRF token') || 
-                            error.message && error.message.includes('csrf') || 
-                            error.message && error.message.includes('token expired')) {
-                            // Create a user-friendly message with reload button for CSRF errors
-                            const refreshButton = document.createElement('button');
-                            refreshButton.textContent = 'Seite aktualisieren';
-                            refreshButton.className = 'refresh-button';
-                            refreshButton.style.backgroundColor = '#3498db';
-                            refreshButton.style.color = 'white';
-                            refreshButton.style.border = 'none';
-                            refreshButton.style.borderRadius = '5px';
-                            refreshButton.style.padding = '8px 16px';
-                            refreshButton.style.margin = '10px 0';
-                            refreshButton.style.cursor = 'pointer';
-                            refreshButton.onclick = function() {
-                                window.location.reload();
-                            };
-                            
-                            botResponseSpan.innerHTML = `
-                                <div style="color: #ff6b6b;">
-                                    <strong>Deine Sitzung ist abgelaufen.</strong><br>
-                                    Bitte aktualisiere die Seite, um fortzufahren.
-                                </div>`;
-                            botResponseSpan.appendChild(refreshButton);
-                        } else {
-                            // Handle other errors
-                            botResponseSpan.innerHTML = `<div style="color: #ff6b6b;">Fehler: ${error.message}</div>`;
-                        }
-                    });
-                }
-            });
-
-            chatForm.reset();
-        });
-
-        // FEEDBACK
-        sendFeedbackBtn.addEventListener('click', () => {
-            const commentVal = feedbackComment.value.trim();
-            fetch("{{ url_for('store_feedback_route') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    feedback_type: currentFeedbackType,
-                    comment: commentVal,
-                    message: document.getElementById('currentFeedbackMessage').value
-                })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Feedback gespeichert! Vielen Dank.");
-                } else {
-                    alert("Fehler beim Speichern des Feedbacks: " + (data.error || data.message));
-                }
-                feedbackOverlay.style.display = "none";
-            })
-            .catch(err => {
-                console.error(err);
-                feedbackOverlay.style.display = "none";
-            });
-        });
-
-        cancelFeedbackBtn.addEventListener('click', () => {
-            feedbackOverlay.style.display = "none";
-        });
-
-        // Simpler and more direct approach to attach feedback handlers
-        function attachFeedbackHandlers() {
-            console.log("Attaching feedback handlers...");
-            
-            // Remove any existing handlers by adding a delegated event handler on the chat container
-            document.getElementById('chatHistory').removeEventListener('click', handleFeedbackClick);
-            document.getElementById('chatHistory').addEventListener('click', handleFeedbackClick);
-            
-            const thumbs = document.querySelectorAll('.thumb-up, .thumb-down');
-            console.log(`Found ${thumbs.length} thumbs buttons`);
-        }
-        
-        // Separate handler function for better organization
-        function handleFeedbackClick(event) {
-            // Check if a thumb was clicked
-            if (event.target.classList.contains('thumb-up') || event.target.classList.contains('thumb-down')) {
-                const thumb = event.target;
-                console.log(`Thumb clicked: ${thumb.getAttribute('data-type')}`);
-                
-                // Get feedback type (positive/negative)
-                currentFeedbackType = thumb.getAttribute('data-type');
-                
-                // Capture the message content for context
-                const messageElement = thumb.closest('.message');
-                console.log("Found message element:", messageElement);
-                
-                let messageContent = "";
-                
-                // Try multiple selectors to find the message content
-                if (messageElement) {
-                    // First try to get the text content excluding the feedback icons
-                    const messageTextSpan = messageElement.querySelector('span');
-                    if (messageTextSpan) {
-                        messageContent = messageTextSpan.innerText;
-                    } else {
-                        // Fallback to getting all text
-                        messageContent = messageElement.innerText;
-                    }
-                }
-                
-                console.log("Message content found:", messageContent.substring(0, 50) + (messageContent.length > 50 ? "..." : ""));
-                
-                // Store the message we're providing feedback on
-                document.getElementById('currentFeedbackMessage').value = messageContent;
-                
-                // Update modal title based on feedback type
-                feedbackTitle.textContent = currentFeedbackType === 'positive' 
-                    ? "Positives Feedback" 
-                    : "Verbesserungsvorschlag";
-                    
-                // Set appropriate placeholder based on feedback type
-                feedbackComment.placeholder = currentFeedbackType === 'positive' 
-                    ? "Was war besonders hilfreich? (optional)" 
-                    : "Was ist nicht optimal? Was hättest du gerne als Antwort gehört? (optional)";
-                
-                // Clear any previous comment
-                feedbackComment.value = '';
-                
-                // Show the feedback overlay
-                feedbackOverlay.style.display = "flex";
-                
-                // Focus on the comment textarea
-                setTimeout(() => feedbackComment.focus(), 100);
-                
-                // Highlight the clicked button
-                thumb.style.opacity = '1';
-                thumb.style.transform = 'scale(1.2)';
-                
-                // Dim the other button
-                const otherType = currentFeedbackType === 'positive' ? 'thumb-down' : 'thumb-up';
-                const otherThumb = messageElement.querySelector(`.${otherType}`);
-                if (otherThumb) otherThumb.style.opacity = '0.5';
-                
-                // Prevent the event from bubbling up
-                event.stopPropagation();
+                        eventSource.close();
+                    };
+                }); // Ende chatForm submit listener
+            } // Ende if(chatForm)
+    
+            // Handler für Klick auf Klärungsoption
+            function handleClarificationOptionClick() {
+                 const optionButton = this; // Der geklickte Button
+                 const optionIndex = optionButton.getAttribute('data-option-index');
+                 const clarificationBubble = optionButton.closest('.clarification-box');
+                 const allButtons = clarificationBubble.querySelectorAll('.option-button');
+    
+                 allButtons.forEach(btn => {
+                     btn.disabled = true; btn.style.opacity = '0.7'; btn.style.cursor = 'default';
+                     if (btn === optionButton) { btn.style.backgroundColor = '#005e8a'; btn.textContent = 'Ausgewählt...'; }
+                 });
+    
+                 const clarifyPayload = new URLSearchParams({ 'csrf_token': csrfToken, 'option_index': optionIndex });
+    
+                 fetch("{{ url_for('handle_clarification') }}", {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                     body: clarifyPayload
+                 })
+                 .then(response => response.json())
+                 .then(clarifyData => {
+                     if (clarifyData.success && clarifyData.need_followup) {
+                         const processingMsg = document.createElement('div');
+                         processingMsg.className = 'message bot';
+                         processingMsg.innerHTML = `<strong>XORA:</strong> <span>Verarbeite Auswahl...</span>`;
+                         chatHistory.appendChild(processingMsg);
+                         forceScrollToBottom();
+    
+                         fetch("{{ url_for('get_clarification_response') }}")
+                         .then(res => res.json())
+                         .then(followupData => {
+                              processingMsg.remove();
+                             if (followupData.success && followupData.response) {
+                                 const finalBotResponse = document.createElement('div');
+                                 finalBotResponse.className = 'message bot';
+                                 finalBotResponse.innerHTML = `<strong>XORA:</strong> <span>${followupData.response}</span>
+                                                              <div class="feedback-icons">...</div>`; // Feedback Icons
+                                 chatHistory.appendChild(finalBotResponse);
+                                 forceScrollToBottom();
+                                 attachFeedbackHandlers();
+                             } else { throw new Error(followupData.error || "Fehler bei Folgeantwort."); }
+                         })
+                         .catch(followupError => {
+                              processingMsg.remove();
+                              console.error("Fehler bei Folgeanfrage:", followupError);
+                               const errorMsg = document.createElement('div');
+                               errorMsg.className = 'message bot';
+                               errorMsg.innerHTML = `<strong>XORA:</strong> <span style="color: #ff6b6b;">Fehler: ${followupError.message}</span>`;
+                               chatHistory.appendChild(errorMsg);
+                               forceScrollToBottom();
+                         });
+                     } else if (clarifyData.success && clarifyData.response) {
+                         const directBotResponse = document.createElement('div');
+                         directBotResponse.className = 'message bot';
+                         directBotResponse.innerHTML = `<strong>XORA:</strong> <span>${clarifyData.response}</span>
+                                                       <div class="feedback-icons">...</div>`; // Feedback Icons
+                         chatHistory.appendChild(directBotResponse);
+                         forceScrollToBottom();
+                         attachFeedbackHandlers();
+                     } else { throw new Error(clarifyData.error || 'Unbekannter Verarbeitungsfehler.'); }
+                 })
+                 .catch(error => {
+                      console.error('Fehler bei Klärungsantwort:', error);
+                      const errorMsg = document.createElement('div');
+                      errorMsg.className = 'message bot';
+                      errorMsg.innerHTML = `<strong>XORA:</strong> <span style="color: #ff6b6b;">Fehler: ${error.message}</span>`;
+                      chatHistory.appendChild(errorMsg);
+                      forceScrollToBottom();
+                      allButtons.forEach(btn => { /* Re-enable buttons ... */ }); // Logik zum Reaktivieren
+                 });
             }
-        }
-        
-        // Initialen Status setzen
-        checkUserName();
-        forceScrollToBottom();
-
-        // Dashboard-Funktionalität
-        const openChatBtn = document.getElementById('openChatBtn');
-        const chatOverlay = document.getElementById('chatOverlay');
-        const closeChatBtn = document.getElementById('closeChatBtn');
-        const businessTabs = document.querySelectorAll('.business-tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-        
-        // Dashboard-Tabs aktivieren
-        if (businessTabs && businessTabs.length > 0) {
-            businessTabs.forEach(button => {
-                button.addEventListener('click', () => {
-                    // Alle Tab-Buttons deaktivieren
-                    businessTabs.forEach(btn => btn.classList.remove('active'));
-                    // Aktuellen Tab-Button aktivieren
-                    button.classList.add('active');
-                    
-                    // Alle Tab-Inhalte ausblenden
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    // Zugehörigen Tab-Inhalt anzeigen
-                    const tabId = button.getAttribute('data-tab');
-                    const targetTab = document.getElementById(tabId + '-tab');
-                    if (targetTab) {
-                        targetTab.classList.add('active');
-                    } else {
-                        console.error('Tab mit ID ' + tabId + '-tab nicht gefunden');
-                    }
+    
+    
+            // FEEDBACK Logik
+            if(sendFeedbackBtn) {
+                 sendFeedbackBtn.addEventListener('click', () => {
+                     const commentVal = feedbackComment.value.trim();
+                     const messageVal = document.getElementById('currentFeedbackMessage').value;
+                     fetch("{{ url_for('store_feedback_route') }}", {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                         body: JSON.stringify({ feedback_type: currentFeedbackType, comment: commentVal, message: messageVal })
+                     })
+                     .then(r => r.json()).then(data => {
+                         if (data.success) alert("Feedback gespeichert! Vielen Dank.");
+                         else alert("Fehler beim Speichern: " + (data.error || data.message));
+                         feedbackOverlay.style.display = "none";
+                     }).catch(err => { console.error(err); feedbackOverlay.style.display = "none"; });
+                 });
+            }
+            if(cancelFeedbackBtn) {
+                 cancelFeedbackBtn.addEventListener('click', () => { feedbackOverlay.style.display = "none"; });
+            }
+    
+            // Feedback-Handler anhängen
+            function attachFeedbackHandlers() {
+                 const chatHistoryContainer = document.getElementById('chatHistory');
+                 if (chatHistoryContainer._feedbackListenerAttached) {
+                     chatHistoryContainer.removeEventListener('click', handleFeedbackClick);
+                 }
+                 chatHistoryContainer.addEventListener('click', handleFeedbackClick);
+                 chatHistoryContainer._feedbackListenerAttached = true;
+            }
+    
+            function handleFeedbackClick(event) {
+                 const thumb = event.target.closest('.thumb-up, .thumb-down');
+                 if (thumb) {
+                     currentFeedbackType = thumb.classList.contains('thumb-up') ? 'positive' : 'negative';
+                     const messageElement = thumb.closest('.message');
+                     let messageContent = "";
+                     if (messageElement) {
+                         const messageTextSpan = messageElement.querySelector('span');
+                         if (messageTextSpan) messageContent = messageTextSpan.innerHTML;
+                     }
+                     document.getElementById('currentFeedbackMessage').value = messageContent;
+                     feedbackTitle.textContent = currentFeedbackType === 'positive' ? "Positives Feedback" : "Verbesserungsvorschlag";
+                     feedbackComment.placeholder = currentFeedbackType === 'positive' ? "Was war hilfreich? (optional)" : "Was ist nicht optimal? (optional)";
+                     feedbackComment.value = '';
+                     feedbackOverlay.style.display = "flex";
+                     setTimeout(() => feedbackComment.focus(), 100);
+                     messageElement.querySelectorAll('.thumb-up, .thumb-down').forEach(t => t.style.opacity = '0.5');
+                     thumb.style.opacity = '1'; thumb.style.transform = 'scale(1.1)';
+                     event.stopPropagation();
+                 }
+            }
+    
+    
+            // My Business Overlay öffnen/schließen
+            if (openMyBusinessBtn && myBusinessOverlay && closeMyBusinessBtn) {
+                 openMyBusinessBtn.addEventListener('click', () => myBusinessOverlay.style.display = 'block');
+                 if (openMyBusinessBtnChat) openMyBusinessBtnChat.addEventListener('click', () => myBusinessOverlay.style.display = 'block');
+                 closeMyBusinessBtn.addEventListener('click', () => myBusinessOverlay.style.display = 'none');
+                 myBusinessOverlay.addEventListener('click', (event) => { if (event.target === myBusinessOverlay) myBusinessOverlay.style.display = 'none'; });
+            } else { console.error('My Business Buttons oder Overlay nicht gefunden.'); }
+    
+             // Event-Listener für Statistik-Button (im Chat-Overlay)
+            if (showStatsBtn && statsModal && closeStatsBtn) {
+                showStatsBtn.addEventListener('click', function() {
+                    statsModal.style.display = 'flex';
                 });
-            });
-        } else {
-            console.warn('Keine Tab-Elemente gefunden');
-        }
-        
-        // Chat Overlay öffnen/schließen
-        if (openChatBtn && chatOverlay && closeChatBtn) {
-            openChatBtn.addEventListener('click', () => {
-                chatOverlay.style.display = 'flex';
-                forceScrollToBottom(); // Scrollen, wenn Chat geöffnet wird
-            });
-            
-            closeChatBtn.addEventListener('click', () => {
-                chatOverlay.style.display = 'none';
-            });
-            
-            // Optional: Schließen, wenn außerhalb geklickt wird
-            chatOverlay.addEventListener('click', (event) => {
-                 if (event.target === chatOverlay) { // Nur wenn auf den Hintergrund geklickt wird
-                    chatOverlay.style.display = 'none';
-                }
-            });
-            
-        } else {
-            console.error('Chat-Öffnen Button, Chat-Overlay oder Schließen-Button nicht gefunden!');
-        }
-        
-        // Funktion zum Laden der Dashboard-Daten
-        function loadDashboardData() {
-            // Aktive Kunden laden
-            loadActiveCustomers();
-            
-            // Vertragsdaten laden
-            loadContractData();
-            
-            // Hier können später weitere Dashboard-Daten geladen werden
-        }
-        
-        // Funktion zum Laden der aktiven Kunden
-        function loadActiveCustomers() {
-            const activeCustomersListContainer = document.getElementById('active-customers-list-container');
-            const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
-            
-            console.log('DEBUG: loadActiveCustomers() aufgerufen');
-            
-            // Ladeanimationen anzeigen
-            if (activeCustomersListContainer) {
-                console.log('DEBUG: activeCustomersListContainer gefunden');
-                activeCustomersListContainer.innerHTML = `
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <div>Kundendaten werden geladen...</div>
-                    </div>
-                `;
+                closeStatsBtn.addEventListener('click', function() {
+                    statsModal.style.display = 'none';
+                });
+                 // Schließen bei Klick außerhalb des Statistik-Modals
+                 statsModal.addEventListener('click', (event) => {
+                     if (event.target === statsModal) {
+                         statsModal.style.display = 'none';
+                     }
+                 });
             } else {
-                console.warn('DEBUG: activeCustomersListContainer nicht gefunden');
+                console.warn("Statistik-Button, Modal oder Schließen-Button nicht gefunden.");
             }
-            
-            if (activeCustomersNowWidget) {
-                console.log('DEBUG: activeCustomersNowWidget gefunden');
-                activeCustomersNowWidget.innerHTML = `
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <div>Daten werden geladen...</div>
-                    </div>
-                `;
-            } else {
-                console.warn('DEBUG: activeCustomersNowWidget nicht gefunden');
+    
+    
+            // === BEGINN: Initialisierungsaufrufe ===
+            checkUserName(); // Namen prüfen/abfragen
+            forceScrollToBottom(); // Zum Ende des Chats scrollen
+            attachFeedbackHandlers(); // Feedback-Buttons für initial geladene Nachrichten aktivieren
+            setDefaultKpiDates(); // KPI Datumsfelder initialisieren
+            // === ENDE: Initialisierungsaufrufe ===
+    
+             // --- BEGINN: KPI-Tab-Funktionalität ---
+            const kpiStartDateInput = document.getElementById('kpi-start-date');
+            const kpiEndDateInput = document.getElementById('kpi-end-date');
+            const updateKpiButton = document.getElementById('update-kpi-range-btn');
+            const kpiRatePercentWidget = document.getElementById('closing-rate-percent');
+            const kpiRateAbsoluteWidget = document.getElementById('closing-rate-absolute');
+            const kpiTabContent = document.getElementById('kpi-tab');
+    
+            // KPI Loading Indikatoren
+            function showKpiLoading() {
+                if (kpiRatePercentWidget) kpiRatePercentWidget.textContent = 'Laden...';
+                if (kpiRateAbsoluteWidget) kpiRateAbsoluteWidget.textContent = 'Laden...';
+                if (updateKpiButton) updateKpiButton.disabled = true;
             }
-            
-            // Standardwerte initialisieren, falls die Daten nicht geladen werden können
-            console.log('DEBUG: Initialisiere Standardwerte');
-            initializeEmptyMetrics();
-            
-            // API-Aufruf zum Laden der aktiven Kunden
-            console.log('DEBUG: Starte Fetch-Anfrage an /get_dashboard_data');
-            fetch('/get_dashboard_data?t=' + new Date().getTime(), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
+            function hideKpiLoading(success = true) {
+                if (updateKpiButton) updateKpiButton.disabled = false;
+                if (!success) {
+                    if (kpiRatePercentWidget) kpiRatePercentWidget.textContent = 'Fehler';
+                    if (kpiRateAbsoluteWidget) kpiRateAbsoluteWidget.textContent = 'Fehler';
                 }
-            })
-            .then(response => {
-                console.log('DEBUG: Fetch-Antwort erhalten', response);
-                console.log('DEBUG: Antwort-Status:', response.status);
-                console.log('DEBUG: Response OK?', response.ok);
-                
-                // Prüfen, ob es ein CSRF-Token-Problem gibt
-                if (response.status === 403) {
-                    console.error('DEBUG: Mögliches CSRF-Token-Problem (403 Forbidden)');
-                    throw new Error('Möglicherweise ist Ihre Sitzung abgelaufen. Bitte laden Sie die Seite neu.');
-                }
-                
-                if (!response.ok) {
-                    throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
-                }
-                return response.text(); // Erst als Text holen
-            })
-            .then(text => {
-                console.log('DEBUG: Response Text:', text.substring(0, 200) + '...'); // Zeige die ersten 200 Zeichen
-                try {
-                    return JSON.parse(text); // Dann parsen
-                } catch (e) {
-                    console.error('DEBUG: JSON-Parse-Fehler:', e);
-                    console.error('DEBUG: Response konnte nicht als JSON geparst werden:', text);
-                    throw new Error('Antwort konnte nicht als JSON geparst werden');
-                }
-            })
-            .then(data => {
-                console.log('DEBUG: Dashboard-Daten geladen:', data);
-                console.log('DEBUG: Datentyp:', typeof data);
-                console.log('DEBUG: Datenstruktur Schlüssel:', Object.keys(data));
-                
-                // Aktive Kunden anzeigen
-                if (activeCustomersNowWidget) {
-                    console.log('DEBUG: Aktualisiere activeCustomersNowWidget');
-                    console.log('DEBUG: Anzahl Kunden:', data.count);
-                    activeCustomersNowWidget.innerHTML = `<div class="customer-count">${data.count || 0}</div>`;
-                }
-                
-                // Weitere Dashboard-Felder aktualisieren
-                if (data.status === 'success' && data.data && data.data.length > 0) {
-                    console.log('DEBUG: Erfolgreicher Status und Daten vorhanden');
-                    console.log('DEBUG: Anzahl der Kunden in data.data:', data.data.length);
-                    
-                    // Beispielhafte Berechnung des Gesamtumsatzes
-                    let totalRevenue = 0;
-                    data.data.forEach(customer => {
-                        if (customer.prov_seller) {
-                            totalRevenue += parseFloat(customer.prov_seller) || 0;
-                        }
-                    });
-                    
-                    // Umsatz anzeigen, falls das Element existiert
-                    const totalRevenueElement = document.getElementById('total-revenue');
-                    if (totalRevenueElement) {
-                        console.log('DEBUG: Berechneter Gesamtumsatz:', totalRevenue);
-                        totalRevenueElement.textContent = `${totalRevenue.toFixed(2)} €`;
-                    }
-                    
-                    // Liste der aktiven Kunden aktualisieren
-                    if (activeCustomersListContainer && data.data && data.data.length > 0) {
-                        console.log('DEBUG: Aktualisiere Kundenliste');
-                        let customerHTML = '<div class="customer-list">';
-                        
-                        data.data.forEach((customer, index) => {
-                            console.log(`DEBUG: Verarbeite Kunde ${index < 3 ? index : '...'}`);
-                            customerHTML += `
-                                <div class="customer-item">
-                                    <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
-                                    <div class="customer-details">
-                                        <div class="detail-item">Seit: ${formatDate(customer.since) || 'n/a'}</div>
-                                        <div class="detail-item">Status: ${customer.state || 'Aktiv'}</div>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        
-                        customerHTML += `</div>`;
-                        activeCustomersListContainer.innerHTML = customerHTML;
-                    } else if (activeCustomersListContainer) {
-                        activeCustomersListContainer.innerHTML = '<div class="no-data">Keine Kunden gefunden</div>';
-                    }
-                } else {
-                    console.warn('DEBUG: Keine Erfolgsantwort oder keine Daten:', data.status);
-                    
-                    // Leere Container anzeigen, falls keine Daten
-                    if (activeCustomersListContainer) {
-                        activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Fehler beim Laden der Kundendaten:', error);
-                
-                const errorMessage = `
-                    <div class="error-message">
-                        <div>Fehler beim Laden der Daten</div>
-                        <div class="error-details">${error.message}</div>
-                    </div>
-                `;
-                
-                if (activeCustomersListContainer) {
-                    activeCustomersListContainer.innerHTML = errorMessage;
-                }
-                
-                if (activeCustomersNowWidget) {
-                    activeCustomersNowWidget.innerHTML = errorMessage;
-                }
-            });
-        }
-        
-        // Funktion zum Formatieren des Datums
-        function formatDate(dateString) {
-            if (!dateString) return '';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('de-DE');
-        }
-        
-        // Funktion zum Initialisieren leerer Metrik-Felder mit Standardwerten
-        function initializeEmptyMetrics() {
-            // Übersicht-Tab Metriken
-            document.getElementById('active-customers-now-widget').innerHTML = '<div class="customer-count">0</div>';
-            document.getElementById('conversion-rate-widget').innerHTML = '<div class="customer-count">0%</div>';
-            // Meine KPIs-Tab Metriken
-            updateKPIMetrics(getLast30Days());
-        }
-
-        // Funktion zum Aktualisieren der KPI-Metriken
-        function updateKPIMetrics(dateRange) {
-            const startDate = dateRange.start;
-            const endDate = dateRange.end;
-            // Hier sollte die Logik zum Abrufen und Anzeigen der Abschlussquote für den angegebenen Zeitraum implementiert werden
-            // Beispiel: document.getElementById('kpi-conversion-rate-widget').innerHTML = '<div class="customer-count">' + calculatedRate + '%</div>';
-        }
-
-        // Funktion zum Abrufen der letzten 30 Tage
-        function getLast30Days() {
-            const end = new Date();
-            const start = new Date();
-            start.setDate(end.getDate() - 30);
-            return { start, end };
-        }
-
-        // Event-Listener für die Aktualisierung des Zeitraums in Meine KPIs
-        document.getElementById('update-kpi-range-btn').addEventListener('click', function() {
-            const startDate = document.getElementById('kpi-start-date').value;
-            const endDate = document.getElementById('kpi-end-date').value;
-            updateKPIMetrics({ start: new Date(startDate), end: new Date(endDate) });
-        });
-        
-        // Funktion zum Laden der Vertragsdaten
-        function loadContractData() {
-            const newContractsWidget = document.getElementById('new-contracts-widget');
-            const activeContractsWidget = document.getElementById('active-contracts-widget');
-            
-            console.log('DEBUG: loadContractData() aufgerufen');
-            
-            // Ladeanimationen anzeigen
-            if (newContractsWidget) {
-                console.log('DEBUG: newContractsWidget gefunden');
-                newContractsWidget.querySelector('.loading-spinner').style.display = 'flex';
-                newContractsWidget.querySelector('.dual-metric').style.display = 'none';
-            } else {
-                console.warn('DEBUG: newContractsWidget nicht gefunden');
             }
-            
-            if (activeContractsWidget) {
-                console.log('DEBUG: activeContractsWidget gefunden');
-                activeContractsWidget.querySelector('.loading-spinner').style.display = 'flex';
-                activeContractsWidget.querySelector('.dual-metric').style.display = 'none';
-            } else {
-                console.warn('DEBUG: activeContractsWidget nicht gefunden');
-            }
-            
-            // API-Aufruf zum Laden der Dashboard-Daten
-            console.log('DEBUG: Starte Fetch-Anfrage an /get_dashboard_data');
-            fetch('/get_dashboard_data?t=' + new Date().getTime(), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
+    
+            // KPI Daten laden
+            function loadKpiData() {
+                if (!kpiStartDateInput || !kpiEndDateInput || !updateKpiButton || !kpiRatePercentWidget || !kpiRateAbsoluteWidget) {
+                    console.error("KPI-Tab: Elemente fehlen."); return;
                 }
-            })
-            .then(response => {
-                console.log('DEBUG: Fetch-Antwort erhalten', response);
-                if (!response.ok) {
-                    throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('DEBUG: Dashboard-Daten geladen:', data);
-                
-                // Vertragsdaten aktualisieren
-                if (data.new_contracts) {
-                    console.log('DEBUG: Neue Verträge Daten:', data.new_contracts);
-                    
-                    // Widget für neue Verträge aktualisieren
-                    if (newContractsWidget) {
-                        const newContractsElement = document.getElementById('new-contracts');
-                        const agencySwitchesElement = document.getElementById('agency-switches');
-                        
-                        if (newContractsElement && data.new_contracts.Alle_neuen_Verträge) {
-                            newContractsElement.textContent = data.new_contracts.Alle_neuen_Verträge || '0';
-                        }
-                        
-                        if (agencySwitchesElement && data.new_contracts.davon_Agenturwechsel) {
-                            agencySwitchesElement.textContent = data.new_contracts.davon_Agenturwechsel || '0';
-                        }
-                        
-                        newContractsWidget.querySelector('.loading-spinner').style.display = 'none';
-                        newContractsWidget.querySelector('.dual-metric').style.display = 'flex';
-                    }
-                    
-                    // Widget für aktive neue Verträge aktualisieren
-                    if (activeContractsWidget) {
-                        const activeNewContractsElement = document.getElementById('active-new-contracts');
-                        const activeAgencySwitchesElement = document.getElementById('active-agency-switches');
-                        
-                        if (activeNewContractsElement && data.new_contracts.neue_Verträge_noch_aktiv) {
-                            activeNewContractsElement.textContent = data.new_contracts.neue_Verträge_noch_aktiv || '0';
-                        }
-                        
-                        if (activeAgencySwitchesElement && data.new_contracts.davon_Agenturwechsel_noch_aktiv) {
-                            activeAgencySwitchesElement.textContent = data.new_contracts.davon_Agenturwechsel_noch_aktiv || '0';
-                        }
-                        
-                        activeContractsWidget.querySelector('.loading-spinner').style.display = 'none';
-                        activeContractsWidget.querySelector('.dual-metric').style.display = 'flex';
-                    }
-                } else {
-                    console.warn('DEBUG: Keine Vertragsdaten gefunden');
-                    
-                    // Fehlerbehandlung für neue Verträge Widget
-                    if (newContractsWidget) {
-                        document.getElementById('new-contracts').textContent = '0';
-                        document.getElementById('agency-switches').textContent = '0';
-                        newContractsWidget.querySelector('.loading-spinner').style.display = 'none';
-                        newContractsWidget.querySelector('.dual-metric').style.display = 'flex';
-                    }
-                    
-                    // Fehlerbehandlung für aktive neue Verträge Widget
-                    if (activeContractsWidget) {
-                        document.getElementById('active-new-contracts').textContent = '0';
-                        document.getElementById('active-agency-switches').textContent = '0';
-                        activeContractsWidget.querySelector('.loading-spinner').style.display = 'none';
-                        activeContractsWidget.querySelector('.dual-metric').style.display = 'flex';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Fehler beim Laden der Vertragsdaten:', error);
-                
-                // Fehlerbehandlung für beide Widgets
-                if (newContractsWidget) {
-                    document.getElementById('new-contracts').textContent = '0';
-                    document.getElementById('agency-switches').textContent = '0';
-                    newContractsWidget.querySelector('.loading-spinner').style.display = 'none';
-                    newContractsWidget.querySelector('.dual-metric').style.display = 'flex';
-                }
-                
-                if (activeContractsWidget) {
-                    document.getElementById('active-new-contracts').textContent = '0';
-                    document.getElementById('active-agency-switches').textContent = '0';
-                    activeContractsWidget.querySelector('.loading-spinner').style.display = 'none';
-                    activeContractsWidget.querySelector('.dual-metric').style.display = 'flex';
-                }
-            });
-        }
-        
-        // Event-Listener für Clear Chat Button
-        document.getElementById('clearChatBtn').addEventListener('click', function() {
-            if (confirm('Möchten Sie wirklich den gesamten Chatverlauf löschen?')) {
-                fetch("{{ url_for('clear_chat_history') }}", {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrfToken,
-                        'Content-Type': 'application/json'
-                    }
-                })
+                const startDate = kpiStartDateInput.value;
+                const endDate = kpiEndDateInput.value;
+                if (!startDate || !endDate) { alert("Bitte Start- und Enddatum auswählen."); return; }
+                if (new Date(startDate) > new Date(endDate)) { alert("Startdatum nach Enddatum."); return; }
+                console.log(`KPI Daten: Lade für ${startDate} bis ${endDate}`);
+                showKpiLoading();
+    
+                // HIER IST DER KORRIGIERTE FETCH-AUFRUF
+                fetch(`/get_kpi_data?start_date=${startDate}&end_date=${endDate}`, { // Komma nach URL, dann Optionen-Objekt
+                    method: 'GET',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache', 'X-CSRFToken': getCSRFToken() }
+                }) // Schließende Klammer für fetch
                 .then(response => {
-                    if (response.ok) {
-                        // Clear the chat history display instead of reloading
-                        const chatHistory = document.getElementById('chatHistory');
-                        chatHistory.innerHTML = '';
-                        
-                        // Add a neutral welcome message
-                        const botDiv = document.createElement('div');
-                        botDiv.classList.add('message', 'bot');
-                        botDiv.innerHTML = `
-                            <strong>XORA:</strong>
-                            <span>Hi ${userName}, wie kann ich dir behilflich sein?<br><br>
-Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum Datenabruf zu testen. Probier dochmal etwas hiervon:<br>
-- Wie war meine Abschlussquote im Januar 2024?<br>
-- Wie viele Kündigungen und Agenturwechsel hatte ich im Januar 2024?<br>
-- Wie viele aktive Kunden habe ich gerade eben?<br>
-- Wie viele Pausen habe ich gerade?</span>
-                        `;
-                        chatHistory.appendChild(botDiv);
-                        forceScrollToBottom();
-                    } else {
-                        console.error('Fehler beim Löschen des Chatverlaufs');
-                    }
+                     if (!response.ok) {
+                         return response.json().then(errData => { throw new Error(errData.error || `Serverfehler: ${response.status}`); })
+                             .catch(() => { throw new Error(`Serverfehler: ${response.status}`); });
+                     }
+                     return response.json();
+                })
+                .then(data => {
+                     if (data.status === 'success' && data.data) {
+                         const kpiData = data.data;
+                         const rate = kpiData.conversion_rate !== undefined ? parseFloat(kpiData.conversion_rate).toFixed(2) : '0.00';
+                         const contracts = kpiData.total_contracts !== undefined ? kpiData.total_contracts : '0';
+                         const netLeads = kpiData.net_leads !== undefined ? kpiData.net_leads : '0';
+                         if (kpiRatePercentWidget) kpiRatePercentWidget.textContent = `${rate}%`;
+                         if (kpiRateAbsoluteWidget) kpiRateAbsoluteWidget.textContent = `${contracts} / ${netLeads}`;
+                         console.log(`KPI Daten: Anzeige aktualisiert`);
+                         hideKpiLoading(true);
+                     } else {
+                         const errorMessage = data.error || "Fehlerhafte Datenstruktur.";
+                         console.error("KPI Daten: Fehler:", data); alert(errorMessage); hideKpiLoading(false);
+                     }
                 })
                 .catch(error => {
-                    console.error('Netzwerkfehler:', error);
+                     console.error('KPI Daten: Fetch-Fehler:', error); alert(`Fehler: ${error.message}`); hideKpiLoading(false);
                 });
             }
-        });
-
-        // Statistik-Popup anzeigen
-        const showStatsBtn = document.createElement('button');
-        showStatsBtn.innerHTML = 'Statistiken anzeigen';
-        showStatsBtn.classList.add('statistics-button');
-        document.querySelector('.chat-container').appendChild(showStatsBtn);
-
-        // Statistik-Modal erstellen
-        const statsModal = document.createElement('div');
-        statsModal.id = 'statsModal';
-        statsModal.classList.add('overlay');
-        statsModal.innerHTML = `
-            <div class="overlay-content statistics-content">
-                <h2>XORA Nachrichten-Statistiken</h2>
-                <div class="stats-chart-container">
-                    <div class="stats-chart">
-                        <div class="chart-bar" style="height: {{ (stats.today / stats.total * 100) if stats.total else 0 }}%"></div>
-                        <div class="chart-label">Heute</div>
-                        <div class="chart-value">{{ stats.today }}</div>
-                    </div>
-                    <div class="stats-chart">
-                        <div class="chart-bar" style="height: {{ (stats.month / stats.total * 100) if stats.total else 0 }}%"></div>
-                        <div class="chart-label">Monat</div>
-                        <div class="chart-value">{{ stats.month }}</div>
-                    </div>
-                    <div class="stats-chart">
-                        <div class="chart-bar" style="height: {{ (stats.year / stats.total * 100) if stats.total else 0 }}%"></div>
-                        <div class="chart-label">Jahr</div>
-                        <div class="chart-value">{{ stats.year }}</div>
-                    </div>
-                    <div class="stats-chart">
-                        <div class="chart-bar" style="height: 100%"></div>
-                        <div class="chart-label">Gesamt</div>
-                        <div class="chart-value">{{ stats.total }}</div>
-                    </div>
-                </div>
-                <button id="closeStatsBtn">Schließen</button>
-            </div>
-        `;
-        document.body.appendChild(statsModal);
-
-        // Event-Listener für Statistik-Button
-        showStatsBtn.addEventListener('click', function() {
-            statsModal.style.display = 'flex';
-        });
-
-        // Event-Listener für Schließen-Button im Statistik-Modal
-        document.getElementById('closeStatsBtn').addEventListener('click', function() {
-            statsModal.style.display = 'none';
-        });
-        
-        // Feedback-Handlers aktivieren
-        attachFeedbackHandlers();
-        
-        // Der doppelte Tab-Wechsel-Code wurde entfernt
-        
-        // Lade die Dashboard-Daten auch automatisch beim Seitenstart
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verzögerung, damit die Sitzungsdaten zuerst vollständig geladen werden können
-            setTimeout(() => {
-                loadDashboardData();
-            }, 1000);
-            
-            // Test-Button für direktes Laden hinzufügen
-            const testDashboardBtn = document.getElementById('test-dashboard-btn');
-            if (testDashboardBtn) {
-                testDashboardBtn.addEventListener('click', testDashboardLoading);
-            }
-        });
-        
-        // Direkte Testfunktion, die den Server-Endpunkt aufruft und die Ergebnisse anzeigt
-        function testDashboardLoading() {
-            console.log('Test-Dashboard-Funktion wird ausgeführt');
-            
-            // Aktuelle IDs anzeigen zur Fehlerbehebung
-            const containers = [
-                'active-customers-now-widget',
-                'active-customers-list-container',
-                'total-revenue'
-            ];
-            
-            console.log('Überprüfe existierende Container:');
-            containers.forEach(id => {
-                const element = document.getElementById(id);
-                console.log(`- ${id}: ${element ? 'Gefunden' : 'NICHT GEFUNDEN'}`);
-            });
-            
-            // Direkte Anzeige in allen beteiligten Elementen
-            const spinner = `
-                <div class="loading-spinner">
-                    <div class="spinner"></div>
-                    <div>Direkter Test - Daten werden geladen...</div>
-                </div>
-            `;
-            
-            const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
-            const activeCustomersListContainer = document.getElementById('active-customers-list-container');
-            
-            if (activeCustomersNowWidget) activeCustomersNowWidget.innerHTML = spinner;
-            if (activeCustomersListContainer) activeCustomersListContainer.innerHTML = spinner;
-            
-            // Direkte XMLHttpRequest ohne kompliziertes Fehlerhandling
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', '/get_dashboard_data?' + new Date().getTime(), true);
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            
-            xhr.onreadystatechange = function() {
-                if (this.readyState === 4) {
-                    console.log('XHR Status:', this.status);
-                    console.log('XHR Response Text:', this.responseText.substring(0, 200) + '...');
-                    
-                    if (this.status === 200) {
-                        try {
-                            const data = JSON.parse(this.responseText);
-                            console.log('Daten erfolgreich geladen:', data);
-                            
-                            // Direkte Anzeige der Kundenzahl
-                            if (activeCustomersNowWidget) {
-                                console.log('DEBUG: Berechneter Gesamtumsatz:', data.count);
-                                activeCustomersNowWidget.innerHTML = `
-                                    <div class="customer-count">${data.count || 0}</div>
-                                `;
-                            }
-                            
-                            // Direktes Anzeigen der Kundenliste
-                            if (activeCustomersListContainer && data.data && data.data.length > 0) {
-                                let html = '<div class="customer-list">';
-                                
-                                data.data.forEach(customer => {
-                                    console.log(`DEBUG: Verarbeite Kunde ${customer.first_name || ''} ${customer.last_name || ''}`);
-                                    html += `
-                                        <div class="customer-item">
-                                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
-                                            <div class="customer-details">
-                                                <div class="detail-item">Seit: ${formatDate(customer.since) || 'n/a'}</div>
-                                                <div class="detail-item">Status: ${customer.state || 'Aktiv'}</div>
-                                            </div>
-                                        </div>
-                                    `;
-                                });
-                                
-                                html += `</div>`;
-                                activeCustomersListContainer.innerHTML = html;
-                            } else if (activeCustomersListContainer) {
-                                activeCustomersListContainer.innerHTML = '<div class="no-data">Keine Kunden gefunden</div>';
-                            }
-                        } catch (e) {
-                            console.error('Fehler beim Parsen der Antwort:', e);
-                            
-                            // Fehler anzeigen
-                            const errorHtml = `
-                                <div class="error-message">
-                                    <div>Fehler beim Parsen der Daten</div>
-                                    <div class="error-details">${e.message}</div>
-                                </div>
-                            `;
-                            
-                            if (activeCustomersNowWidget) activeCustomersNowWidget.innerHTML = errorHtml;
-                            if (activeCustomersListContainer) activeCustomersListContainer.innerHTML = errorHtml;
-                        }
-                    } else {
-                        console.error('Fehler bei der Anfrage:', this.status);
-                        
-                        // Fehler anzeigen
-                        const errorHtml = `
-                            <div class="error-message">
-                                <div>Fehler beim Laden der Daten</div>
-                                <div class="error-details">Status: ${this.status}</div>
-                            </div>
-                        `;
-                        
-                        if (activeCustomersNowWidget) activeCustomersNowWidget.innerHTML = errorHtml;
-                        if (activeCustomersListContainer) activeCustomersListContainer.innerHTML = errorHtml;
-                    }
-                }
-            };
-            
-            xhr.send();
-            console.log('XHR-Anfrage gesendet');
-        }
-    });
-    </script>
-</body>
-</html>
+    
+            // Event Listener für KPI Aktualisieren-Button
+            if (updateKpiButton) {
+                updateKpiButton.addEventListener('click', loadKpiData);
+            } else { console.warn("KPI-Tab: Button 'update-kpi-range-btn' nicht gefunden."); }
+    
+            // Standard KPI Daten setzen
+            setDefaultKpiDates();
+    
+            // Lade KPI Daten initial, wenn Tab aktiv wird (vereinfachter Ansatz)
+            const kpiTabButton = document.querySelector('.business-tab[data-tab="kpi"]');
+            if (kpiTabButton) {
+                let kpiDataLoadedInitially = false; // Flag, um initiales Laden zu steuern
+                const kpiTabElement = document.getElementById('kpi-tab');
+    
+                 // Funktion, die prüft, ob der Tab aktiv ist und Daten lädt
+                 const checkAndLoadKpi = () => {
+                     if (kpiTabElement && kpiTabElement.classList.contains('active') && !kpiDataLoadedInitially) {
+                         console.log("KPI Tab aktiv und initiales Laden ausstehend.");
+                         loadKpiData();
+                         kpiDataLoadedInitially = true; // Nach dem ersten Laden Flag setzen
+                     }
+                 };
+    
+                 // Beim Klick auf den Tab-Button prüfen (oder wenn die Klasse sich ändert)
+                 kpiTabButton.addEventListener('click', () => {
+                     // Kleine Verzögerung, damit die Klasse 'active' gesetzt werden kann
+                     setTimeout(checkAndLoadKpi, 50);
+                 });
+    
+                 // Initial prüfen, falls der Tab standardmäßig aktiv ist
+                  checkAndLoadKpi();
+    
+                 // Optional: MutationObserver für robustere Erkennung von Klassenänderungen
+                 /*
+                 const observer = new MutationObserver(mutations => {
+                      mutations.forEach(mutation => {
+                          if (mutation.attributeName === 'class') {
+                              checkAndLoadKpi();
+                          }
+                      });
+                 });
+                 if (kpiTabElement) {
+                      observer.observe(kpiTabElement, { attributes: true });
+                 }
+                 */
+            } else { console.warn("KPI-Tab: Tab-Button nicht gefunden."); }
+    
+            //--- ENDE: KPI-Tab-Funktionalität ---
+    
+    
+        }); // Ende DOMContentLoaded
+        </script>
+    </body>
+    </html>

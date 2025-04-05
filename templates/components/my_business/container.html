@@ -18,7 +18,7 @@
                         <div class="spinner"></div>
                         <div>Daten werden geladen...</div>
                     </div>
-                </div>
+                </div> 
             </div>
             
             <div class="widget">
@@ -105,28 +105,39 @@
     </div>
 
     <div id="kpi-tab" class="tab-content">
-        <div class="date-range-selector" style="margin-bottom: 15px;">
+        
+
+        <!-- NEU: Datumsauswahl für KPIs -->
+        <div class="date-range-selector" style="margin-bottom: 15px; border-bottom: 1px solid rgba(0, 255, 255, 0.1); padding-bottom: 15px;">
+            <label for="kpi-start-date" style="margin-right: 5px; color: #e0e0e0;">Von:</label>
             <input type="date" class="date-input" id="kpi-start-date">
+            <label for="kpi-end-date" style="margin-left: 15px; margin-right: 5px; color: #e0e0e0;">Bis:</label>
             <input type="date" class="date-input" id="kpi-end-date">
-            <button class="date-range-button" id="update-kpi-range-btn">Aktualisieren</button>
+            <button class="date-range-button" id="update-kpi-range-btn" style="margin-left: 15px;">Aktualisieren</button>
         </div>
+        <!-- ENDE: Datumsauswahl für KPIs -->
         
         <div class="widget-row">
+            <!-- ERSETZT: Dynamisches Abschlussquoten-Widget -->
             <div class="widget">
-                <div class="widget-header">Abschlussquote (letzte 30 Tage)</div>
+                <div class="widget-header">Abschlussquote (Zeitraum)</div> <!-- Header angepasst -->
                 <div class="widget-content">
                     <div class="dual-metric large">
                         <div class="dual-metric-item">
+                            <!-- ID bleibt gleich, wird von JS aktualisiert -->
                             <div class="metric-value" id="closing-rate-percent">0%</div>
                             <div class="metric-label">Prozentual</div>
                         </div>
                         <div class="dual-metric-item">
-                            <div class="metric-value" id="closing-rate-absolute">0/0</div>
-                            <div class="metric-label">Absolut</div>
+                            <!-- ID bleibt gleich, wird von JS aktualisiert -->
+                            <div class="metric-value" id="closing-rate-absolute">0 / 0</div>
+                             <!-- Label angepasst für Klarheit -->
+                            <div class="metric-label">Absolut (Verträge/Netto-Leads)</div>
                         </div>
                     </div>
                 </div>
             </div>
+            <!-- ENDE: Dynamisches Abschlussquoten-Widget -->
             
             <div class="widget">
                 <div class="widget-header">Lead zu EB Conversion</div>

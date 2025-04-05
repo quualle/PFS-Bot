@@ -2824,6 +2824,109 @@ def get_dashboard_data():
             "status": "error"
         }), 500
 
+# --- BEGINN: Code für /get_kpi_data ---
+
+@app.route('/get_kpi_data', methods=['GET'])
+def get_kpi_data():
+    """
+    Liefert KPI-Daten (aktuell nur Abschlussquote) für einen benutzerdefinierten Zeitraum.
+    Wird vom 'Meine KPIs'-Tab verwendet.
+    """
+    try:
+        # Seller ID aus der Session holen
+        seller_id = session.get('seller_id')
+        if not seller_id:
+            logging.error("KPI Daten: Keine Seller ID in der Session gefunden")
+            return jsonify({"error": "Keine Seller ID gefunden", "status": "error"}), 401
+
+        # Start- und Enddatum aus den Request-Parametern holen
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+
+        # Validierung der Daten
+        if not start_date_str or not end_date_str:
+            logging.error("KPI Daten: Fehlende Datumsangaben")
+            return jsonify({"error": "Start- und Enddatum sind erforderlich", "status": "error"}), 400
+
+        # Stelle sicher, dass das Datumsformat YYYY-MM-DD ist (Standard von <input type="date">)
+        try:
+            datetime.strptime(start_date_str, '%Y-%m-%d')
+            datetime.strptime(end_date_str, '%Y-%m-%d')
+            # Zusätzliche Logik: Startdatum darf nicht nach Enddatum liegen
+            if start_date_str > end_date_str:
+                 logging.error(f"KPI Daten: Startdatum {start_date_str} liegt nach Enddatum {end_date_str}")
+                 return jsonify({"error": "Startdatum darf nicht nach dem Enddatum liegen", "status": "error"}), 400
+        except ValueError:
+            logging.error(f"KPI Daten: Ungültiges Datumsformat: {start_date_str}, {end_date_str}")
+            return jsonify({"error": "Ungültiges Datumsformat (erwartet YYYY-MM-DD)", "status": "error"}), 400
+
+        logging.info(f"KPI Daten: Abfrage für Seller {seller_id} von {start_date_str} bis {end_date_str}")
+
+        # Lade die Abfragemuster
+        try:
+            with open('query_patterns.json', 'r', encoding='utf-8') as f:
+                query_patterns = json.load(f)
+        except FileNotFoundError:
+             logging.error("KPI Daten: query_patterns.json nicht gefunden")
+             return jsonify({"error": "Konfigurationsdatei nicht gefunden", "status": "error"}), 500
+        except json.JSONDecodeError:
+            logging.error("KPI Daten: Fehler beim Parsen von query_patterns.json")
+            return jsonify({"error": "Fehler in Konfigurationsdatei", "status": "error"}), 500
+
+
+        # Abfrage für Abschlussquote holen
+        query_name = "get_cvr_lead_contract"
+        if query_name not in query_patterns.get('common_queries', {}):
+            logging.error(f"KPI Daten: Abfrage {query_name} nicht gefunden")
+            return jsonify({"error": f"Abfrage {query_name} nicht gefunden", "status": "error"}), 500
+
+        query_pattern = query_patterns['common_queries'][query_name]
+
+        # Parameter für die Abfrage vorbereiten (mit den übergebenen Daten)
+        parameters = {
+            'seller_id': seller_id,
+            'start_date': start_date_str,
+            'end_date': end_date_str
+        }
+        logging.info(f"KPI Daten: Parameter für Abfrage: {parameters}")
+
+        # Führe die Abfrage aus (Stelle sicher, dass die Funktion existiert)
+        if 'execute_bigquery_query' not in globals():
+             logging.error("Funktion execute_bigquery_query nicht gefunden.")
+             return jsonify({"error": "Interne Serverkonfiguration unvollständig.", "status": "error"}), 500
+
+        result = execute_bigquery_query(
+            query_pattern['sql_template'],
+            parameters
+        )
+
+        # Formatiere das Ergebnis (Stelle sicher, dass die Funktion existiert)
+        if 'format_query_result' not in globals():
+            logging.error("Funktion format_query_result nicht gefunden.")
+            return jsonify({"error": "Interne Serverkonfiguration unvollständig.", "status": "error"}), 500
+
+        formatted_result = format_query_result(result, query_pattern.get('result_structure'))
+
+        # Die Abfrage gibt normalerweise eine Liste mit einem Dictionary zurück
+        kpi_result_data = formatted_result[0] if formatted_result else {}
+
+        logging.info(f"KPI Daten: Abfrage erfolgreich, Ergebnis: {kpi_result_data}")
+
+        return jsonify({
+            "data": kpi_result_data, # Sende das Dictionary direkt
+            "status": "success"
+        })
+
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logging.error(f"Fehler in get_kpi_data: {str(e)}\n{error_trace}")
+        return jsonify({
+            "error": f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}",
+            "trace": error_trace,
+            "status": "error"
+        }), 500
+# --- ENDE: Code für /get_kpi_data ---
+
 @app.route('/update_stream_chat_history', methods=['POST'])
 def update_stream_chat_history():
     """Update chat history in the session from streaming responses"""

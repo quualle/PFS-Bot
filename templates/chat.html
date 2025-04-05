@@ -2317,6 +2317,14 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                     const targetTab = document.getElementById(tabId + '-tab');
                     if (targetTab) {
                         targetTab.classList.add('active');
+                        
+                        // Wenn der KPI-Tab aktiviert wird, initialisiere die Datumsfelder
+                        if (tabId === 'kpi') {
+                            // Kurze Verzögerung, um sicherzustellen, dass alle Elemente geladen sind
+                            setTimeout(initializeKpiDateFields, 100);
+                            // KPI-Daten mit den standardmäßigen 30 Tagen laden
+                            updateKPIMetrics(getLast30Days());
+                        }
                     } else {
                         console.error('Tab mit ID ' + tabId + '-tab nicht gefunden');
                     }
@@ -2780,8 +2788,16 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             };
             
             // Setze die Datumsfelder auf die Werte der letzten 30 Tage
-            document.getElementById('kpi-start-date').value = formatDate(dateRange.start);
-            document.getElementById('kpi-end-date').value = formatDate(dateRange.end);
+            const startDateField = document.getElementById('kpi-start-date');
+            const endDateField = document.getElementById('kpi-end-date');
+            
+            if (startDateField && endDateField) {
+                startDateField.value = formatDate(dateRange.start);
+                endDateField.value = formatDate(dateRange.end);
+                console.log('KPI-Datumsfelder erfolgreich initialisiert');
+            } else {
+                console.warn('KPI-Datumsfelder noch nicht im DOM verfügbar');
+            }
         }
 
         // Event-Listener für die Aktualisierung des Zeitraums in Meine KPIs
@@ -3010,11 +3026,11 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         
         // Document ready function to execute code when DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialisiere die Datumsfelder im KPIs-Tab beim Laden der Seite
-            initializeKpiDateFields();
             // Verzögerung, damit die Sitzungsdaten zuerst vollständig geladen werden können
             setTimeout(() => {
                 loadDashboardData();
+                // Versuch, die KPI-Datumsfelder zu initialisieren, nachdem alles geladen ist
+                setTimeout(initializeKpiDateFields, 1500);
             }, 1000);
             
             // Test-Button für direktes Laden hinzufügen

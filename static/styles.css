@@ -168,7 +168,24 @@ textarea[name="eingabe_text"] {
     }
 }
 
+/* Kundenliste */
+.customer-list {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
 
+.customer-item {
+    background-color: rgba(0, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 8px;
+    width: 32%;
+}
+
+/* Message-Bot Styles */
 .message.bot {
     min-height: 100px; /* Provide minimum height to prevent jumping */
     position: relative;
@@ -214,6 +231,7 @@ textarea[name="eingabe_text"] {
     display: block;
     margin-top: 5px;
 }
+
 /* Info-Symbol und Tooltip Styling */
 .info-icon {
     display: inline-flex;

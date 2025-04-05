@@ -105,14 +105,15 @@
     </div>
 
     <div id="kpi-tab" class="tab-content">
-        <div class="widget-row date-filter-container">
-            <div class="date-range-picker">
-                <label for="kpi-start-date">Von:</label>
-                <input type="date" id="kpi-start-date" name="kpi-start-date">
-                <label for="kpi-end-date">Bis:</label>
-                <input type="date" id="kpi-end-date" name="kpi-end-date">
-                <button id="update-kpi-metrics-btn" class="btn-primary">Aktualisieren</button>
-            </div>
+        
+
+        <!-- NEU: Datumsauswahl für KPIs -->
+        <div class="date-range-selector" style="margin-bottom: 15px; border-bottom: 1px solid rgba(0, 255, 255, 0.1); padding-bottom: 15px;">
+            <label for="kpi-start-date" style="margin-right: 5px; color: #e0e0e0;">Von:</label>
+            <input type="date" class="date-input" id="kpi-start-date">
+            <label for="kpi-end-date" style="margin-left: 15px; margin-right: 5px; color: #e0e0e0;">Bis:</label>
+            <input type="date" class="date-input" id="kpi-end-date">
+            <button class="date-range-button" id="update-kpi-range-btn" style="margin-left: 15px;">Aktualisieren</button>
         </div>
         
         <!-- Erste Zeile: Lead zu EB und Abschlussquote -->

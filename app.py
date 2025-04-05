@@ -2639,7 +2639,7 @@ def get_dashboard_data():
             query_pattern = query_patterns['common_queries'][query_name]
             
             # Parameter vorbereiten
-            parameters = {'seller_id': seller_id}
+            parameters = {'seller_id': seller_id, 'limit': 100}
             logging.info(f"Dashboard: Parameter für Active Customers: {parameters}")
             
             # Führe die Abfrage aus
@@ -2672,7 +2672,7 @@ def get_dashboard_data():
             # Zeitraum: Letzte 90 Tage
             end_date = datetime.now().date().isoformat()
             start_date = (datetime.now().date() - timedelta(days=90)).isoformat()
-            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
+            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date, 'limit': 100}
             logging.info(f"Dashboard: Parameter für Abschlussquote: {parameters}")
             
             # Führe die Abfrage aus
@@ -2702,7 +2702,7 @@ def get_dashboard_data():
             # Zeitraum: Letzte 14 Tage
             end_date = datetime.now().date().isoformat()
             start_date = (datetime.now().date() - timedelta(days=14)).isoformat()
-            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
+            parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date, 'limit': 100}
             logging.info(f"Dashboard: Parameter für Neue Verträge: {parameters}")
             
             # Führe die Abfrage aus

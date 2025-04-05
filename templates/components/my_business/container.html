@@ -105,20 +105,44 @@
     </div>
 
     <div id="kpi-tab" class="tab-content">
-        
-
-        <!-- NEU: Datumsauswahl für KPIs -->
-        <div class="date-range-selector" style="margin-bottom: 15px; border-bottom: 1px solid rgba(0, 255, 255, 0.1); padding-bottom: 15px;">
-            <label for="kpi-start-date" style="margin-right: 5px; color: #e0e0e0;">Von:</label>
-            <input type="date" class="date-input" id="kpi-start-date">
-            <label for="kpi-end-date" style="margin-left: 15px; margin-right: 5px; color: #e0e0e0;">Bis:</label>
-            <input type="date" class="date-input" id="kpi-end-date">
-            <button class="date-range-button" id="update-kpi-range-btn" style="margin-left: 15px;">Aktualisieren</button>
+        <div class="widget-row date-filter-container">
+            <div class="date-range-picker">
+                <label for="kpi-start-date">Von:</label>
+                <input type="date" id="kpi-start-date" name="kpi-start-date">
+                <label for="kpi-end-date">Bis:</label>
+                <input type="date" id="kpi-end-date" name="kpi-end-date">
+                <button id="update-kpi-metrics-btn" class="btn-primary">Aktualisieren</button>
+            </div>
         </div>
-        <!-- ENDE: Datumsauswahl für KPIs -->
         
+        <!-- Erste Zeile: Lead zu EB und Abschlussquote -->
         <div class="widget-row">
-            <!-- Dynamisches Abschlussquoten-Widget -->
+            <!-- LINKS: Lead zu EB Conversion -->
+            <div class="widget">
+                <div class="widget-header">Lead zu EB Conversion</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="lead-eb-percent">0%</div>
+                            <div class="metric-header">
+                                <span class="info-icon">i
+                                    <span class="tooltip">Prozentualer Anteil der Erfassungsbögen (EB) im Verhältnis zu Leads.</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="lead-eb-absolute">0/0</div>
+                            <div class="metric-header">
+                                <span class="info-icon">i
+                                    <span class="tooltip">Verhältnis von Erfassungsbögen (EB) zu Leads (absolute Zahlen).</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RECHTS: Abschlussquote -->
             <div class="widget">
                 <div class="widget-header">Abschlussquote (Zeitraum)</div>
                 <div class="widget-content">
@@ -142,8 +166,36 @@
                     </div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Zweite Zeile: EB zu Posting und Lead-Qualität -->
+        <div class="widget-row">
+            <!-- LINKS: EB zu Posting Conversion -->
+            <div class="widget">
+                <div class="widget-header">EB zu Posting Conversion</div>
+                <div class="widget-content">
+                    <div class="dual-metric large">
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="eb-posting-percent">0%</div>
+                            <div class="metric-header">
+                                <span class="info-icon">i
+                                    <span class="tooltip">Prozentualer Anteil der Postings im Verhältnis zu Erfassungsbögen (EB).</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="dual-metric-item">
+                            <div class="metric-value" id="eb-posting-absolute">0/0</div>
+                            <div class="metric-header">
+                                <span class="info-icon">i
+                                    <span class="tooltip">Verhältnis von Postings zu Erfassungsbögen (EB) (absolute Zahlen).</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
-            <!-- NEU: Lead-Qualität Widget -->
+            <!-- RECHTS: Lead-Qualität Widget -->
             <div class="widget">
                 <div class="widget-header">Lead-Qualität (Zeitraum)</div>
                 <div class="widget-content">
@@ -169,57 +221,9 @@
             </div>
         </div>
         
+        <!-- Dritte Zeile: Posting zu Vertrag und Kündigungsquote -->
         <div class="widget-row">
-            <div class="widget">
-                <div class="widget-header">Lead zu EB Conversion</div>
-                <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="lead-eb-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil der Erstberatungen im Verhältnis zu Leads.</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="lead-eb-absolute">0/0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von Erstberatungen zu Leads (absolute Zahlen).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="widget-row">
-            <div class="widget">
-                <div class="widget-header">EB zu Posting Conversion</div>
-                <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="eb-posting-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil der Postings im Verhältnis zu Erstberatungen.</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="eb-posting-absolute">0/0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von Postings zu Erstberatungen (absolute Zahlen).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
+            <!-- LINKS: Posting zu Vertrag Conversion -->
             <div class="widget">
                 <div class="widget-header">Posting zu Vertrag Conversion</div>
                 <div class="widget-content">
@@ -261,9 +265,8 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="widget-row">
+            
+            <!-- RECHTS: Kündigungsquote -->
             <div class="widget">
                 <div class="widget-header">Kündigungsquote</div>
                 <div class="widget-content">

@@ -2322,8 +2322,8 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         if (tabId === 'kpi') {
                             // Kurze Verzögerung, um sicherzustellen, dass alle Elemente geladen sind
                             setTimeout(initializeKpiDateFields, 100);
-                            // KPI-Daten mit den standardmäßigen 30 Tagen laden
-                            updateKPIMetrics(getLast30Days());
+                            // Wir laden die KPI-Daten hier nicht erneut, da dies bereits in initializeEmptyMetrics() geschieht
+                            // und sonst zu doppelter Anzeige bei Posting zu Vertrag Conversion führen würde
                         }
                     } else {
                         console.error('Tab mit ID ' + tabId + '-tab nicht gefunden');
@@ -2536,7 +2536,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             // Übersicht-Tab Metriken
             document.getElementById('active-customers-now-widget').innerHTML = '<div class="customer-count">0</div>';
             document.getElementById('conversion-rate-widget').innerHTML = '<div class="customer-count">0%</div>';
-            // Meine KPIs-Tab Metriken
+            // Meine KPIs-Tab Metriken - die Daten werden nur einmal geladen
             updateKPIMetrics(getLast30Days());
         }
 

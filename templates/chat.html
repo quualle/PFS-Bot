@@ -1480,7 +1480,7 @@
                     {% for message in chat_history %}
                     <div class="message {{ message.role }}">
                         <strong>{% if message.role == 'user' %}Sie{% else %}XORA{% endif %}:</strong>
-                        <span>{{ message.content | safe }}</span> <!-- safe filter hinzugefügt -->
+                        <span>{{ message.content | safe }}</span> <!-- Nachricht sofort anzeigen -->
                         {% if message.role == 'bot' %}
                         <div class="feedback-icons">
                             <span class="thumb-up" data-message-id="{{ loop.index }}" data-type="positive">👍</span>
@@ -1686,6 +1686,7 @@
                 startBtn.addEventListener('click', () => {
                      const nameValue = userNameInput.value.trim();
                      if (nameValue.length < 3) return;
+    
                      fetch("{{ url_for('set_username') }}", {
                          method: 'POST',
                          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
@@ -2054,7 +2055,7 @@
             const kpiRatePercentWidget = document.getElementById('closing-rate-percent');
             const kpiRateAbsoluteWidget = document.getElementById('closing-rate-absolute');
             const kpiTabContent = document.getElementById('kpi-tab');
-    
+
             // KPI Loading Indikatoren
             function showKpiLoading() {
                 if (kpiRatePercentWidget) kpiRatePercentWidget.textContent = 'Laden...';
@@ -2068,7 +2069,7 @@
                     if (kpiRateAbsoluteWidget) kpiRateAbsoluteWidget.textContent = 'Fehler';
                 }
             }
-    
+
             // KPI Daten laden
             function loadKpiData() {
                 if (!kpiStartDateInput || !kpiEndDateInput || !updateKpiButton || !kpiRatePercentWidget || !kpiRateAbsoluteWidget) {
@@ -2080,12 +2081,11 @@
                 if (new Date(startDate) > new Date(endDate)) { alert("Startdatum nach Enddatum."); return; }
                 console.log(`KPI Daten: Lade für ${startDate} bis ${endDate}`);
                 showKpiLoading();
-    
-                // HIER IST DER KORRIGIERTE FETCH-AUFRUF
-                fetch(`/get_kpi_data?start_date=${startDate}&end_date=${endDate}`, { // Komma nach URL, dann Optionen-Objekt
+
+                fetch(`/get_kpi_data?start_date=${startDate}&end_date=${endDate}`, { 
                     method: 'GET',
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache', 'X-CSRFToken': getCSRFToken() }
-                }) // Schließende Klammer für fetch
+                }) 
                 .then(response => {
                      if (!response.ok) {
                          return response.json().then(errData => { throw new Error(errData.error || `Serverfehler: ${response.status}`); })
@@ -2112,58 +2112,85 @@
                      console.error('KPI Daten: Fetch-Fehler:', error); alert(`Fehler: ${error.message}`); hideKpiLoading(false);
                 });
             }
-    
+
             // Event Listener für KPI Aktualisieren-Button
             if (updateKpiButton) {
                 updateKpiButton.addEventListener('click', loadKpiData);
             } else { console.warn("KPI-Tab: Button 'update-kpi-range-btn' nicht gefunden."); }
-    
+
             // Standard KPI Daten setzen
             setDefaultKpiDates();
-    
+
             // Lade KPI Daten initial, wenn Tab aktiv wird (vereinfachter Ansatz)
             const kpiTabButton = document.querySelector('.business-tab[data-tab="kpi"]');
             if (kpiTabButton) {
                 let kpiDataLoadedInitially = false; // Flag, um initiales Laden zu steuern
                 const kpiTabElement = document.getElementById('kpi-tab');
-    
-                 // Funktion, die prüft, ob der Tab aktiv ist und Daten lädt
-                 const checkAndLoadKpi = () => {
-                     if (kpiTabElement && kpiTabElement.classList.contains('active') && !kpiDataLoadedInitially) {
-                         console.log("KPI Tab aktiv und initiales Laden ausstehend.");
-                         loadKpiData();
-                         kpiDataLoadedInitially = true; // Nach dem ersten Laden Flag setzen
-                     }
-                 };
-    
-                 // Beim Klick auf den Tab-Button prüfen (oder wenn die Klasse sich ändert)
-                 kpiTabButton.addEventListener('click', () => {
-                     // Kleine Verzögerung, damit die Klasse 'active' gesetzt werden kann
-                     setTimeout(checkAndLoadKpi, 50);
-                 });
-    
-                 // Initial prüfen, falls der Tab standardmäßig aktiv ist
-                  checkAndLoadKpi();
-    
-                 // Optional: MutationObserver für robustere Erkennung von Klassenänderungen
-                 /*
-                 const observer = new MutationObserver(mutations => {
-                      mutations.forEach(mutation => {
-                          if (mutation.attributeName === 'class') {
-                              checkAndLoadKpi();
-                          }
-                      });
-                 });
-                 if (kpiTabElement) {
-                      observer.observe(kpiTabElement, { attributes: true });
-                 }
-                 */
+
+                // Funktion, die prüft, ob der Tab aktiv ist und Daten lädt
+                const checkAndLoadKpi = () => {
+                    if (kpiTabElement && kpiTabElement.classList.contains('active') && !kpiDataLoadedInitially) {
+                        console.log("KPI Tab aktiv und initiales Laden ausstehend.");
+                        loadKpiData();
+                        kpiDataLoadedInitially = true; // Nach dem ersten Laden Flag setzen
+                    }
+                };
+
+                // Beim Klick auf den Tab-Button prüfen (oder wenn die Klasse sich ändert)
+                kpiTabButton.addEventListener('click', () => {
+                    // Kleine Verzögerung, damit die Klasse 'active' gesetzt werden kann
+                    setTimeout(checkAndLoadKpi, 50);
+                });
+
+                // Initial prüfen, falls der Tab standardmäßig aktiv ist
+                checkAndLoadKpi();
+
+                // Optional: MutationObserver für robustere Erkennung von Klassenänderungen
+                /*
+                const observer = new MutationObserver(mutations => {
+                     mutations.forEach(mutation => {
+                         if (mutation.attributeName === 'class') {
+                             checkAndLoadKpi();
+                         }
+                     });
+                });
+                if (kpiTabElement) {
+                     observer.observe(kpiTabElement, { attributes: true });
+                }
+                */
             } else { console.warn("KPI-Tab: Tab-Button nicht gefunden."); }
-    
-            //--- ENDE: KPI-Tab-Funktionalität ---
-    
-    
+
+            // === BEGINN: Hilfsfunktionen ===
+            // Funktion zum Setzen der Standard-KPI-Daten (Letzte 30 Tage)
+            function setDefaultKpiDates() {
+                const endDateInput = document.getElementById('kpi-end-date');
+                const startDateInput = document.getElementById('kpi-start-date');
+
+                if (!startDateInput || !endDateInput) {
+                    console.warn("KPI-Datumseingabefelder nicht gefunden.");
+                    return;
+                }
+
+                const today = new Date();
+                const endDate = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                const startDate = thirtyDaysAgo.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+                endDateInput.value = endDate;
+                startDateInput.value = startDate;
+                console.log(`KPI Daten: Standarddaten gesetzt: ${startDate} bis ${endDate}`);
+            }
+            // === ENDE: Hilfsfunktionen ===
+
+            // === BEGINN: Initialisierungsaufrufe ===
+            checkUserName(); // Namen prüfen/abfragen
+            forceScrollToBottom(); // Zum Ende des Chats scrollen
+            attachFeedbackHandlers(); // Feedback-Buttons für initial geladene Nachrichten aktivieren
+            setDefaultKpiDates(); // KPI Datumsfelder initialisieren
+            // === ENDE: Initialisierungsaufrufe ===
         }); // Ende DOMContentLoaded
         </script>
     </body>
-    </html>
+</html>

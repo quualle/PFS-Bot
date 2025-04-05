@@ -2829,7 +2829,7 @@ def get_dashboard_data():
 @app.route('/get_kpi_data', methods=['GET'])
 def get_kpi_data():
     """
-    Liefert KPI-Daten (aktuell nur Abschlussquote) für einen benutzerdefinierten Zeitraum.
+    Liefert KPI-Daten (Abschlussquote oder Lead-Qualität) für einen benutzerdefinierten Zeitraum.
     Wird vom 'Meine KPIs'-Tab verwendet.
     """
     try:
@@ -2842,6 +2842,8 @@ def get_kpi_data():
         # Start- und Enddatum aus den Request-Parametern holen
         start_date_str = request.args.get('start_date')
         end_date_str = request.args.get('end_date')
+        # Neuer Parameter: query_type bestimmt, welche Art von KPI abgefragt wird
+        query_type = request.args.get('query_type', 'conversion_rate')  # Standard: Abschlussquote
 
         # Validierung der Daten
         if not start_date_str or not end_date_str:
@@ -2860,7 +2862,7 @@ def get_kpi_data():
             logging.error(f"KPI Daten: Ungültiges Datumsformat: {start_date_str}, {end_date_str}")
             return jsonify({"error": "Ungültiges Datumsformat (erwartet YYYY-MM-DD)", "status": "error"}), 400
 
-        logging.info(f"KPI Daten: Abfrage für Seller {seller_id} von {start_date_str} bis {end_date_str}")
+        logging.info(f"KPI Daten: Abfrage für Seller {seller_id} von {start_date_str} bis {end_date_str}, Typ: {query_type}")
 
         # Lade die Abfragemuster
         try:
@@ -2873,9 +2875,12 @@ def get_kpi_data():
             logging.error("KPI Daten: Fehler beim Parsen von query_patterns.json")
             return jsonify({"error": "Fehler in Konfigurationsdatei", "status": "error"}), 500
 
-
-        # Abfrage für Abschlussquote holen
-        query_name = "get_cvr_lead_contract"
+        # Wähle die richtige Abfrage basierend auf dem Abfragetyp
+        if query_type == 'lead_quality':
+            query_name = "get_lead_quality"
+        else:  # Standardfall: Abschlussquote
+            query_name = "get_cvr_lead_contract"
+            
         if query_name not in query_patterns.get('common_queries', {}):
             logging.error(f"KPI Daten: Abfrage {query_name} nicht gefunden")
             return jsonify({"error": f"Abfrage {query_name} nicht gefunden", "status": "error"}), 500
@@ -2888,7 +2893,7 @@ def get_kpi_data():
             'start_date': start_date_str,
             'end_date': end_date_str
         }
-        logging.info(f"KPI Daten: Parameter für Abfrage: {parameters}")
+        logging.info(f"KPI Daten: Parameter für Abfrage {query_name}: {parameters}")
 
         # Führe die Abfrage aus (Stelle sicher, dass die Funktion existiert)
         if 'execute_bigquery_query' not in globals():
@@ -2909,8 +2914,11 @@ def get_kpi_data():
 
         # Die Abfrage gibt normalerweise eine Liste mit einem Dictionary zurück
         kpi_result_data = formatted_result[0] if formatted_result else {}
+        
+        # Füge den Abfragetyp zum Ergebnis hinzu, damit das Frontend weiß, welche Daten zurückkommen
+        kpi_result_data['query_type'] = query_type
 
-        logging.info(f"KPI Daten: Abfrage erfolgreich, Ergebnis: {kpi_result_data}")
+        logging.info(f"KPI Daten: Abfrage {query_name} erfolgreich, Ergebnis: {kpi_result_data}")
 
         return jsonify({
             "data": kpi_result_data, # Sende das Dictionary direkt

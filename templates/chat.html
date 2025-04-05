@@ -2549,15 +2549,24 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             document.getElementById('kpi-start-date').value = formatDate(startDate);
             document.getElementById('kpi-end-date').value = formatDate(endDate);
             
-            // Zeige Ladeindikator an
+            // Zeige Ladeindikator für Abschlussquote an
             document.getElementById('closing-rate-percent').innerHTML = '<div class="spinner"></div>';
             document.getElementById('closing-rate-absolute').innerHTML = 'Wird geladen...';
             
-            // Rufe die Abschlussquote vom Backend ab
-            fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}`)
+            // Zeige Ladeindikator für Lead-Qualität an
+            document.getElementById('lead-quality-percent').innerHTML = '<div class="spinner"></div>';
+            document.getElementById('lead-quality-absolute').innerHTML = 'Wird geladen...';
+            
+            // 1. Rufe die Abschlussquote vom Backend ab
+            fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=conversion_rate`)
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Netzwerkantwort war nicht ok');
+                        // Prüfe auf CSRF-Token-Fehler (Sitzung abgelaufen)
+                        if (response.status === 403 || response.status === 401) {
+                            showSessionExpiredMessage();
+                            throw new Error('Sitzung abgelaufen');
+                        }
+                        throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
                     }
                     return response.json();
                 })
@@ -2573,17 +2582,58 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         document.getElementById('closing-rate-percent').textContent = conversionRate + '%';
                         document.getElementById('closing-rate-absolute').textContent = `${totalContracts} / ${netLeads}`;
                         
-                        console.log('KPI Daten geladen:', data.data);
+                        console.log('Abschlussquoten-Daten geladen:', data.data);
                     } else {
-                        console.error('Fehler beim Laden der KPI-Daten:', data.error);
+                        console.error('Fehler beim Laden der Abschlussquoten-Daten:', data.error);
                         document.getElementById('closing-rate-percent').textContent = 'Fehler';
                         document.getElementById('closing-rate-absolute').textContent = 'Keine Daten verfügbar';
                     }
                 })
                 .catch(error => {
-                    console.error('Fehler beim Abrufen der KPI-Daten:', error);
-                    document.getElementById('closing-rate-percent').textContent = 'Fehler';
-                    document.getElementById('closing-rate-absolute').textContent = 'Keine Daten verfügbar';
+                    if (!error.message.includes('Sitzung abgelaufen')) {
+                        console.error('Fehler beim Abrufen der Abschlussquoten-Daten:', error);
+                        document.getElementById('closing-rate-percent').textContent = 'Fehler';
+                        document.getElementById('closing-rate-absolute').textContent = 'Keine Daten verfügbar';
+                    }
+                });
+                
+            // 2. Rufe die Lead-Qualität vom Backend ab
+            fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=lead_quality`)
+                .then(response => {
+                    if (!response.ok) {
+                        // Prüfe auf CSRF-Token-Fehler (Sitzung abgelaufen)
+                        if (response.status === 403 || response.status === 401) {
+                            showSessionExpiredMessage();
+                            throw new Error('Sitzung abgelaufen');
+                        }
+                        throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success' && data.data) {
+                        // Extrahiere die relevanten Daten
+                        const qualityRate = data.data.quality_rate || 0;
+                        const newContracts = data.data.new_contracts || 0;
+                        const netLeads = data.data.net_leads || 0;
+                        
+                        // Aktualisiere die UI-Elemente
+                        document.getElementById('lead-quality-percent').textContent = qualityRate + '%';
+                        document.getElementById('lead-quality-absolute').textContent = `${newContracts} / ${netLeads}`;
+                        
+                        console.log('Lead-Qualitäts-Daten geladen:', data.data);
+                    } else {
+                        console.error('Fehler beim Laden der Lead-Qualitäts-Daten:', data.error);
+                        document.getElementById('lead-quality-percent').textContent = 'Fehler';
+                        document.getElementById('lead-quality-absolute').textContent = 'Keine Daten verfügbar';
+                    }
+                })
+                .catch(error => {
+                    if (!error.message.includes('Sitzung abgelaufen')) {
+                        console.error('Fehler beim Abrufen der Lead-Qualitäts-Daten:', error);
+                        document.getElementById('lead-quality-percent').textContent = 'Fehler';
+                        document.getElementById('lead-quality-absolute').textContent = 'Keine Daten verfügbar';
+                    }
                 });
         }
 

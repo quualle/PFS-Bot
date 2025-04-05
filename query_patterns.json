@@ -294,6 +294,28 @@
       }
     },
     
+    "get_lead_quality": {
+      "description": "Bewertet die Qualität der Leads in einem Zeitraum anhand der daraus resultierenden Vertragsabschlüsse",
+      "required_parameters": ["seller_id", "start_date", "end_date"],
+      "optional_parameters": [],
+      "sql_template": "WITH period_leads AS (SELECT l._id AS lead_id, l.reclaimed FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l WHERE l.seller_id = @seller_id AND TIMESTAMP(l.created_at) >= TIMESTAMP(@start_date) AND TIMESTAMP(l.created_at) <= TIMESTAMP(@end_date)), lead_counts AS (SELECT COUNT(*) AS total_leads, COUNT(CASE WHEN reclaimed = 'false' THEN 1 END) AS net_leads FROM period_leads), lead_contracts AS (SELECT pl.lead_id, CASE WHEN EXISTS (SELECT 1 FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS other_c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS other_cs ON other_c._id = other_cs.contract_id AND other_cs.stage = 'Bestätigt' WHERE other_c.household_id = c.household_id AND other_c._id != c._id AND other_c.created_at > c.created_at) AND EXISTS (SELECT 1 FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS confirmed_cs WHERE confirmed_cs.contract_id = c._id AND confirmed_cs.stage = 'Bestätigt') THEN 'Agenturwechsel' ELSE 'Kein Wechsel' END AS contract_type FROM period_leads pl JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON pl.lead_id = l._id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON l._id = h.lead_id JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c ON h._id = c.household_id), contract_data AS (SELECT COUNT(DISTINCT lead_id) AS converted_leads, COUNT(CASE WHEN contract_type = 'Kein Wechsel' THEN lead_id END) AS new_contracts, COUNT(CASE WHEN contract_type = 'Agenturwechsel' THEN lead_id END) AS agency_switches FROM lead_contracts) SELECT lc.total_leads, lc.net_leads, cd.new_contracts, cd.agency_switches, CASE WHEN lc.net_leads > 0 THEN ROUND(cd.new_contracts * 100.0 / lc.net_leads, 2) ELSE 0 END AS quality_rate FROM lead_counts lc CROSS JOIN contract_data cd",
+      "default_values": {
+        "start_date": "DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)",
+        "end_date": "CURRENT_DATE()"
+      },
+      "parameter_types": {
+        "start_date": "date",
+        "end_date": "date"
+      },
+      "result_structure": {
+        "total_leads": "Gesamtzahl der gekauften Leads im Zeitraum",
+        "net_leads": "Anzahl der Netto-Leads im Zeitraum (nicht zurückgefordert)",
+        "new_contracts": "Anzahl der Verträge, die aus diesen Leads entstanden sind",
+        "agency_switches": "Anzahl der Agenturwechsel aus diesen Leads",
+        "quality_rate": "Qualitätsrate der Leads in Prozent (Erfolgsrate)"
+      }
+    },
+    
     "get_contract_count": {
       "description": "Ermittelt die Anzahl neuer Verträge in einem Zeitraum und wie viele davon noch aktiv sind",
       "required_parameters": ["seller_id", "start_date", "end_date"],

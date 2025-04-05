@@ -2891,7 +2891,8 @@ def get_kpi_data():
         parameters = {
             'seller_id': seller_id,
             'start_date': start_date_str,
-            'end_date': end_date_str
+            'end_date': end_date_str,
+            'limit': 100  # Standardwert hinzufügen für Queries die LIMIT verwenden
         }
         logging.info(f"KPI Daten: Parameter für Abfrage {query_name}: {parameters}")
 

@@ -1926,7 +1926,7 @@
                                  chatHistory.appendChild(finalBotResponse);
                                  forceScrollToBottom();
                                  attachFeedbackHandlers();
-                             } else { throw new Error(followupData.error || "Fehler bei Folgeantwort."); }
+                             } else { throw new Error(followupData.error || "Fehlerhafte Datenstruktur."); }
                          })
                          .catch(followupError => {
                               processingMsg.remove();

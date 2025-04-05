@@ -373,5 +373,69 @@
         "total_monthly_pro_rata_revenue": "Summe der anteiligen Provisionen im laufenden Monat"
       }
     }
+  },
+
+  "get_lead_household_conversion": {
+    "description": "Berechnet die Conversion Rate zwischen Leads und Haushalten in einem Zeitraum",
+    "required_parameters": ["seller_id", "start_date", "end_date"],
+    "optional_parameters": [],
+    "sql_template": "WITH lead_data AS (SELECT COUNT(*) AS total_leads, COUNT(CASE WHEN l.reclaimed = 'false' THEN 1 ELSE NULL END) AS net_leads FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l WHERE l.seller_id = @seller_id AND TIMESTAMP(l.created_at) >= TIMESTAMP(@start_date) AND TIMESTAMP(l.created_at) <= TIMESTAMP(@end_date)), household_data AS (SELECT COUNT(DISTINCT h._id) AS total_households FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id WHERE l.seller_id = @seller_id AND TIMESTAMP(h.created_at) >= TIMESTAMP(@start_date) AND TIMESTAMP(h.created_at) <= TIMESTAMP(@end_date)) SELECT ld.total_leads, ld.net_leads, hd.total_households, CASE WHEN ld.net_leads > 0 THEN ROUND(hd.total_households * 100.0 / ld.net_leads, 2) ELSE 0 END AS household_conversion_rate FROM lead_data ld CROSS JOIN household_data hd",
+    "default_values": {
+      "start_date": "DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)",
+      "end_date": "CURRENT_DATE()"
+    },
+    "parameter_types": {
+      "start_date": "date",
+      "end_date": "date"
+    },
+    "result_structure": {
+      "total_leads": "Gesamtzahl der gekauften Leads im Zeitraum",
+      "net_leads": "Anzahl der Netto-Leads im Zeitraum (nicht zurückgefordert)",
+      "total_households": "Anzahl der erstellten Haushalte im Zeitraum",
+      "household_conversion_rate": "Conversion Rate zwischen Netto-Leads und Haushalten in Prozent"
+    }
+  },
+
+  "get_household_posting_conversion": {
+    "description": "Berechnet die Conversion Rate zwischen Haushalten und Postings in einem Zeitraum",
+    "required_parameters": ["seller_id", "start_date", "end_date"],
+    "optional_parameters": [],
+    "sql_template": "WITH seller_leads AS (SELECT _id AS lead_id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` WHERE seller_id = @seller_id), seller_households AS (SELECT h._id AS household_id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h JOIN seller_leads sl ON h.lead_id = sl.lead_id WHERE TIMESTAMP(h.created_at) >= TIMESTAMP(@start_date) AND TIMESTAMP(h.created_at) <= TIMESTAMP(@end_date)), household_with_postings AS (SELECT sh.household_id, CASE WHEN p._id IS NOT NULL THEN 1 ELSE 0 END AS has_posting FROM seller_households sh LEFT JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.postings` p ON sh.household_id = p.household_id) SELECT COUNT(household_id) AS total_households, SUM(has_posting) AS households_with_postings, CASE WHEN COUNT(household_id) > 0 THEN ROUND(SUM(has_posting) * 100.0 / COUNT(household_id), 2) ELSE 0 END AS household_to_posting_conversion_rate FROM household_with_postings",
+    "default_values": {
+      "start_date": "DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)",
+      "end_date": "CURRENT_DATE()"
+    },
+    "parameter_types": {
+      "start_date": "date",
+      "end_date": "date"
+    },
+    "result_structure": {
+      "total_households": "Gesamtzahl der erstellten Haushalte im Zeitraum",
+      "households_with_postings": "Anzahl der Haushalte mit mindestens einem Posting",
+      "household_to_posting_conversion_rate": "Conversion Rate zwischen Haushalten und Postings in Prozent"
+    }
+  },
+
+  "get_posting_contract_conversion": {
+    "description": "Berechnet die Conversion Rate zwischen Postings und Verträgen in einem Zeitraum, mit Unterscheidung zwischen neuen Verträgen und Agenturwechseln",
+    "required_parameters": ["seller_id", "start_date", "end_date"],
+    "optional_parameters": [],
+    "sql_template": "WITH seller_leads AS (SELECT _id AS lead_id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` WHERE seller_id = @seller_id), seller_households AS (SELECT h._id AS household_id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` h JOIN seller_leads sl ON h.lead_id = sl.lead_id), postings_data AS (SELECT p._id AS posting_id, p.household_id, TIMESTAMP(p.created_at) AS posting_created_at FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.postings` p JOIN seller_households sh ON p.household_id = sh.household_id WHERE TIMESTAMP(p.created_at) >= TIMESTAMP(@start_date) AND TIMESTAMP(p.created_at) <= TIMESTAMP(@end_date)), contracts_with_type AS (SELECT c._id AS contract_id, c.household_id, TIMESTAMP(c.created_at) AS contract_created_at, CASE WHEN EXISTS (SELECT 1 FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS other_c JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` AS other_cs ON other_c._id = other_cs.contract_id AND other_cs.stage = 'Bestätigt' WHERE other_c.household_id = c.household_id AND other_c._id != c._id AND other_c.created_at < c.created_at) THEN 'Agenturwechsel' ELSE 'Neuer Vertrag' END AS contract_type FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` c JOIN seller_households sh ON c.household_id = sh.household_id JOIN (SELECT DISTINCT contract_id FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` WHERE stage = 'Bestätigt') AS confirmed_cs ON c._id = confirmed_cs.contract_id WHERE TIMESTAMP(c.created_at) >= TIMESTAMP(@start_date) AND TIMESTAMP(c.created_at) <= TIMESTAMP(@end_date)), postings_with_contracts AS (SELECT pd.posting_id, MAX(CASE WHEN cwt.contract_id IS NOT NULL AND cwt.contract_created_at >= pd.posting_created_at AND cwt.contract_type = 'Neuer Vertrag' THEN 1 ELSE 0 END) AS has_subsequent_new_contract, MAX(CASE WHEN cwt.contract_id IS NOT NULL AND cwt.contract_created_at >= pd.posting_created_at AND cwt.contract_type = 'Agenturwechsel' THEN 1 ELSE 0 END) AS has_subsequent_agency_switch FROM postings_data pd LEFT JOIN contracts_with_type cwt ON pd.household_id = cwt.household_id AND cwt.contract_created_at >= pd.posting_created_at GROUP BY pd.posting_id) SELECT COUNT(posting_id) AS total_postings, SUM(has_subsequent_new_contract) AS postings_with_new_contracts, SUM(has_subsequent_agency_switch) AS postings_with_agency_switches, SUM(has_subsequent_new_contract) + SUM(has_subsequent_agency_switch) AS total_postings_with_contracts, CASE WHEN COUNT(posting_id) > 0 THEN ROUND(SUM(has_subsequent_new_contract) * 100.0 / COUNT(posting_id), 2) ELSE 0 END AS posting_to_new_contract_conversion_rate, CASE WHEN COUNT(posting_id) > 0 THEN ROUND((SUM(has_subsequent_new_contract) + SUM(has_subsequent_agency_switch)) * 100.0 / COUNT(posting_id), 2) ELSE 0 END AS posting_to_all_contracts_conversion_rate FROM postings_with_contracts",
+    "default_values": {
+      "start_date": "DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)",
+      "end_date": "CURRENT_DATE()"
+    },
+    "parameter_types": {
+      "start_date": "date",
+      "end_date": "date"
+    },
+    "result_structure": {
+      "total_postings": "Gesamtzahl der erstellten Postings im Zeitraum",
+      "postings_with_new_contracts": "Anzahl der Postings, die zu neuen Verträgen geführt haben",
+      "postings_with_agency_switches": "Anzahl der Postings, die zu Agenturwechseln geführt haben",
+      "total_postings_with_contracts": "Gesamtzahl der Postings, die zu einem Vertrag geführt haben",
+      "posting_to_new_contract_conversion_rate": "Conversion Rate zwischen Postings und neuen Verträgen in Prozent",
+      "posting_to_all_contracts_conversion_rate": "Conversion Rate zwischen Postings und allen Verträgen in Prozent"
+    }
   }
 }

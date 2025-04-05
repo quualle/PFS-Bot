@@ -2630,54 +2630,48 @@ def get_dashboard_data():
         
         # Dashboard-Daten sammeln
         dashboard_result = {}
-        
-        # Hole die "get_active_care_stays_now" Abfrage
-                # 1. Aktive Kunden (get_active_care_stays_now)
+
+        # 1. Active Customers (get_active_care_stays_now)
         query_name = "get_active_care_stays_now"
         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
-        if query_name not in query_patterns['common_queries']:
+        if query_name in query_patterns['common_queries']:
+            query_pattern = query_patterns['common_queries'][query_name]
+            
+            # Parameter vorbereiten
+            parameters = {'seller_id': seller_id}
+            logging.info(f"Dashboard: Parameter für Active Customers: {parameters}")
+            
+            # Führe die Abfrage aus
+            logging.info("Dashboard: Führe BigQuery-Abfrage für Active Customers aus")
+            active_customers_result = execute_bigquery_query(
+                query_pattern['sql_template'],
+                parameters
+            )
+            
+            # Formatiere das Ergebnis
+            formatted_active_customers = format_query_result(active_customers_result, query_pattern.get('result_structure'))
+            logging.info(f"Dashboard: Active Customers Abfrage abgeschlossen")
+            
+            # Speichern für die Antwort (alle Zeilen für Datentabelle + Anzahl gesamt)
+            dashboard_result['active_customers'] = {
+                'data': formatted_active_customers,
+                'count': len(formatted_active_customers)
+            }
+        else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
-            return jsonify({
-                "error": f"Abfrage {query_name} nicht gefunden",
-                "status": "error"
-            }), 404
+            dashboard_result['active_customers'] = {'data': [], 'count': 0}
         
-        query_pattern = query_patterns['common_queries'][query_name]
-        
-        # Parameter nur für diese Abfrage (aktive Kunden)
-        parameters = {
-            'seller_id': seller_id,
-            'limit': 100  # Standardlimit wieder hinzufügen
-        }
-        logging.info(f"Dashboard: Parameter für {query_name}: {parameters}")
-
-        result = execute_bigquery_query(
-            query_pattern['sql_template'],
-            parameters
-        )
-        
-        # Formatiere das Ergebnis
-        formatted_result = format_query_result(result, query_pattern.get('result_structure'))
-        logging.info(f"Dashboard: Ergebnis formatiert, {len(formatted_result)} Einträge")
-        
-        # Speichern für die Antwort
-        dashboard_result['active_customers'] = {
-            "data": formatted_result,
-            "count": len(formatted_result)
-        }
-
-
-                # 2. Abschlussquote (get_cvr_lead_contract)
+        # 2. Abschlussquote (get_cvr_lead_contract)
         query_name = "get_cvr_lead_contract"
         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
         if query_name in query_patterns['common_queries']:
             query_pattern = query_patterns['common_queries'][query_name]
             
-            # Zeitraum: Letzte 30 Tage
+            # Zeitraum: Letzte 90 Tage
             end_date = datetime.now().date().isoformat()
-            start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
+            start_date = (datetime.now().date() - timedelta(days=90)).isoformat()
             parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date}
             logging.info(f"Dashboard: Parameter für Abschlussquote: {parameters}")
             
@@ -2697,8 +2691,8 @@ def get_dashboard_data():
         else:
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['conversion_rate'] = {}
-
-                # 3. Neue Verträge der letzten 14 Tage (get_contract_count)
+            
+        # 3. Neue Verträge der letzten 14 Tage (get_contract_count)
         query_name = "get_contract_count"
         logging.info(f"Dashboard: Verwende Abfrage {query_name}")
         
@@ -2878,6 +2872,12 @@ def get_kpi_data():
         # Wähle die richtige Abfrage basierend auf dem Abfragetyp
         if query_type == 'lead_quality':
             query_name = "get_lead_quality"
+        elif query_type == 'lead_household_conversion':
+            query_name = "get_lead_household_conversion"
+        elif query_type == 'household_posting_conversion':
+            query_name = "get_household_posting_conversion"
+        elif query_type == 'posting_contract_conversion':
+            query_name = "get_posting_contract_conversion"
         else:  # Standardfall: Abschlussquote
             query_name = "get_cvr_lead_contract"
             

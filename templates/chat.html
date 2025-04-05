@@ -2635,6 +2635,130 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         document.getElementById('lead-quality-absolute').textContent = 'Keine Daten verfügbar';
                     }
                 });
+                
+                // 3. Rufe die Lead zu EB Conversion vom Backend ab
+                fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=lead_household_conversion`)
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 403 || response.status === 401) {
+                                showSessionExpiredMessage();
+                                throw new Error('Sitzung abgelaufen');
+                            }
+                            throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success' && data.data) {
+                            // Extrahiere die relevanten Daten
+                            const conversionRate = data.data.household_conversion_rate || 0;
+                            const totalHouseholds = data.data.total_households || 0;
+                            const netLeads = data.data.net_leads || 0;
+                            
+                            // Aktualisiere die UI-Elemente
+                            document.getElementById('lead-eb-percent').textContent = conversionRate + '%';
+                            document.getElementById('lead-eb-absolute').textContent = `${totalHouseholds} / ${netLeads}`;
+                            
+                            console.log('Lead zu EB Conversion-Daten geladen:', data.data);
+                        } else {
+                            console.error('Fehler beim Laden der Lead zu EB Conversion-Daten:', data.error);
+                            document.getElementById('lead-eb-percent').textContent = 'Fehler';
+                            document.getElementById('lead-eb-absolute').textContent = 'Keine Daten verfügbar';
+                        }
+                    })
+                    .catch(error => {
+                        if (!error.message.includes('Sitzung abgelaufen')) {
+                            console.error('Fehler beim Abrufen der Lead zu EB Conversion-Daten:', error);
+                            document.getElementById('lead-eb-percent').textContent = 'Fehler';
+                            document.getElementById('lead-eb-absolute').textContent = 'Keine Daten verfügbar';
+                        }
+                    });
+                
+                // 4. Rufe die EB zu Posting Conversion vom Backend ab
+                fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=household_posting_conversion`)
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 403 || response.status === 401) {
+                                showSessionExpiredMessage();
+                                throw new Error('Sitzung abgelaufen');
+                            }
+                            throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success' && data.data) {
+                            // Extrahiere die relevanten Daten
+                            const conversionRate = data.data.household_to_posting_conversion_rate || 0;
+                            const householdsWithPostings = data.data.households_with_postings || 0;
+                            const totalHouseholds = data.data.total_households || 0;
+                            
+                            // Aktualisiere die UI-Elemente
+                            document.getElementById('eb-posting-percent').textContent = conversionRate + '%';
+                            document.getElementById('eb-posting-absolute').textContent = `${householdsWithPostings} / ${totalHouseholds}`;
+                            
+                            console.log('EB zu Posting Conversion-Daten geladen:', data.data);
+                        } else {
+                            console.error('Fehler beim Laden der EB zu Posting Conversion-Daten:', data.error);
+                            document.getElementById('eb-posting-percent').textContent = 'Fehler';
+                            document.getElementById('eb-posting-absolute').textContent = 'Keine Daten verfügbar';
+                        }
+                    })
+                    .catch(error => {
+                        if (!error.message.includes('Sitzung abgelaufen')) {
+                            console.error('Fehler beim Abrufen der EB zu Posting Conversion-Daten:', error);
+                            document.getElementById('eb-posting-percent').textContent = 'Fehler';
+                            document.getElementById('eb-posting-absolute').textContent = 'Keine Daten verfügbar';
+                        }
+                    });
+                
+                // 5. Rufe die Posting zu Vertrag Conversion vom Backend ab
+                fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=posting_contract_conversion`)
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 403 || response.status === 401) {
+                                showSessionExpiredMessage();
+                                throw new Error('Sitzung abgelaufen');
+                            }
+                            throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success' && data.data) {
+                            // Extrahiere die relevanten Daten
+                            const newContractRate = data.data.posting_to_new_contract_conversion_rate || 0;
+                            const allContractsRate = data.data.posting_to_all_contracts_conversion_rate || 0;
+                            const totalPostings = data.data.total_postings || 0;
+                            const postingsWithNewContracts = data.data.postings_with_new_contracts || 0;
+                            const postingsWithAllContracts = data.data.total_postings_with_contracts || 0;
+                            
+                            // Aktualisiere die UI-Elemente für Posting zu Vertrag
+                            document.getElementById('posting-contract-percent').textContent = newContractRate + '%';
+                            document.getElementById('posting-contract-absolute').textContent = `${postingsWithNewContracts} / ${totalPostings}`;
+                            
+                            // Zusätzlich für alle Verträge (inkl. Agenturwechsel)
+                            document.getElementById('posting-all-contract-percent').textContent = allContractsRate + '%';
+                            document.getElementById('posting-all-contract-absolute').textContent = `${postingsWithAllContracts} / ${totalPostings}`;
+                            
+                            console.log('Posting zu Vertrag Conversion-Daten geladen:', data.data);
+                        } else {
+                            console.error('Fehler beim Laden der Posting zu Vertrag Conversion-Daten:', data.error);
+                            document.getElementById('posting-contract-percent').textContent = 'Fehler';
+                            document.getElementById('posting-contract-absolute').textContent = 'Keine Daten verfügbar';
+                            document.getElementById('posting-all-contract-percent').textContent = 'Fehler';
+                            document.getElementById('posting-all-contract-absolute').textContent = 'Keine Daten verfügbar';
+                        }
+                    })
+                    .catch(error => {
+                        if (!error.message.includes('Sitzung abgelaufen')) {
+                            console.error('Fehler beim Abrufen der Posting zu Vertrag Conversion-Daten:', error);
+                            document.getElementById('posting-contract-percent').textContent = 'Fehler';
+                            document.getElementById('posting-contract-absolute').textContent = 'Keine Daten verfügbar';
+                            document.getElementById('posting-all-contract-percent').textContent = 'Fehler';
+                            document.getElementById('posting-all-contract-absolute').textContent = 'Keine Daten verfügbar';
+                        }
+                    });
         }
 
         // Funktion zum Abrufen der letzten 30 Tage

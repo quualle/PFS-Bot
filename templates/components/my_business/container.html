@@ -292,91 +292,39 @@
     align-items: center; /* Zentriert den Inhalt horizontal */
     justify-content: space-between; /* Verteilt Platz vertikal */
     padding: 15px;
-    height: 220px; /* Feste Höhe für Konsistenz */
+    height: 180px; /* Etwas kürzere Höhe */
     text-align: center;
 }
 
+/* Einfacher Gauge-Stil - ein horizontaler Balken */
 .gauge-container {
-    width: 150px;
-    height: 85px;
-    position: relative;
-    margin: 0 auto 35px;
-    overflow: visible;
-}
-
-.gauge-bg {
-    width: 150px;
-    height: 75px;
+    width: 100%;
+    height: 20px;
     background-color: #334455;
-    border-top-left-radius: 150px;
-    border-top-right-radius: 150px;
-    position: absolute;
-    top: 0;
-    left: 0;
+    border-radius: 10px;
     overflow: hidden;
+    margin: 30px 0 20px;
+    position: relative;
 }
 
 .gauge-fill {
-    width: 150px;
-    height: 75px;
+    height: 100%;
     background-color: #00ffff;
-    border-top-left-radius: 150px;
-    border-top-right-radius: 150px;
-    position: absolute;
-    top: 0;
-    left: 0;
-    transform-origin: center bottom;
-    transform: rotate(180deg);
-    z-index: 1;
-}
-
-.gauge-cover {
-    width: 130px;
-    height: 65px;
-    background-color: #1a2431; /* Gleiche Farbe wie der Hintergrund */
-    border-top-left-radius: 130px;
-    border-top-right-radius: 130px;
-    position: absolute;
-    top: 5px;
-    left: 10px;
-    z-index: 2;
+    border-radius: 10px;
+    width: 0%; /* Anfangswert - wird per JS gesetzt */
+    transition: width 0.6s ease-out;
 }
 
 .gauge-value-percent {
-    font-size: 2em;
+    font-size: 2.2em;
     font-weight: bold;
     color: #00ffff;
-    position: absolute;
-    top: 20px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    z-index: 3;
+    margin-bottom: 15px;
 }
 
 .gauge-value-absolute {
     font-size: 0.9em;
     color: #a0a0a0;
-    position: absolute;
-    bottom: -30px;
-    width: 100%;
-    text-align: center;
-}
-
-/* SVG Gauge Stile */
-.gauge-background {
-    fill: none;
-    stroke: #334455; /* Dunkler Hintergrund für den Gauge */
-    stroke-width: 15; /* Dicke des Gauge-Balkens */
-    stroke-linecap: round;
-}
-
-.gauge-value {
-    fill: none;
-    stroke: #00ffff; /* Cyan-Farbe für den Wert */
-    stroke-width: 15;
-    stroke-linecap: round;
-    transition: stroke-dashoffset 0.8s ease-in-out; /* KORRIGIERT: transition für stroke-dashoffset */
 }
 </style>
 
@@ -385,7 +333,7 @@
     (function() {
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
-        // --- Neuer CSS-basierter Gauge Code ---
+        // --- Extrem vereinfachter Gauge-Code ---
         function createGauge(elementId, percentage) {
             const container = document.getElementById(elementId);
             if (!container) {
@@ -397,21 +345,8 @@
             const value = Math.max(0, Math.min(100, percentage));
             console.log(`Creating gauge for ${elementId} with percentage: ${value}%`);
             
-            // Berechne Rotation für die Anzeige (180° = 0%, 0° = 100%)
-            const rotation = 180 - (value * 1.8); // 180 Grad * Prozent / 100
-            
-            // Container leeren
-            container.innerHTML = '';
-            
-            // Gauge-Elemente erstellen
-            const gaugeHTML = `
-                <div class="gauge-bg"></div>
-                <div class="gauge-fill" style="transform: rotate(${rotation}deg);"></div>
-                <div class="gauge-cover"></div>
-            `;
-            
-            // HTML in Container einfügen
-            container.innerHTML = gaugeHTML;
+            // Sehr einfaches HTML für den Gauge erstellen
+            container.innerHTML = `<div class="gauge-fill" style="width: ${value}%;"></div>`;
         }
 
         function loadAndDisplayKpiData(startDate = null, endDate = null) {
@@ -428,7 +363,6 @@
             if (startDate && endDate) {
                 url += `?start_date=${startDate}&end_date=${endDate}`;
             } else {
-                // Fallback, falls keine Daten übergeben wurden (sollte nicht passieren)
                  url += '?t=' + new Date().getTime(); // Cache-Buster
                  console.warn('KPI-Daten ohne Zeitraum angefragt.');
             }

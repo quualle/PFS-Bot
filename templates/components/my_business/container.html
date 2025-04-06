@@ -299,20 +299,23 @@
 /* Einfacher Gauge-Stil - ein horizontaler Balken */
 .gauge-container {
     width: 100%;
-    height: 20px;
+    height: 30px;
     background-color: #334455;
     border-radius: 10px;
-    overflow: hidden;
-    margin: 30px 0 20px;
+    overflow: visible !important; /* WICHTIG: Überstehendes anzeigen */
+    margin: 20px 0;
     position: relative;
 }
 
+/* Grundlegendes Styling für den Füllbalken */
 .gauge-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
     height: 100%;
     background-color: #00ffff;
-    border-radius: 10px;
-    width: 0%; /* Anfangswert - wird per JS gesetzt */
-    transition: width 0.6s ease-out;
+    border-radius: 10px 0 0 10px;
+    width: 0%; /* Startwert */
 }
 
 .gauge-value-percent {
@@ -326,6 +329,11 @@
     font-size: 0.9em;
     color: #a0a0a0;
 }
+
+/* Zusätzliche Debug-Klasse */
+.debug-border {
+    border: 2px solid red !important;
+}
 </style>
 
 <!-- Inline-JavaScript direkt im Overlay -->
@@ -333,20 +341,65 @@
     (function() {
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
-        // --- Extrem vereinfachter Gauge-Code ---
+        // --- LETZTE METHODE ZUR GAUGE-FÜLLUNG ---
         function createGauge(elementId, percentage) {
+            console.log(`Erstelle Gauge für ${elementId} mit Prozent: ${percentage}%`);
+            
+            // Container finden
             const container = document.getElementById(elementId);
             if (!container) {
-                console.error('Gauge container not found:', elementId);
+                console.error(`Container für ID ${elementId} nicht gefunden!`);
                 return;
             }
             
-            // Percentage auf 0-100 beschränken
-            const value = Math.max(0, Math.min(100, percentage));
-            console.log(`Creating gauge for ${elementId} with percentage: ${value}%`);
+            // DEBUG: Container-Status überprüfen
+            console.log(`Container ${elementId} gefunden:`, container);
+            console.log(`Container Dimensionen:`, container.offsetWidth, 'x', container.offsetHeight);
+            console.log(`Container Style:`, container.style);
             
-            // Sehr einfaches HTML für den Gauge erstellen
-            container.innerHTML = `<div class="gauge-fill" style="width: ${value}%;"></div>`;
+            // Container für Debug sichtbar machen
+            container.classList.add('debug-border');
+            
+            // Prozentsatz validieren
+            let value = parseFloat(percentage);
+            if (isNaN(value)) {
+                console.error(`Ungültiger Prozentwert: ${percentage}`);
+                value = 0;
+            }
+            value = Math.max(0, Math.min(100, value));
+            
+            // ABSOLUT EINFACHSTER ANSATZ: Direkt das HTML im Container ersetzen
+            container.innerHTML = '';
+            
+            // Direkt ein DIV erstellen und mit Inline-Style hinzufügen
+            const fillDiv = document.createElement('div');
+            fillDiv.className = 'gauge-fill';
+            fillDiv.style.width = `${value}%`;
+            // Debug-Indikator für Sichtbarkeit
+            fillDiv.textContent = `${value}%`;
+            fillDiv.style.color = '#000';
+            fillDiv.style.textAlign = 'center';
+            fillDiv.style.fontSize = '12px';
+            
+            // Das Element direkt zum DOM hinzufügen
+            container.appendChild(fillDiv);
+            
+            // DEBUGGEN: Nach dem Hinzufügen prüfen
+            console.log(`Gauge ${elementId} erstellt, fill-Element:`, fillDiv);
+            console.log(`Style des Fill-Elements:`, fillDiv.style.cssText);
+            
+            // ZWEITER VERSUCH: Mit setTimeout
+            setTimeout(() => {
+                const checkFill = container.querySelector('.gauge-fill');
+                if (checkFill) {
+                    console.log(`Nach 100ms: Fill-Element für ${elementId} ist ${checkFill.offsetWidth}px breit`);
+                    console.log(`Fill-Style:`, checkFill.style.cssText);
+                    if (checkFill.offsetWidth < 5 && value > 0) {
+                        console.log(`KORREKTUR für ${elementId}: Setze Inline-Breite direkt`);
+                        checkFill.style.width = `${value}%`;
+                    }
+                }
+            }, 100);
         }
 
         function loadAndDisplayKpiData(startDate = null, endDate = null) {
@@ -356,7 +409,10 @@
             const kpiValueElements = document.querySelectorAll('.gauge-value-percent, .gauge-value-absolute');
             kpiValueElements.forEach(el => el.textContent = '...');
             const gaugeContainers = document.querySelectorAll('.gauge-container');
-            gaugeContainers.forEach(el => el.innerHTML = '<div class="spinner-small"></div>'); // Kleiner Spinner
+            gaugeContainers.forEach(el => {
+                el.innerHTML = '<div class="spinner-small"></div>';
+                el.classList.add('debug-border'); // DEBUG: Visuell markieren
+            });
 
             // Korrigierte URL: /get_kpi_data verwenden
             let url = '/get_kpi_data';
@@ -390,12 +446,30 @@
 
                     // Helper zum Aktualisieren einer KPI-Karte
                     const updateGaugeCard = (baseId, percent, absolute) => {
+                        console.log(`UPDATE: ${baseId} - Prozent: ${percent}, Absolut: ${absolute}`);
+                        
+                        // DOM-Elemente finden
                         const percentEl = document.getElementById(`${baseId}-percent`);
                         const absoluteEl = document.getElementById(`${baseId}-absolute`);
-                        const gaugeContainerId = `gauge-${baseId.replace(/-/g, '-')}`; // Ersetze Bindestriche falls nötig
+                        const gaugeContainerId = `gauge-${baseId.replace(/-/g, '-')}`;
                         
-                        if (percentEl) percentEl.textContent = `${percent}%`;
-                        if (absoluteEl) absoluteEl.textContent = absolute;
+                        // Prozentwert aktualisieren
+                        if (percentEl) {
+                            percentEl.textContent = `${percent}%`;
+                            console.log(`${baseId} Prozent-Element aktualisiert`);
+                        } else {
+                            console.error(`${baseId} Prozent-Element nicht gefunden!`);
+                        }
+                        
+                        // Absoluten Wert aktualisieren
+                        if (absoluteEl) {
+                            absoluteEl.textContent = absolute;
+                            console.log(`${baseId} Absolut-Element aktualisiert`);
+                        } else {
+                            console.error(`${baseId} Absolut-Element nicht gefunden!`);
+                        }
+                        
+                        // Gauge aktualisieren
                         createGauge(gaugeContainerId, percent);
                     };
 
@@ -406,6 +480,22 @@
                     updateGaugeCard('lead-quality', kpis.lead_quality_rate?.percentage || 0, kpis.lead_quality_rate?.absolute || '0/0');
                     updateGaugeCard('posting-contract', kpis.posting_to_contract_conversion?.percentage || 0, kpis.posting_to_contract_conversion?.absolute || '0/0');
                     updateGaugeCard('termination-rate', kpis.termination_rate?.percentage || 0, kpis.termination_rate?.absolute || '0/0');
+                    
+                    // LETZTER VERSUCH: Direkte DOM-Manipulation nach einem kurzen Timeout
+                    setTimeout(() => {
+                        document.querySelectorAll('.gauge-container').forEach(container => {
+                            const fill = container.querySelector('.gauge-fill');
+                            const valueEl = container.parentNode.querySelector('.gauge-value-percent');
+                            
+                            if (fill && valueEl) {
+                                const percent = parseFloat(valueEl.textContent);
+                                if (!isNaN(percent)) {
+                                    fill.style.width = `${percent}%`;
+                                    console.log(`TIMEOUT KORREKTUR: ${container.id} Breite auf ${percent}% gesetzt`);
+                                }
+                            }
+                        });
+                    }, 200);
                     
                 } else {
                     console.error('Keine KPI-Daten im Response enthalten.');
@@ -420,7 +510,6 @@
                  kpiValueElements.forEach(el => el.textContent = '-');
             });
         }
-        // --- Ende KPI Gauges ---
 
         // Element-Referenzen
         const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');

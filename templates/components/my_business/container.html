@@ -2,7 +2,7 @@
     <div class="business-header">
         <h2>My Business</h2>
         <div class="business-nav-buttons">
-            <a href="/" class="business-nav-btn chat-toggle-btn">Zum XORA Chatbot</a>
+            <button id="toggleChatBtn" class="business-nav-btn chat-toggle-btn">Zum XORA Chatbot</button>
             <a href="{{ url_for('logout') }}" class="business-nav-btn logout-btn">Ausloggen</a>
         </div>
     </div>
@@ -896,5 +896,33 @@
             }
         `;
         document.head.appendChild(styleElement);
+        
+        // Chat-Button-Funktionalität hinzufügen
+        const toggleChatBtn = document.getElementById('toggleChatBtn');
+        if (toggleChatBtn) {
+            toggleChatBtn.addEventListener('click', function() {
+                // Prüfen, ob das chatOverlay-Element existiert
+                const chatOverlay = document.getElementById('chatOverlay');
+                if (chatOverlay) {
+                    // Chat-Overlay anzeigen
+                    chatOverlay.style.display = 'flex';
+                    
+                    // Scrolle den Chat-Verlauf nach unten, falls nötig
+                    const chatHistory = document.getElementById('chatHistory');
+                    if (chatHistory) {
+                        chatHistory.scrollTop = chatHistory.scrollHeight;
+                    }
+                } else {
+                    // Fallback: Zur Hauptseite navigieren
+                    window.location.href = '/';
+                }
+            });
+        }
+        
+        // Den Float-Button mit dem 💬 Symbol ausblenden, da wir jetzt den Button in der Navigation haben
+        const openChatBtn = document.getElementById('openChatBtn');
+        if (openChatBtn) {
+            openChatBtn.style.display = 'none';
+        }
     })();
 </script>

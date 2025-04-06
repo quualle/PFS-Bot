@@ -20,15 +20,17 @@
         body {
             font-family: 'Montserrat', sans-serif;
             background: linear-gradient(135deg, #1abc9c, #16a085);
-            padding: 20px;
+            padding: 15px; /* Reduzierter Abstand */
             color: #2c3e50;
+            font-size: 14px; /* Kleinere Basisschriftgröße */
         }
 
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px; /* Reduzierter Abstand */
             color: #ffffff;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            font-size: 1.8rem; /* Kleinerer Titel */
         }
 
         /* Flex Container für Hauptinhalt */
@@ -37,8 +39,8 @@
             flex-direction: row;
             justify-content: flex-start;
             align-items: flex-start;
-            padding: 20px;
-            height: calc(100vh - 80px); /* Volle Höhe minus Padding und Header */
+            padding: 15px; /* Reduzierter Abstand */
+            height: calc(100vh - 60px); /* Angepasste Höhe */
             box-sizing: border-box;
         }
         .hidden {
@@ -48,27 +50,27 @@
         /* Hauptbereich */
         .main-content {
             flex: 1;
-            margin-right: 20px;
+            margin-right: 15px; /* Reduzierter Abstand */
             max-width: 70%;
             background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 15px; /* Reduzierter Abstand */
+            border-radius: 8px; /* Kleinerer Radius */
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1); /* Kleinerer Schatten */
             overflow-y: auto;
         }
 
         /* Seitenleiste für "Aktuelle Themen" */
         .sidebar {
-            width: 35%;
-            min-width: 300px;
+            width: 30%; /* Reduzierte Breite */
+            min-width: 250px; /* Kleinere Mindestbreite */
             border: 1px solid #ccc;
-            padding: 10px;
-            max-height: 80vh;
+            padding: 8px; /* Reduzierter Abstand */
+            max-height: 75vh; /* Reduzierte Höhe */
             overflow-y: auto;
             box-sizing: border-box;
             background-color: #f9f9f9;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px; /* Kleinerer Radius */
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1); /* Kleinerer Schatten */
         }
 
         /* Drehe das Chevron-Icon beim Ausklappen */
@@ -85,12 +87,12 @@
         /* Größeres Textarea */
         textarea[name="eingabe_text"] {
             width: 100%;
-            height: 200px;
+            height: 150px; /* Reduzierte Höhe */
             resize: vertical;
-            padding: 10px;
+            padding: 8px; /* Reduzierter Abstand */
             box-sizing: border-box;
-            font-size: 1em;
-            border-radius: 5px;
+            font-size: 0.9em; /* Kleinere Schrift */
+            border-radius: 4px; /* Kleinerer Radius */
             border: 1px solid #ced4da;
         }
 
@@ -98,18 +100,20 @@
         .checkbox-group {
             display: flex;
             align-items: center;
-            margin-top: 10px;
-            margin-bottom: 10px;
+            margin-top: 8px; /* Reduzierter Abstand */
+            margin-bottom: 8px; /* Reduzierter Abstand */
         }
 
         .checkbox-group label {
-            margin-right: 20px;
+            margin-right: 15px; /* Reduzierter Abstand */
+            font-size: 0.9em; /* Kleinere Schrift */
         }
 
         /* Buttons Styling */
         .btn-action {
-            margin-right: 5px;
+            margin-right: 3px; /* Reduzierter Abstand */
             transition: transform 0.1s;
+            font-size: 0.9em; /* Kleinere Schrift */
         }
 
         .btn-action:hover {
@@ -120,13 +124,14 @@
         .flashes {
             list-style-type: none;
             padding: 0;
-            margin-bottom: 20px;
+            margin-bottom: 15px; /* Reduzierter Abstand */
         }
 
         .flashes li {
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
+            padding: 8px; /* Reduzierter Abstand */
+            margin-bottom: 8px; /* Reduzierter Abstand */
+            border-radius: 4px; /* Kleinerer Radius */
+            font-size: 0.9em; /* Kleinere Schrift */
         }
 
         .flashes li.success {
@@ -181,10 +186,11 @@
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            padding: 10px;
+            padding: 8px; /* Reduzierter Abstand */
             background-color: #34495e;
             color: #ecf0f1;
-            border-radius: 5px;
+            border-radius: 4px; /* Kleinerer Radius */
+            font-size: 0.9em; /* Kleinere Schrift */
         }
 
         .collapse-header:hover {
@@ -225,12 +231,13 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 15px; /* Reduzierter Abstand */
+            font-size: 0.9em; /* Kleinere Schrift */
         }
 
         th,
         td {
-            padding: 12px;
+            padding: 8px; /* Reduzierter Abstand */
             border: 1px solid #dee2e6;
             text-align: left;
         }

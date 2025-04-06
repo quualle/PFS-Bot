@@ -387,6 +387,7 @@
             align-items: center; 
             height: 100vh; 
             text-align: center; 
+            font-size: 14px; /* Kleinere Basisschriftgröße */
         }
 
         /* NOTFALLMODUS (ROT) */
@@ -402,17 +403,17 @@
             display: block;
             position: relative;
             width: 100%;
-            padding: 0 10%;
+            padding: 0 5%; /* Reduzierter horizontaler Abstand */
         }
 
         /* CHAT-BOX */
         .chat-box {
             background: rgba(0, 0, 0, 0.8);
-            padding: 15px 21px; 
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-            width: 80vw; 
-            height: 80vh; 
+            padding: 10px 15px; /* Reduzierter Innenabstand */
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            width: 75vw; /* Reduzierte Breite */ 
+            height: 75vh; /* Reduzierte Höhe */
             display: flex; 
             flex-direction: column; 
             margin: 0 auto; 
@@ -427,7 +428,8 @@
             color: #00ffff;
             margin-bottom: 0px;
             text-shadow: 0 0 10px #00ffff;
-            white-space: pre-line; 
+            white-space: pre-line;
+            font-size: 1.8rem; /* Kleinerer Titel */
         }
 
         /* UNTERTITEL (Pflegehilfe für Senioren Companion) */
@@ -437,67 +439,102 @@
             font-family: 'Inter', sans-serif;
             font-style: italic;
             margin-top: 0px; 
-            margin-bottom: 20px;
-            font-size: 1.2em;
+            margin-bottom: 15px;
+            font-size: 1rem; /* Kleinerer Untertitel */
             text-align: center;
         }
-
-        /* FLASH-NACHRICHTEN */
-        .flashes {
-            list-style: none;
-            padding: 0;
-            margin-bottom: 20px;
-        }
-        .flash {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        .flash-danger  { background-color: #ff4c4c; color: #fff; }
-        .flash-warning { background-color: #ffa500; color: #fff; }
-        .flash-info    { background-color: #1e90ff; color: #fff; }
-        .flash-success { background-color: #28a745; color: #fff; }
 
         /* CHAT-HISTORY (DER SCROLL-BARE BEREICH) */
         .chat-history {
             flex-grow: 1;
             overflow-y: scroll;
-            margin-bottom: 20px;
-            padding-right: 10px;
+            margin-bottom: 15px; /* Reduzierter Abstand */
+            padding-right: 8px;
             scrollbar-width: thin;
             scrollbar-color: rgba(0, 255, 255, 0.5) rgba(0, 0, 0, 0.5);
-        }
-        
-        /* CUSTOM SCROLLBAR FÜR WEBKIT-BASIERTE BROWSER */
-        .chat-history::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        .chat-history::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-        }
-        .chat-history::-webkit-scrollbar-thumb {
-            background: rgba(0, 255, 255, 0.5);
-            border-radius: 10px;
-        }
-        .chat-history::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 255, 255, 0.7);
         }
 
         /* NACHRICHT BUBBLES */
         .message {
-            padding: 12px 16px;
-            margin-bottom: 12px;
-            border-radius: 10px;
+            padding: 8px 12px; /* Kleinerer Innenabstand */
+            margin-bottom: 8px; /* Kleinerer Außenabstand */
+            border-radius: 8px;
             position: relative;
             max-width: 85%;
             animation: fadeIn 0.3s ease-in-out;
             line-height: 1.4;
+            font-size: 0.9rem; /* Kleinere Schrift in Nachrichten */
+        }
+
+        /* FORM FÜR EINGABE */
+        .chat-form {
+            display: flex;
+            margin-top: 8px; /* Reduzierter Abstand */
         }
         
+        /* NACHRICHTENFELD */
+        .message-input {
+            flex-grow: 1;
+            padding: 8px 12px; /* Kleinerer Innenabstand */
+            font-size: 14px; /* Kleinere Schrift */
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            margin-right: 8px;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* SENDEN-BUTTON */
+        .send-button {
+            background: linear-gradient(135deg, #2d6a9a, #0f4c81);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px; /* Kleinerer Button */
+            height: 40px; /* Kleinerer Button */
+            font-size: 18px; /* Kleinere Schrift */
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        /* WIDGETS IM DASHBOARD */
+        .widget, .wide-widget {
+            padding: 12px; /* Kleinerer Innenabstand */
+            border-radius: 8px;
+        }
+
+        .widget-header {
+            font-size: 14px; /* Kleinere Überschrift */
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+        }
+
+        .customer-count {
+            font-size: 28px; /* Kleinere Zahlen */
+        }
+
+        .metric-value {
+            font-size: 20px; /* Kleinere Werte */
+        }
+
+        /* AKTION-BUTTONS UNTER DEM FORMULAR */
+        .action-buttons {
+            gap: 8px; /* Kleinerer Abstand */
+            margin-top: 12px; /* Reduzierter Abstand */
+            padding: 0 15px; /* Reduzierter Innenabstand */
+        }
+        
+        .action-btn {
+            padding: 6px 12px; /* Kleinerer Innenabstand */
+            border-radius: 16px;
+            font-size: 12px; /* Kleinere Schrift */
+        }
+
         /* USER-NACHRICHT (RECHTS, BLAU) */
         .message.user {
             background-color: #2a547c;

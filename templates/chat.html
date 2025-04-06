@@ -2746,16 +2746,32 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                             document.getElementById('posting-contract-absolute').textContent = `${postingsWithNewContracts} / ${totalPostings}`;
                             
                             // Zusätzlich für alle Verträge (inkl. Agenturwechsel)
-                            document.getElementById('posting-all-contract-percent').textContent = allContractsRate + '%';
-                            document.getElementById('posting-all-contract-absolute').textContent = `${postingsWithAllContracts} / ${totalPostings}`;
+                            const allContractPercentEl = document.getElementById('posting-all-contract-percent');
+                            const allContractAbsoluteEl = document.getElementById('posting-all-contract-absolute');
+                            
+                            // Nur aktualisieren, wenn die Elemente existieren
+                            if (allContractPercentEl) {
+                                allContractPercentEl.textContent = allContractsRate + '%';
+                            }
+                            if (allContractAbsoluteEl) {
+                                allContractAbsoluteEl.textContent = `${postingsWithAllContracts} / ${totalPostings}`;
+                            }
                             
                             console.log('Posting zu Vertrag Conversion-Daten geladen:', data.data);
                         } else {
                             console.error('Fehler beim Laden der Posting zu Vertrag Conversion-Daten:', data.error);
                             document.getElementById('posting-contract-percent').textContent = 'Fehler';
                             document.getElementById('posting-contract-absolute').textContent = 'Keine Daten verfügbar';
-                            document.getElementById('posting-all-contract-percent').textContent = 'Fehler';
-                            document.getElementById('posting-all-contract-absolute').textContent = 'Keine Daten verfügbar';
+                            // Nur aktualisieren, wenn die Elemente existieren
+                            const allContractPercentEl = document.getElementById('posting-all-contract-percent');
+                            const allContractAbsoluteEl = document.getElementById('posting-all-contract-absolute');
+                            
+                            if (allContractPercentEl) {
+                                allContractPercentEl.textContent = 'Fehler';
+                            }
+                            if (allContractAbsoluteEl) {
+                                allContractAbsoluteEl.textContent = 'Keine Daten verfügbar';
+                            }
                         }
                     })
                     .catch(error => {
@@ -2763,8 +2779,16 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                             console.error('Fehler beim Abrufen der Posting zu Vertrag Conversion-Daten:', error);
                             document.getElementById('posting-contract-percent').textContent = 'Fehler';
                             document.getElementById('posting-contract-absolute').textContent = 'Keine Daten verfügbar';
-                            document.getElementById('posting-all-contract-percent').textContent = 'Fehler';
-                            document.getElementById('posting-all-contract-absolute').textContent = 'Keine Daten verfügbar';
+                            // Nur aktualisieren, wenn die Elemente existieren
+                            const allContractPercentEl = document.getElementById('posting-all-contract-percent');
+                            const allContractAbsoluteEl = document.getElementById('posting-all-contract-absolute');
+                            
+                            if (allContractPercentEl) {
+                                allContractPercentEl.textContent = 'Fehler';
+                            }
+                            if (allContractAbsoluteEl) {
+                                allContractAbsoluteEl.textContent = 'Keine Daten verfügbar';
+                            }
                         }
                     });
         }

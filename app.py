@@ -2881,7 +2881,7 @@ def get_kpi_data():
         elif query_type == 'termination_rate':
             query_name = "get_contract_terminations"
         elif query_type == 'contract_count':
-            query_name = "get_contract_count"
+            query_name = "get_active_care_stays_now"
         else:  # Standardfall: Abschlussquote
             query_name = "get_cvr_lead_contract"
             

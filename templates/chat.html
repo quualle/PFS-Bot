@@ -2673,8 +2673,23 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                                 throw new Error('Fehler beim Laden der aktiven Verträge');
                             }
                             
-                            // Aktive Verträge speichern
-                            const activeContracts = contractData.data.active_contracts_count || 0;
+                            // Aktive Verträge speichern - get_active_care_stays_now gibt ein Array zurück
+                            // Es kann sein, dass die Query ein cs_id Feld pro aktivem Care Stay oder ein Array zurückgibt
+                            let activeContracts = 0;
+                            
+                            if (Array.isArray(contractData.data)) {
+                                // Wenn es ein Array ist, nehmen wir die Länge
+                                activeContracts = contractData.data.length;
+                            } else if (contractData.data.cs_id && Array.isArray(contractData.data.cs_id)) {
+                                // Wenn es ein Objekt mit einem Array von cs_id ist
+                                activeContracts = contractData.data.cs_id.length;
+                            } else {
+                                // Ansonsten zählen wir die Einträge im Objekt
+                                // Dies ist ein Fallback, falls das Format anders ist als erwartet
+                                activeContracts = Object.keys(contractData.data).length;
+                            }
+                            
+                            console.log('Aktive Verträge geladen:', activeContracts, contractData.data);
                             
                             // Jetzt die Kündigungsdaten abrufen
                             return fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=termination_rate`)
@@ -2694,8 +2709,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                             if (terminationData.status === 'success' && terminationData.data) {
                                 // Extrahiere die relevanten Daten
                                 const totalTerminations = terminationData.data.total_terminations_count || 0;
-                                const seriousTerminations = terminationData.data.serious_terminations_count || 0;
-                                const agencySwitchCount = terminationData.data.agency_switch_count || 0;
+                                console.log('Kündigungen geladen:', totalTerminations);
                                 
                                 // Berechne Gesamtzahl der Verträge (aktive + Kündigungen)
                                 const totalContracts = totalTerminations + activeContracts;
@@ -2706,24 +2720,16 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                                 // Aktualisiere die UI-Elemente
                                 terminationRatePercent.textContent = terminationRate + '%';
                                 terminationRateAbsolute.textContent = `${totalTerminations}/${totalContracts}`;
-                                highQualityTerminations.textContent = `${seriousTerminations}`;
-                                agencySwitchTerminations.textContent = `${agencySwitchCount}`;
                                 
-                                // Verstecke die Ladeanzeige und zeige die Daten
-                                document.getElementById('termination-rate-loading').style.display = 'none';
-                                document.getElementById('termination-rate-data').style.display = 'flex';
+                                console.log('Kündigungsrate berechnet:', terminationRate + '%', `${totalTerminations}/${totalContracts}`);
                             } else {
                                 console.error('Fehler beim Laden der Kündigungsrate:', terminationData.error || 'Unbekannter Fehler');
                                 terminationRatePercent.textContent = 'Fehler';
-                                document.getElementById('termination-rate-loading').style.display = 'none';
-                                document.getElementById('termination-rate-data').style.display = 'flex';
                             }
                         })
                         .catch(error => {
                             console.error('Fehler beim Laden der Kündigungsrate:', error);
                             terminationRatePercent.textContent = 'Fehler';
-                            document.getElementById('termination-rate-loading').style.display = 'none';
-                            document.getElementById('termination-rate-data').style.display = 'flex';
                         });
                 }
                 

@@ -1,6 +1,10 @@
 <div class="business-content">
     <div class="business-header">
         <h2>My Business</h2>
+        <div class="business-nav-buttons">
+            <a href="{{ url_for('chat') }}" class="business-nav-btn chat-toggle-btn">Zum XORA Chatbot</a>
+            <a href="{{ url_for('logout') }}" class="business-nav-btn logout-btn">Ausloggen</a>
+        </div>
     </div>
 
     <div class="business-tabs">
@@ -842,5 +846,55 @@
                 }
             }
         }
+
+        // CSS für die neuen Navigationsbuttons
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            .business-nav-buttons {
+                display: flex;
+                align-items: center;
+                margin-left: auto;
+            }
+            
+            .business-nav-btn {
+                display: inline-block;
+                padding: 8px 15px;
+                margin-left: 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+            
+            .chat-toggle-btn {
+                background-color: #2196F3;
+                color: white;
+                border: 1px solid #1976D2;
+            }
+            
+            .chat-toggle-btn:hover {
+                background-color: #1976D2;
+            }
+            
+            .logout-btn {
+                background-color: rgba(255, 60, 60, 0.1);
+                color: #ff3c3c;
+                border: 1px solid rgba(255, 60, 60, 0.3);
+            }
+            
+            .logout-btn:hover {
+                background-color: rgba(255, 60, 60, 0.2);
+            }
+            
+            .business-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+        `;
+        document.head.appendChild(styleElement);
     })();
 </script>

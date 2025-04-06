@@ -424,32 +424,68 @@ def calculate_chat_stats():
     current_month = now.month
     current_day = now.day
 
-    for filename in os.listdir(CHATLOG_FOLDER):
-        if not filename.endswith(".txt"):
-            continue
-        
+    # Bei jedem Aufruf in die Logdatei schreiben, um Probleme zu identifizieren
+    logging.info(f"Berechne Chatstatistiken: Datum {current_year}-{current_month}-{current_day}")
+    logging.info(f"CHATLOG_FOLDER: {CHATLOG_FOLDER}")
+    
+    # Überprüfen, ob das Verzeichnis existiert
+    if not os.path.exists(CHATLOG_FOLDER):
+        logging.error(f"CHATLOG_FOLDER existiert nicht: {CHATLOG_FOLDER}")
+        return {'total': 0, 'year': 0, 'month': 0, 'today': 0}
+    
+    # Liste aller Chat-Dateien für Debugging
+    all_files = os.listdir(CHATLOG_FOLDER)
+    logging.info(f"Gefundene Dateien im CHATLOG_FOLDER: {len(all_files)}")
+    chat_files = [f for f in all_files if f.endswith('.txt')]
+    logging.info(f"Davon Chat-Dateien (.txt): {len(chat_files)}")
+
+    for filename in chat_files:
         filepath = os.path.join(CHATLOG_FOLDER, filename)
-        with open(filepath, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        # Anzahl Chatnachrichten (Anzahl "User:" Vorkommen)
-        message_pairs = content.count("User:")
-        total_count += message_pairs
-
-
+        logging.info(f"Verarbeite Datei: {filename}")
+        
         try:
-            date_str = filename.split("_")[1]  # => "YYYY-mm-dd"
-            y, m, d = date_str.split("-")
-            y, m, d = int(y), int(m), int(d)
-        except:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Anzahl Chatnachrichten (Anzahl "User:" Vorkommen)
+            message_pairs = content.count("User:")
+            logging.info(f"Gefundene Nachrichten in {filename}: {message_pairs}")
+            total_count += message_pairs
+
+            try:
+                # Analysiere Dateinamen für die Statistik nach Datum
+                # Format: chat_YYYY-MM-DD_*.txt
+                date_parts = filename.split("_")
+                if len(date_parts) >= 2:
+                    date_str = date_parts[1]  # => "YYYY-mm-dd"
+                    y, m, d = date_str.split("-")
+                    y, m, d = int(y), int(m), int(d)
+                    
+                    logging.info(f"Datum aus Dateiname: {y}-{m}-{d}")
+                    
+                    if y == current_year:
+                        year_count += message_pairs
+                        if m == current_month:
+                            month_count += message_pairs
+                            if d == current_day:
+                                day_count += message_pairs
+                else:
+                    logging.warning(f"Dateiname hat nicht das erwartete Format: {filename}")
+            except Exception as e:
+                logging.error(f"Fehler beim Parsen des Datums aus Dateinamen {filename}: {str(e)}")
+                continue
+                
+        except Exception as e:
+            logging.error(f"Fehler beim Lesen der Datei {filename}: {str(e)}")
             continue
 
-        if y == current_year:
-            year_count += message_pairs
-            if m == current_month:
-                month_count += message_pairs
-                if d == current_day:
-                    day_count += message_pairs
+    # Verdoppeln aller Statistiken, wie vom Kunden gewünscht
+    total_count *= 2
+    year_count *= 2
+    month_count *= 2
+    day_count *= 2
+    
+    logging.info(f"Finale Statistiken (nach Verdopplung): Total={total_count}, Jahr={year_count}, Monat={month_count}, Heute={day_count}")
 
     return {
         'total': total_count,

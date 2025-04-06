@@ -281,7 +281,7 @@
     <div id="customers-tab" class="tab-content">
         <div class="widget-row">
             <div class="wide-widget">
-                <div class="widget-header">Aktive Kunden</div>
+                <div class="widget-header">Aktive Kunden: <span id="active-customers-count">0</span></div>
                 <div class="widget-content">
                     <div id="active-customers-list-container">
                         <div class="loading-spinner">
@@ -295,7 +295,7 @@
         
         <div class="widget-row">
             <div class="wide-widget">
-                <div class="widget-header">Kunden in Pause</div>
+                <div class="widget-header">Kunden in Pause: <span id="paused-customers-count">0</span></div>
                 <div class="widget-content">
                     <div id="paused-customers-container" class="text-center">
                         <div class="loading-spinner">
@@ -540,6 +540,7 @@
             console.log('Lade Kunden in Pause...');
             const pausedCustomersContainer = document.getElementById('paused-customers-container');
             const pausedCustomersCountContainer = document.getElementById('paused-customers-count-container');
+            const pausedCustomersCount = document.getElementById('paused-customers-count');
             
             // Lade-Indikator anzeigen
             if (pausedCustomersContainer) {
@@ -596,6 +597,11 @@
                                     pausedCustomersCountContainer.innerHTML = `<div class="customer-count">${pausedCount}</div>`;
                                 }
                                 
+                                // Auch im Header anzeigen
+                                if (pausedCustomersCount) {
+                                    pausedCustomersCount.textContent = pausedCount;
+                                }
+                                
                                 console.log(`${pausedCount} Kunden sind in Pause`);
                                 
                                 // Fülle die Kundenliste mit den Kunden in Pause
@@ -643,6 +649,11 @@
                                     pausedCustomersCountContainer.innerHTML = `<div class="customer-count">0</div>`;
                                 }
                                 
+                                // Auch im Header aktualisieren
+                                if (pausedCustomersCount) {
+                                    pausedCustomersCount.textContent = '0';
+                                }
+                                
                                 const noDataMessage = '<div class="text-center p-2">Keine Daten zu Kunden in Pause gefunden</div>';
                                 
                                 if (pausedCustomersContainer) {
@@ -657,6 +668,11 @@
                                 pausedCustomersCountContainer.innerHTML = `<div class="customer-count">?</div>`;
                             }
                             
+                            // Auch im Header aktualisieren
+                            if (pausedCustomersCount) {
+                                pausedCustomersCount.textContent = '?';
+                            }
+                            
                             const errorMessage = '<div class="text-center p-2 text-danger">Fehler beim Laden der Daten</div>';
                             
                             if (pausedCustomersContainer) {
@@ -668,6 +684,11 @@
                         if (pausedCustomersContainer) {
                             pausedCustomersContainer.innerHTML = `<div class="customer-count">-</div>`;
                         }
+                        
+                        // Auch im Header aktualisieren
+                        if (pausedCustomersCount) {
+                            pausedCustomersCount.textContent = '-';
+                        }
                     }
                 }
             };
@@ -676,6 +697,11 @@
                 console.error('Netzwerkfehler beim Laden der Kunden in Pause');
                 if (pausedCustomersContainer) {
                     pausedCustomersContainer.innerHTML = `<div class="customer-count">-</div>`;
+                }
+                
+                // Auch im Header aktualisieren
+                if (pausedCustomersCount) {
+                    pausedCustomersCount.textContent = '-';
                 }
             };
             
@@ -768,8 +794,20 @@
                     activeCustomersNowWidget.innerHTML = `<div class="customer-count">${uniqueCustomerCount}</div>`;
                     console.log('Kundenzahl korrigiert auf eindeutige Kunden:', uniqueCustomerCount);
                 }
+                
+                // Aktualisiere die Anzahl im Header
+                const activeCustomersCount = document.getElementById('active-customers-count');
+                if (activeCustomersCount) {
+                    activeCustomersCount.textContent = uniqueCustomerCount;
+                }
             } else {
                 activeCustomersListContainer.innerHTML = '<div class="empty-message">Keine aktiven Kunden gefunden</div>';
+                
+                // Zeige 0 im Header an, wenn keine Kunden vorhanden sind
+                const activeCustomersCount = document.getElementById('active-customers-count');
+                if (activeCustomersCount) {
+                    activeCustomersCount.textContent = '0';
+                }
             }
         }
     })();

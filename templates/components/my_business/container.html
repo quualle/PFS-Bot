@@ -541,10 +541,69 @@
             if (activeCustomersListContainer && customers && customers.length > 0) {
                 let customersHtml = '<div class="customer-list">';
                 
+                // Map um Kunden nach Namen zu gruppieren und Duplikate zu identifizieren
+                const customerMap = new Map();
+                
+                // Jedes Kundendatenobjekt durchgehen
                 customers.forEach(function(customer) {
+                    // Eindeutigen Schlüssel für jeden Kunden erstellen
+                    const customerKey = `${customer.first_name || ''} ${customer.last_name || ''}`.trim().toLowerCase();
+                    
+                    // Wenn der Kunde noch nicht in der Map ist, fügen wir ihn hinzu
+                    if (!customerMap.has(customerKey)) {
+                        customerMap.set(customerKey, {
+                            customer: customer,
+                            count: 1 // Zähle, wie viele Care Stays dieser Kunde hat
+                        });
+                    } else {
+                        // Wenn der Kunde bereits existiert, erhöhe den Zähler
+                        const existingData = customerMap.get(customerKey);
+                        existingData.count += 1;
+                        customerMap.set(customerKey, existingData);
+                    }
+                });
+                
+                // CSS-Styles für das Warndreieck
+                const styles = `
+                    <style>
+                        .warning-triangle {
+                            color: #ff4040;
+                            margin-left: 5px;
+                            font-size: 16px;
+                            position: relative;
+                            cursor: help;
+                        }
+                        .warning-triangle:hover::after {
+                            content: attr(data-title);
+                            position: absolute;
+                            background: rgba(0, 0, 0, 0.8);
+                            color: white;
+                            border-radius: 4px;
+                            padding: 5px 10px;
+                            font-size: 12px;
+                            width: 200px;
+                            left: 20px;
+                            top: -5px;
+                            z-index: 100;
+                            font-weight: normal;
+                        }
+                    </style>
+                `;
+                customersHtml += styles;
+                
+                // Erstelle einen Eintrag für jeden eindeutigen Kunden
+                customerMap.forEach(function(data) {
+                    const customer = data.customer;
+                    const careStayCount = data.count;
+                    
+                    // Warndreieck für mehrere Care Stays hinzufügen
+                    const warningIcon = careStayCount > 1 
+                        ? `<span class="warning-triangle" data-title="Kunde hat ${careStayCount} aktive Pflegeeinsätze gleichzeitig, wird aber nur einmal gezählt">⚠</span>` 
+                        : '';
+                    
                     customersHtml += `
                         <div class="customer-item">
-                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''}</div>
+                            <div class="customer-name">${customer.first_name || ''} ${customer.last_name || ''} ${warningIcon}</div>
                             <div class="customer-agency">${customer.agency_name || 'Keine Agentur'}</div>
                             <div class="customer-since">${formatDate(customer.bill_start) || 'unbekannt'} - ${formatDate(customer.bill_end) || 'laufend'}</div>
                         </div>
@@ -553,9 +612,18 @@
                 
                 customersHtml += '</div>';
                 activeCustomersListContainer.innerHTML = customersHtml;
-                console.log('Kundenliste aktualisiert mit', customers.length, 'Kunden');
-            } else if (activeCustomersListContainer) {
-                activeCustomersListContainer.innerHTML = '<div class="no-data">Keine aktiven Kunden gefunden</div>';
+                
+                // Zähle die tatsächlichen eindeutigen Kunden
+                const uniqueCustomerCount = customerMap.size;
+                console.log('Kundenliste aktualisiert mit', uniqueCustomerCount, 'eindeutigen Kunden von insgesamt', customers.length, 'Care Stays');
+                
+                // Update the customer count to reflect the unique customers
+                if (activeCustomersNowWidget) {
+                    activeCustomersNowWidget.innerHTML = `<div class="customer-count">${uniqueCustomerCount}</div>`;
+                    console.log('Kundenzahl korrigiert auf eindeutige Kunden:', uniqueCustomerCount);
+                }
+            } else {
+                activeCustomersListContainer.innerHTML = '<div class="empty-message">Keine aktiven Kunden gefunden</div>';
             }
         }
     })();

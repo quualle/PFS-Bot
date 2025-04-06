@@ -2687,6 +2687,9 @@ def get_dashboard_data():
                         parameters
                     )
                     
+                    # Debug-Ausgabe der Abfrage selbst
+                    logging.info(f"Dashboard Pause: SQL-Abfrage: {query_pattern['sql_template'][:500]}...")
+                    
                     # Debug-Ausgabe der Ergebnisse
                     if paused_customers_result and 'rows' in paused_customers_result:
                         row_count = len(paused_customers_result['rows']) if paused_customers_result['rows'] else 0
@@ -2699,7 +2702,15 @@ def get_dashboard_data():
                         
                         # Zeige die total_paused_customers-Werte
                         if row_count > 0 and 'total_paused_customers' in paused_customers_result['rows'][0]:
-                            logging.info(f"Dashboard Pause: Gesamtanzahl paused ist {paused_customers_result['rows'][0]['total_paused_customers']}")
+                            total_paused = paused_customers_result['rows'][0]['total_paused_customers']
+                            logging.info(f"Dashboard Pause: Gesamtanzahl paused ist {total_paused}")
+                            
+                            # Stelle sicher, dass das Feld korrekt als Zahl zurückgegeben wird
+                            try:
+                                total_paused = int(total_paused)
+                                logging.info(f"Dashboard Pause: Gesamtanzahl konvertiert zu Integer: {total_paused}")
+                            except (ValueError, TypeError) as e:
+                                logging.warning(f"Dashboard Pause: Fehler bei der Konvertierung von total_paused_customers: {e}")
                         else:
                             logging.info("Dashboard Pause: Kein total_paused_customers Wert gefunden!")
                             
@@ -2716,15 +2727,29 @@ def get_dashboard_data():
                         # Zähle die Anzahl der eindeutigen Kunden
                         paused_count = len(paused_customers_result['rows'])
                         
+                        # Ermittle die Gesamtzahl aus dem total_paused_customers Feld, wenn vorhanden
+                        total_paused = paused_count  # Standardwert
+                        if paused_count > 0 and 'total_paused_customers' in paused_customers_result['rows'][0]:
+                            try:
+                                total_paused = int(paused_customers_result['rows'][0]['total_paused_customers'])
+                            except (ValueError, TypeError):
+                                logging.warning("Dashboard Pause: Konvertierungsfehler bei total_paused_customers")
+                        
+                        # Debug-Ausgabe für die Fehlersuche
+                        logging.info(f"Dashboard Pause: Sende Antwort mit {paused_count} Kunden, Gesamtanzahl: {total_paused}")
+                        logging.info(f"Dashboard Pause: Erster Datensatz: {paused_customers_result['rows'][0] if paused_count > 0 else 'keine Daten'}")
+                        
                         dashboard_result['paused_customers'] = {
-                            'count': paused_count,
-                            'data': paused_customers_result['rows']
+                            'count': total_paused,  # Verwende die Gesamtzahl hier
+                            'data': paused_customers_result['rows'],
+                            'total_count': total_paused  # Zusätzliches Feld für die Gesamtzahl
                         }
-                        logging.info(f"Dashboard Pause: Antwort mit {paused_count} Kunden erstellt")
+                        logging.info(f"Dashboard Pause: Antwort mit {paused_count} Kunden erstellt, Gesamtzahl: {total_paused}")
                         
                         return jsonify(dashboard_result)
                     else:
                         logging.warning("Dashboard Pause: Keine Daten gefunden, sende leeres Ergebnis")
+                        logging.warning(f"Dashboard Pause: Vollständige Antwort: {paused_customers_result}")
                 except Exception as e:
                     logging.error(f"Dashboard Pause: Fehler bei der Ausführung: {str(e)}")
                     import traceback
@@ -2733,10 +2758,60 @@ def get_dashboard_data():
                 logging.error(f"Dashboard Pause: Abfrage {query_name} nicht in query_patterns gefunden!")
             
             # Fallback für den Fall, dass keine Daten gefunden wurden
+            # Hier könnten wir versuchen, die Anzahl direkt zu ermitteln
+            try:
+                # Versuche direkt die Anzahl zu ermitteln
+                count_query = """
+                WITH active_contracts AS (
+                  SELECT c._id AS contract_id
+                  FROM `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.contracts` AS c
+                  JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.households` AS h ON c.household_id = h._id
+                  JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.leads` AS l ON h.lead_id = l._id
+                  WHERE l.seller_id = @seller_id AND c.archived = 'false'
+                ),
+                has_previous_care_stays AS (
+                  SELECT c.contract_id
+                  FROM active_contracts c
+                  JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON c.contract_id = cs.contract_id
+                  WHERE cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.arrival)) < CURRENT_DATE()
+                ),
+                current_care_stays AS (
+                  SELECT c.contract_id
+                  FROM active_contracts c
+                  JOIN `gcpxbixpflegehilfesenioren.PflegehilfeSeniore_BI.care_stays` cs ON c.contract_id = cs.contract_id
+                  WHERE cs.stage = 'Bestätigt' AND DATE(TIMESTAMP(cs.arrival)) <= CURRENT_DATE() AND DATE(TIMESTAMP(cs.departure)) >= CURRENT_DATE()
+                )
+                SELECT COUNT(*) AS total_paused
+                FROM has_previous_care_stays hpcs
+                WHERE hpcs.contract_id NOT IN (SELECT contract_id FROM current_care_stays)
+                """
+                
+                logging.info("Dashboard Pause: Versuche direkte Zählung mit vereinfachter Abfrage")
+                count_result = execute_bigquery_query(count_query, {'seller_id': seller_id})
+                
+                if count_result and 'rows' in count_result and count_result['rows']:
+                    total_paused = count_result['rows'][0].get('total_paused', 0)
+                    logging.info(f"Dashboard Pause: Direkte Zählung ergab {total_paused} Kunden in Pause")
+                    
+                    return jsonify({
+                        'paused_customers': {
+                            'count': total_paused,
+                            'data': [],
+                            'total_count': total_paused
+                        }
+                    })
+                else:
+                    logging.warning("Dashboard Pause: Auch direkte Zählung ergab keine Ergebnisse")
+            except Exception as e:
+                logging.error(f"Dashboard Pause: Fehler bei direkter Zählung: {str(e)}")
+                logging.error(traceback.format_exc())
+            
+            # Wenn alles fehlschlägt, sende 0 zurück
             return jsonify({
                 'paused_customers': {
                     'count': 0,
-                    'data': []
+                    'data': [],
+                    'total_count': 0
                 }
             })
         

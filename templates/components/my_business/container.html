@@ -616,10 +616,42 @@
                             
                             if (data && data.paused_customers) {
                                 const pausedCustomers = data.paused_customers.data || [];
-                                // Verwende total_paused_customers wenn vorhanden, ansonsten Fallback auf pausedCount
-                                const pausedCount = pausedCustomers.length > 0 && pausedCustomers[0].total_paused_customers ? 
-                                    pausedCustomers[0].total_paused_customers : 
-                                    pausedCustomers.length;
+                                console.log('Pausierte Kunden Daten:', pausedCustomers);
+                                console.log('Pausierte Kunden Struktur:', data.paused_customers);
+                                
+                                // Detaillierte Debug-Ausgabe zur Analyse
+                                if (pausedCustomers.length > 0) {
+                                    console.log('Erster pausierter Kunde:', pausedCustomers[0]);
+                                    console.log('Total paused customers (aus Datensatz):', pausedCustomers[0].total_paused_customers);
+                                } else {
+                                    console.log('Keine pausierte Kunden im Array');
+                                }
+                                
+                                // Priorisiere die Verwendung der direkten count/total_count Werte vom Server
+                                let pausedCount = 0;
+                                
+                                // 1. Prüfe, ob es ein explizites total_count Feld gibt
+                                if (data.paused_customers.total_count !== undefined) {
+                                    pausedCount = data.paused_customers.total_count;
+                                    console.log('Verwende total_count aus Antwort:', pausedCount);
+                                }
+                                // 2. Prüfe, ob es ein count Feld gibt
+                                else if (data.paused_customers.count !== undefined) {
+                                    pausedCount = data.paused_customers.count;
+                                    console.log('Verwende count aus Antwort:', pausedCount);
+                                }
+                                // 3. Prüfe auf total_paused_customers im ersten Datensatz
+                                else if (pausedCustomers.length > 0 && pausedCustomers[0].total_paused_customers) {
+                                    pausedCount = pausedCustomers[0].total_paused_customers;
+                                    console.log('Verwende total_paused_customers aus erstem Datensatz:', pausedCount);
+                                }
+                                // 4. Fallback: Array-Länge
+                                else {
+                                    pausedCount = pausedCustomers.length;
+                                    console.log('Fallback: Verwende Array-Länge:', pausedCount);
+                                }
+                                
+                                console.log('Endgültig berechneter pausedCount:', pausedCount);
                                 
                                 // Zeige die Gesamtzahl an
                                 if (pausedCustomersContainer) {

@@ -1369,9 +1369,6 @@
         {% include 'components/my_business/container.html' %}
     </div>
 
-    <!-- BUTTON ZUM ÖFFNEN DES CHAT-OVERLAYS -->
-    <button id="openChatBtn" class="open-chat-button" title="Chat öffnen">💬</button>
-
     <!-- CHAT OVERLAY -->
     <div id="chatOverlay" class="overlay" style="display: none;">
         <div class="chat-container">
@@ -2296,7 +2293,6 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         forceScrollToBottom();
 
         // Dashboard-Funktionalität
-        const openChatBtn = document.getElementById('openChatBtn');
         const chatOverlay = document.getElementById('chatOverlay');
         const closeChatBtn = document.getElementById('closeChatBtn');
         const businessTabs = document.querySelectorAll('.business-tab');
@@ -2336,12 +2332,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
         }
         
         // Chat Overlay öffnen/schließen
-        if (openChatBtn && chatOverlay && closeChatBtn) {
-            openChatBtn.addEventListener('click', () => {
-                chatOverlay.style.display = 'flex';
-                forceScrollToBottom(); // Scrollen, wenn Chat geöffnet wird
-            });
-            
+        if (chatOverlay && closeChatBtn) {
             closeChatBtn.addEventListener('click', () => {
                 chatOverlay.style.display = 'none';
             });
@@ -2354,7 +2345,7 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             });
             
         } else {
-            console.error('Chat-Öffnen Button, Chat-Overlay oder Schließen-Button nicht gefunden!');
+            console.error('Chat-Overlay oder Schließen-Button nicht gefunden!');
         }
         
         // Funktion zum Laden der Dashboard-Daten

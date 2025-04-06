@@ -300,22 +300,25 @@
 .gauge-container {
     width: 100%;
     height: 30px;
-    background-color: #334455;
-    border-radius: 10px;
-    overflow: visible !important; /* WICHTIG: Überstehendes anzeigen */
+    background-color: #1a2533; /* Dunkler Hintergrund */
+    border-radius: 5px;
+    overflow: hidden; /* Wichtig: Begrenze Überstand */
     margin: 20px 0;
     position: relative;
+    border: 1px solid #2a3545; /* Sichtbare Grenze */
 }
 
-/* Grundlegendes Styling für den Füllbalken */
-.gauge-fill {
-    position: absolute;
-    top: 0;
-    left: 0;
+/* Absolut einfachster Progress-Bar Ansatz */
+.progress-fill {
     height: 100%;
-    background-color: #00ffff;
-    border-radius: 10px 0 0 10px;
-    width: 0%; /* Startwert */
+    background: linear-gradient(to right, #00d2ff, #00ffaa); /* Klarer Farbverlauf */
+    border-radius: 4px;
+    text-align: center;
+    color: #000; /* Schwarzer Text für Kontrast */
+    font-weight: bold;
+    line-height: 30px; /* Vertikal zentrieren */
+    font-size: 14px;
+    text-shadow: 0 0 2px rgba(255,255,255,0.5); /* Bessere Lesbarkeit */
 }
 
 .gauge-value-percent {
@@ -341,24 +344,14 @@
     (function() {
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
-        // --- LETZTE METHODE ZUR GAUGE-FÜLLUNG ---
+        // --- Völlig neuer Ansatz für Progress-Bars ---
         function createGauge(elementId, percentage) {
-            console.log(`Erstelle Gauge für ${elementId} mit Prozent: ${percentage}%`);
-            
             // Container finden
             const container = document.getElementById(elementId);
             if (!container) {
                 console.error(`Container für ID ${elementId} nicht gefunden!`);
                 return;
             }
-            
-            // DEBUG: Container-Status überprüfen
-            console.log(`Container ${elementId} gefunden:`, container);
-            console.log(`Container Dimensionen:`, container.offsetWidth, 'x', container.offsetHeight);
-            console.log(`Container Style:`, container.style);
-            
-            // Container für Debug sichtbar machen
-            container.classList.add('debug-border');
             
             // Prozentsatz validieren
             let value = parseFloat(percentage);
@@ -368,38 +361,10 @@
             }
             value = Math.max(0, Math.min(100, value));
             
-            // ABSOLUT EINFACHSTER ANSATZ: Direkt das HTML im Container ersetzen
-            container.innerHTML = '';
+            // EXTREM einfacher Ansatz mit nur einem DIV und Inline-Width
+            container.innerHTML = `<div class="progress-fill" style="width: ${value}%">${value}%</div>`;
             
-            // Direkt ein DIV erstellen und mit Inline-Style hinzufügen
-            const fillDiv = document.createElement('div');
-            fillDiv.className = 'gauge-fill';
-            fillDiv.style.width = `${value}%`;
-            // Debug-Indikator für Sichtbarkeit
-            fillDiv.textContent = `${value}%`;
-            fillDiv.style.color = '#000';
-            fillDiv.style.textAlign = 'center';
-            fillDiv.style.fontSize = '12px';
-            
-            // Das Element direkt zum DOM hinzufügen
-            container.appendChild(fillDiv);
-            
-            // DEBUGGEN: Nach dem Hinzufügen prüfen
-            console.log(`Gauge ${elementId} erstellt, fill-Element:`, fillDiv);
-            console.log(`Style des Fill-Elements:`, fillDiv.style.cssText);
-            
-            // ZWEITER VERSUCH: Mit setTimeout
-            setTimeout(() => {
-                const checkFill = container.querySelector('.gauge-fill');
-                if (checkFill) {
-                    console.log(`Nach 100ms: Fill-Element für ${elementId} ist ${checkFill.offsetWidth}px breit`);
-                    console.log(`Fill-Style:`, checkFill.style.cssText);
-                    if (checkFill.offsetWidth < 5 && value > 0) {
-                        console.log(`KORREKTUR für ${elementId}: Setze Inline-Breite direkt`);
-                        checkFill.style.width = `${value}%`;
-                    }
-                }
-            }, 100);
+            console.log(`Progress-Bar für ${elementId} mit ${value}% erstellt`);
         }
 
         function loadAndDisplayKpiData(startDate = null, endDate = null) {

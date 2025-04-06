@@ -338,7 +338,7 @@
     stroke: #00ffff; /* Cyan-Farbe für den Wert */
     stroke-width: 15;
     stroke-linecap: round;
-    transition: stroke-dasharray 0.5s ease-in-out; /* Animation */
+    transition: stroke-dashoffset 0.8s ease-in-out; /* KORRIGIERT: transition für stroke-dashoffset */
 }
 </style>
 
@@ -357,44 +357,67 @@
             
             container.innerHTML = ''; // Clear previous content
 
+            // Vereinfachte Berechnung
             const value = Math.max(0, Math.min(100, percentage));
-            const radius = 70;
-            const strokeWidth = 15;
-            const viewBoxHeight = 90;
-            const pathY = viewBoxHeight - strokeWidth / 2 - 2; 
-            const pathStartX = strokeWidth / 2 + 2;
-            const pathEndX = 150 - strokeWidth / 2 - 2;
+            console.log(`Creating gauge for ${elementId} with percentage: ${value}%`); // Debug-Ausgabe
             
-            const angle = Math.PI; // 180 Grad
-            const arcLength = radius * angle; 
-            const offset = arcLength * (1 - value / 100);
+            // Vereinfachte SVG-Parameter
+            const radius = 65;  // etwas kleiner für Platz
+            const cx = 75;      // Mittelpunkt X
+            const cy = 75;      // Mittelpunkt Y
+            const startAngle = Math.PI;     // 180° (unten)
+            const endAngle = 0;             // 0° (oben)
             
-            console.log(`Gauge ${elementId}: percentage=${percentage}, arcLength=${arcLength.toFixed(2)}, offset=${offset.toFixed(2)}`);
-
+            // SVG erstellen
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('viewBox', `0 0 150 ${viewBoxHeight}`); 
-
-            // Background arc
+            svg.setAttribute('viewBox', '0 0 150 95'); // etwas höher für mehr Platz
+            svg.style.overflow = 'visible'; // zeigt alles, auch wenn es übersteht
+            
+            // Hintergrund-Bogen (voller Halbkreis)
+            const backgroundPath = describeArc(cx, cy, radius, startAngle, endAngle);
             const backgroundArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            backgroundArc.setAttribute('d', `M ${pathStartX},${pathY} A ${radius},${radius} 0 0 1 ${pathEndX},${pathY}`); 
+            backgroundArc.setAttribute('d', backgroundPath);
             backgroundArc.setAttribute('class', 'gauge-background');
-            backgroundArc.setAttribute('stroke-width', strokeWidth);
             svg.appendChild(backgroundArc);
-
-            // Value arc 
+            
+            // Wert-Bogen (teilweiser Halbkreis je nach Prozent)
+            const valueEndAngle = startAngle - (startAngle - endAngle) * (value / 100);
+            const valuePath = describeArc(cx, cy, radius, startAngle, valueEndAngle);
             const valueArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            valueArc.setAttribute('d', `M ${pathStartX},${pathY} A ${radius},${radius} 0 0 1 ${pathEndX},${pathY}`); 
+            valueArc.setAttribute('d', valuePath);
             valueArc.setAttribute('class', 'gauge-value');
-            valueArc.setAttribute('stroke-width', strokeWidth);
-            valueArc.style.strokeDasharray = `${arcLength} ${arcLength}`;
-            valueArc.style.strokeDashoffset = arcLength; 
             svg.appendChild(valueArc);
-
+            
+            // Zum Container hinzufügen
             container.appendChild(svg);
-
-            requestAnimationFrame(() => {
-                 valueArc.style.strokeDashoffset = offset;
-            });
+            
+            // Debug-Ausgabe zum Prüfen der Pfade
+            console.log(`SVG paths: bg=${backgroundPath.substring(0, 30)}..., value=${valuePath.substring(0, 30)}...`);
+        }
+        
+        // Hilfsfunktion zum Erstellen eines Bogen-Pfades
+        function describeArc(x, y, radius, startAngle, endAngle) {
+            // Positionen berechnen
+            const start = {
+                x: x + radius * Math.cos(startAngle),
+                y: y + radius * Math.sin(startAngle)
+            };
+            
+            const end = {
+                x: x + radius * Math.cos(endAngle),
+                y: y + radius * Math.sin(endAngle)
+            };
+            
+            // Entscheiden ob großer oder kleiner Bogen
+            const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
+            
+            // SVG-Pfad erstellen
+            const path = [
+                "M", start.x, start.y,
+                "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+            ].join(" ");
+            
+            return path;
         }
 
         function loadAndDisplayKpiData(startDate = null, endDate = null) {

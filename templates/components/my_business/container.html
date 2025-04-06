@@ -144,162 +144,95 @@
             <button class="date-range-button" id="update-kpi-range-btn" style="margin-left: 15px;">Aktualisieren</button>
         </div>
         
-        <!-- Erste Zeile: Lead zu EB und Abschlussquote -->
-        <div class="widget-row">
-            <!-- LINKS: Lead zu EB Conversion -->
-            <div class="widget">
-                <div class="widget-header">Lead zu EB Conversion</div>
+        <!-- KPI-Karten im Grid-Layout -->
+        <div class="kpi-grid">
+            <!-- 1. Lead zu EB Conversion -->
+            <div class="widget gauge-card">
+                <div class="widget-header">
+                    Lead zu EB Conversion
+                    <span class="info-icon">i
+                        <span class="tooltip">Prozentualer Anteil der Erfassungsbögen (EB) im Verhältnis zu Leads.</span>
+                    </span>
+                </div>
                 <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="lead-eb-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil der Erfassungsbögen (EB) im Verhältnis zu Leads.</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="lead-eb-absolute">0/0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von Erfassungsbögen (EB) zu Leads (absolute Zahlen).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="gauge-container" id="gauge-lead-eb"></div>
+                    <div class="gauge-value-percent" id="lead-eb-percent">0%</div>
+                    <div class="gauge-value-absolute" id="lead-eb-absolute">0/0</div>
                 </div>
             </div>
             
-            <!-- RECHTS: Abschlussquote -->
-            <div class="widget">
-                <div class="widget-header">Abschlussquote (Zeitraum)</div>
-                <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="closing-rate-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil der Neuverträge im Verhältnis zu Netto-Leads. Berücksichtigt nur echte Neuverträge (ohne Agenturwechsel).</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="closing-rate-absolute">0 / 0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von Neuverträgen zu Netto-Leads. Berücksichtigt nur echte Neuverträge (ohne Agenturwechsel).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+            <!-- 2. Abschlussquote (alle Leads) -->
+            <div class="widget gauge-card">
+                <div class="widget-header">
+                    Abschlussquote (alle Leads)
+                    <span class="info-icon">i
+                        <span class="tooltip">Prozentualer Anteil der Neuverträge im Verhältnis zu Netto-Leads. Berücksichtigt nur echte Neuverträge (ohne Agenturwechsel).</span>
+                    </span>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Zweite Zeile: EB zu Posting und Lead-Qualität -->
-        <div class="widget-row">
-            <!-- LINKS: EB zu Posting Conversion -->
-            <div class="widget">
-                <div class="widget-header">EB zu Posting Conversion</div>
                 <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="eb-posting-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil der Postings im Verhältnis zu Erfassungsbögen (EB).</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="eb-posting-absolute">0/0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von Postings zu Erfassungsbögen (EB) (absolute Zahlen).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="gauge-container" id="gauge-closing-rate"></div>
+                    <div class="gauge-value-percent" id="closing-rate-percent">0%</div>
+                    <div class="gauge-value-absolute" id="closing-rate-absolute">0 / 0</div>
                 </div>
             </div>
             
-            <!-- RECHTS: Lead-Qualität Widget -->
-            <div class="widget">
-                <div class="widget-header">Lead-Qualität (Zeitraum)</div>
-                <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="lead-quality-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil erfolgreicher Leads im Verhältnis zu gekauften Leads. Berücksichtigt nur echte Neuverträge (ohne Agenturwechsel).</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="lead-quality-absolute">0 / 0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von erfolgreichen Leads zu gekauften Leads. Verträge aus Leads, die im gewählten Zeitraum erworben wurden. Nur echte Neuverträge (ohne Agenturwechsel).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+            <!-- 3. EB zu Posting Conversion -->
+            <div class="widget gauge-card">
+                <div class="widget-header">
+                    EB zu Posting Conversion
+                    <span class="info-icon">i
+                        <span class="tooltip">Prozentualer Anteil der Postings im Verhältnis zu Erfassungsbögen (EB).</span>
+                    </span>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Dritte Zeile: Posting zu Vertrag und Kündigungsquote -->
-        <div class="widget-row">
-            <!-- LINKS: Posting zu Vertrag Conversion -->
-            <div class="widget">
-                <div class="widget-header">Posting zu Vertrag Conversion</div>
                 <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="posting-contract-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil neuer Verträge im Verhältnis zu Postings (ohne Agenturwechsel).</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="posting-contract-absolute">0/0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von neuen Verträgen zu Postings (absolute Zahlen, ohne Agenturwechsel).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
+                    <div class="gauge-container" id="gauge-eb-posting"></div>
+                    <div class="gauge-value-percent" id="eb-posting-percent">0%</div>
+                    <div class="gauge-value-absolute" id="eb-posting-absolute">0/0</div>
                 </div>
             </div>
             
-            <!-- RECHTS: Kündigungsquote -->
-            <div class="widget">
-                <div class="widget-header">Kündigungsquote</div>
+            <!-- 4. Abschlussquote (Leads aus Zeitraum) -->
+            <div class="widget gauge-card">
+                <div class="widget-header">
+                    Abschlussquote (Leads aus Zeitraum)
+                    <span class="info-icon">i
+                        <span class="tooltip">Prozentualer Anteil erfolgreicher Leads im Verhältnis zu gekauften Leads. Berücksichtigt nur echte Neuverträge (ohne Agenturwechsel).</span>
+                    </span>
+                </div>
                 <div class="widget-content">
-                    <div class="dual-metric large">
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="termination-rate-percent">0%</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Prozentualer Anteil der Kündigungen im Verhältnis zu aktiven Kunden.</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dual-metric-item">
-                            <div class="metric-value" id="termination-rate-absolute">0/0</div>
-                            <div class="metric-header">
-                                <span class="info-icon">i
-                                    <span class="tooltip">Verhältnis von Kündigungen zu aktiven Kunden (absolute Zahlen).</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="gauge-container" id="gauge-lead-quality"></div>
+                    <div class="gauge-value-percent" id="lead-quality-percent">0%</div>
+                    <div class="gauge-value-absolute" id="lead-quality-absolute">0 / 0</div>
+                </div>
+            </div>
+            
+            <!-- 5. Posting zu Vertrag Conversion -->
+            <div class="widget gauge-card">
+                <div class="widget-header">
+                    Posting zu Vertrag Conversion
+                    <span class="info-icon">i
+                        <span class="tooltip">Prozentualer Anteil neuer Verträge im Verhältnis zu Postings (ohne Agenturwechsel).</span>
+                    </span>
+                </div>
+                <div class="widget-content">
+                    <div class="gauge-container" id="gauge-posting-contract"></div>
+                    <div class="gauge-value-percent" id="posting-contract-percent">0%</div>
+                    <div class="gauge-value-absolute" id="posting-contract-absolute">0/0</div>
+                </div>
+            </div>
+            
+            <!-- 6. Kündigungsquote -->
+            <div class="widget gauge-card">
+                <div class="widget-header">
+                    Kündigungsquote
+                    <span class="info-icon">i
+                        <span class="tooltip">Prozentualer Anteil der Kündigungen im Verhältnis zu aktiven Kunden.</span>
+                    </span>
+                </div>
+                <div class="widget-content">
+                    <div class="gauge-container" id="gauge-termination-rate"></div>
+                    <div class="gauge-value-percent" id="termination-rate-percent">0%</div>
+                    <div class="gauge-value-absolute" id="termination-rate-absolute">0/0</div>
                 </div>
             </div>
         </div>
@@ -345,11 +278,192 @@
     </div>
 </div>
 
+<!-- Hinzugefügte CSS-Stile für KPI Gauges -->
+<style>
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive Grid */
+    gap: 20px; /* Abstand zwischen den Karten */
+}
+
+.gauge-card .widget-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Zentriert den Inhalt horizontal */
+    justify-content: space-between; /* Verteilt Platz vertikal */
+    padding: 15px;
+    height: 220px; /* Feste Höhe für Konsistenz */
+    text-align: center;
+}
+
+.gauge-container {
+    width: 150px; /* Breite des Gauge-Bereichs */
+    height: 75px;  /* Höhe des Gauge-Bereichs (Halbkreis) */
+    position: relative; /* Für die Positionierung des Prozentwerts */
+    margin-bottom: 10px;
+    overflow: hidden; /* Verhindert überstehende Teile */
+}
+
+.gauge-container svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.gauge-value-percent {
+    font-size: 2em; /* Große Schrift für Prozentzahl */
+    font-weight: bold;
+    color: #00ffff; /* Cyan-Farbe */
+    margin-top: -45px; /* Positioniert die Zahl in der Mitte des Gauges */
+    position: relative;
+    z-index: 1; /* Stellt sicher, dass die Zahl über dem Gauge liegt */
+}
+
+.gauge-value-absolute {
+    font-size: 0.9em;
+    color: #a0a0a0; /* Graue Farbe für absolute Zahlen */
+    margin-top: 5px;
+}
+
+/* SVG Gauge Stile */
+.gauge-background {
+    fill: none;
+    stroke: #334455; /* Dunkler Hintergrund für den Gauge */
+    stroke-width: 15; /* Dicke des Gauge-Balkens */
+    stroke-linecap: round;
+}
+
+.gauge-value {
+    fill: none;
+    stroke: #00ffff; /* Cyan-Farbe für den Wert */
+    stroke-width: 15;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease-in-out; /* Animation */
+}
+</style>
+
 <!-- Inline-JavaScript direkt im Overlay -->
 <script>
     (function() {
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
+        // --- Hinzugefügt für KPI Gauges ---
+        /**
+         * Erzeugt ein SVG-Gauge-Element in einem Container.
+         * @param {string} elementId - Die ID des Container-Elements für das Gauge.
+         * @param {number} percentage - Der Prozentwert (0-100), der angezeigt werden soll.
+         */
+        function createGauge(elementId, percentage) {
+            const container = document.getElementById(elementId);
+            if (!container) {
+                console.error('Gauge container not found:', elementId);
+                return;
+            }
+            
+            container.innerHTML = ''; // Clear previous content
+
+            const value = Math.max(0, Math.min(100, percentage)); // Ensure value is between 0 and 100
+            const radius = 70;
+            const circumference = Math.PI * radius; // Half circumference for semi-circle
+            const offset = circumference * (1 - value / 100);
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 150 75'); // ViewBox adjusted for semi-circle
+
+            // Background arc
+            const backgroundArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            backgroundArc.setAttribute('d', `M 5 70 A ${radius} ${radius} 0 0 1 145 70`);
+            backgroundArc.setAttribute('class', 'gauge-background');
+            svg.appendChild(backgroundArc);
+
+            // Value arc
+            const valueArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            valueArc.setAttribute('d', `M 5 70 A ${radius} ${radius} 0 0 1 145 70`);
+            valueArc.setAttribute('class', 'gauge-value');
+            valueArc.style.strokeDasharray = `${circumference} ${circumference}`;
+            valueArc.style.strokeDashoffset = offset;
+            svg.appendChild(valueArc);
+
+            container.appendChild(svg);
+        }
+
+        /**
+         * Lädt und zeigt die KPI-Daten für den ausgewählten Zeitraum an.
+         */
+        function loadAndDisplayKpiData(startDate = null, endDate = null) {
+            console.log('Lade KPI-Daten für Zeitraum:', startDate, 'bis', endDate);
+
+            // Setze Ladezustand für alle KPI-Karten
+            const kpiValueElements = document.querySelectorAll('.gauge-value-percent, .gauge-value-absolute');
+            kpiValueElements.forEach(el => el.textContent = '...');
+            const gaugeContainers = document.querySelectorAll('.gauge-container');
+            gaugeContainers.forEach(el => el.innerHTML = '<div class="spinner-small"></div>'); // Kleiner Spinner
+
+            // Korrigierte URL: /get_kpi_data verwenden
+            let url = '/get_kpi_data';
+            if (startDate && endDate) {
+                url += `?start_date=${startDate}&end_date=${endDate}`;
+            } else {
+                // Fallback, falls keine Daten übergeben wurden (sollte nicht passieren)
+                 url += '?t=' + new Date().getTime(); // Cache-Buster
+                 console.warn('KPI-Daten ohne Zeitraum angefragt.');
+            }
+            // Cache-Buster immer anhängen
+            url += (url.includes('?') ? '&' : '?') + 't=' + new Date().getTime(); 
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Cache-Control': 'no-cache'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('KPI-Daten erhalten:', data);
+                // Anpassung: Die Daten kommen direkt im Root-Objekt, nicht unter data.kpis
+                if (data) {
+                    const kpis = data; // Daten direkt verwenden
+
+                    // Helper zum Aktualisieren einer KPI-Karte
+                    const updateGaugeCard = (baseId, percent, absolute) => {
+                        const percentEl = document.getElementById(`${baseId}-percent`);
+                        const absoluteEl = document.getElementById(`${baseId}-absolute`);
+                        const gaugeContainerId = `gauge-${baseId.replace(/-/g, '-')}`; // Ersetze Bindestriche falls nötig
+                        
+                        if (percentEl) percentEl.textContent = `${percent}%`;
+                        if (absoluteEl) absoluteEl.textContent = absolute;
+                        createGauge(gaugeContainerId, percent);
+                    };
+
+                    // Update each KPI card
+                    updateGaugeCard('lead-eb', kpis.lead_to_eb_conversion?.percentage || 0, kpis.lead_to_eb_conversion?.absolute || '0/0');
+                    updateGaugeCard('closing-rate', kpis.closing_rate?.percentage || 0, kpis.closing_rate?.absolute || '0/0');
+                    updateGaugeCard('eb-posting', kpis.eb_to_posting_conversion?.percentage || 0, kpis.eb_to_posting_conversion?.absolute || '0/0');
+                    updateGaugeCard('lead-quality', kpis.lead_quality_rate?.percentage || 0, kpis.lead_quality_rate?.absolute || '0/0');
+                    updateGaugeCard('posting-contract', kpis.posting_to_contract_conversion?.percentage || 0, kpis.posting_to_contract_conversion?.absolute || '0/0');
+                    updateGaugeCard('termination-rate', kpis.termination_rate?.percentage || 0, kpis.termination_rate?.absolute || '0/0');
+                    
+                } else {
+                    console.error('Keine KPI-Daten im Response enthalten.');
+                    showErrorMessage('Keine KPI-Daten erhalten.');
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der KPI-Daten:', error);
+                showErrorMessage('Fehler beim Laden der KPIs: ' + error.message);
+                 // Reset Gauges on error
+                 gaugeContainers.forEach(el => el.innerHTML = '<div style="color:red; font-size:0.8em;">Fehler</div>');
+                 kpiValueElements.forEach(el => el.textContent = '-');
+            });
+        }
+        // --- Ende KPI Gauges ---
+
         // Element-Referenzen
         const activeCustomersNowWidget = document.getElementById('active-customers-now-widget');
         const activeCustomersListContainer = document.getElementById('active-customers-list-container');
@@ -924,5 +1038,57 @@
         if (openChatBtn) {
             openChatBtn.style.display = 'none';
         }
-    })();
+
+        // Event Listener für Tabs
+        const businessTabs = document.querySelectorAll('.business-tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        businessTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                businessTabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId + '-tab').classList.add('active');
+                
+                // Laden der Daten für den jeweiligen Tab bei Aktivierung
+                if (tabId === 'overview') {
+                    loadDashboardDataDirectly();
+                } else if (tabId === 'customers') {
+                    loadActiveCustomersList();
+                    loadPausedCustomers();
+                } else if (tabId === 'kpi') {
+                    // Standardmäßig KPIs für die letzten 30 Tage laden
+                    const endDate = new Date();
+                    const startDate = new Date();
+                    startDate.setDate(endDate.getDate() - 30);
+                    
+                    const formattedStartDate = startDate.toISOString().split('T')[0];
+                    const formattedEndDate = endDate.toISOString().split('T')[0];
+                    
+                    // Setze die Datumswerte in den Input-Feldern
+                    document.getElementById('kpi-start-date').value = formattedStartDate;
+                    document.getElementById('kpi-end-date').value = formattedEndDate;
+                    
+                    loadAndDisplayKpiData(formattedStartDate, formattedEndDate);
+                }
+            });
+        });
+        
+        // Event Listener für KPI Datumsbereich-Button
+        const updateKpiRangeBtn = document.getElementById('update-kpi-range-btn');
+        if (updateKpiRangeBtn) {
+            updateKpiRangeBtn.addEventListener('click', () => {
+                const startDate = document.getElementById('kpi-start-date').value;
+                const endDate = document.getElementById('kpi-end-date').value;
+                if (startDate && endDate) {
+                    loadAndDisplayKpiData(startDate, endDate);
+                } else {
+                    alert('Bitte Start- und Enddatum auswählen.');
+                }
+            });
+        }
+
+    })(); // End of IIFE
 </script>

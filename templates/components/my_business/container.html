@@ -539,6 +539,12 @@
             });
         }
         
+        // Hilfsfunktion zum Abrufen des CSRF-Tokens
+        function getCsrfToken() {
+            const metaElement = document.querySelector('meta[name="csrf-token"]');
+            return metaElement ? metaElement.getAttribute('content') : '';
+        }
+        
         // Funktion zum Laden der Kunden in Pause
         function loadPausedCustomers() {
             console.log('Lade Kunden in Pause...');
@@ -559,7 +565,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
+                    'X-Requested-With': 'XMLHttpRequest'
+                    // Kein X-CSRFToken Header, da wir XMLHttpRequest verwenden
                 },
                 body: JSON.stringify({
                     query_name: 'get_customers_on_pause',

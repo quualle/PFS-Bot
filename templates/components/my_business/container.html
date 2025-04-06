@@ -424,11 +424,14 @@
                                 const newContractsCount = data.new_contracts.normal_contracts_count || 0;
                                 setElementText('new-contracts', newContractsCount);
                                 
-                                // Agenturwechsel
+                                                // Agenturwechsel
                                 const agencyChangesCount = data.new_contracts.agency_change_contracts_count || 0;
                                 setElementText('agency-switches', agencyChangesCount);
                                 
                                 console.log('Neue Verträge aktualisiert:', newContractsCount, 'neu,', agencyChangesCount, 'Agenturwechsel');
+                                
+                                // Lade Kunden in Pause
+                                loadPausedCustomers();
                             }
                             
                             // Aktive neue Verträge aktualisieren
@@ -533,6 +536,74 @@
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric'
+            });
+        }
+        
+        // Funktion zum Laden der Kunden in Pause
+        function loadPausedCustomers() {
+            console.log('Lade Kunden in Pause...');
+            const pausedCustomersContainer = document.getElementById('paused-customers-container');
+            
+            // Lade-Indikator anzeigen
+            if (pausedCustomersContainer) {
+                pausedCustomersContainer.innerHTML = `
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div>Lade Kunden in Pause...</div>
+                    </div>
+                `;
+            }
+            
+            // API-Anfrage
+            fetch('/run_query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    query_name: 'get_customers_on_pause',
+                    params: {}
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Netzwerkantwort war nicht ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Kunden in Pause geladen:', data);
+                
+                if (pausedCustomersContainer) {
+                    if (data && data.rows && data.rows.length > 0) {
+                        // Nehme den total_paused_customers Wert aus dem ersten Ergebnis
+                        const totalPausedCustomers = data.rows[0].total_paused_customers || 0;
+                        
+                        // Zeige die Gesamtzahl an
+                        pausedCustomersContainer.innerHTML = `<div class="customer-count">${totalPausedCustomers}</div>`;
+                        
+                        // Detaillierte Informationen in der Konsole ausgeben
+                        console.log(`${totalPausedCustomers} Kunden sind in Pause`);
+                        
+                        // Liste der ersten 10 Kunden in Pause ausgeben (für Debug-Zwecke)
+                        if (data.rows.length > 0) {
+                            console.log('Beispiele für Kunden in Pause:');
+                            data.rows.slice(0, 10).forEach((customer, index) => {
+                                console.log(`${index + 1}. ${customer.first_name} ${customer.last_name}, in Pause seit ${customer.days_on_pause} Tagen`);
+                            });
+                        }
+                    } else {
+                        pausedCustomersContainer.innerHTML = `<div class="customer-count">0</div>`;
+                        console.log('Keine Kunden in Pause gefunden.');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Kunden in Pause:', error);
+                if (pausedCustomersContainer) {
+                    pausedCustomersContainer.innerHTML = `<div class="customer-count">-</div>`;
+                }
             });
         }
         

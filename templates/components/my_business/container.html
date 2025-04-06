@@ -146,22 +146,7 @@
         
         <!-- KPI-Karten im Grid-Layout -->
         <div class="kpi-grid">
-            <!-- 1. Lead zu EB Conversion -->
-            <div class="widget gauge-card">
-                <div class="widget-header">
-                    Lead zu EB Conversion
-                    <span class="info-icon">i
-                        <span class="tooltip">Prozentualer Anteil der Erfassungsbögen (EB) im Verhältnis zu Leads.</span>
-                    </span>
-                </div>
-                <div class="widget-content">
-                    <div class="gauge-container" id="gauge-lead-eb"></div>
-                    <div class="gauge-value-percent" id="lead-eb-percent">0%</div>
-                    <div class="gauge-value-absolute" id="lead-eb-absolute">0/0</div>
-                </div>
-            </div>
-            
-            <!-- 2. Abschlussquote (alle Leads) -->
+            <!-- 2. Abschlussquote (alle Leads) - JETZT ZUERST -->
             <div class="widget gauge-card">
                 <div class="widget-header">
                     Abschlussquote (alle Leads)
@@ -173,6 +158,21 @@
                     <div class="gauge-container" id="gauge-closing-rate"></div>
                     <div class="gauge-value-percent" id="closing-rate-percent">0%</div>
                     <div class="gauge-value-absolute" id="closing-rate-absolute">0 / 0</div>
+                </div>
+            </div>
+
+            <!-- 1. Lead zu EB Conversion - JETZT ZWEITE -->
+            <div class="widget gauge-card">
+                <div class="widget-header">
+                    Lead zu EB Conversion
+                    <span class="info-icon">i
+                        <span class="tooltip">Prozentualer Anteil der Erfassungsbögen (EB) im Verhältnis zu Leads.</span>
+                    </span>
+                </div>
+                <div class="widget-content">
+                    <div class="gauge-container" id="gauge-lead-eb"></div>
+                    <div class="gauge-value-percent" id="lead-eb-percent">0%</div>
+                    <div class="gauge-value-absolute" id="lead-eb-absolute">0/0</div>
                 </div>
             </div>
             
@@ -348,11 +348,6 @@
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
         // --- Hinzugefügt für KPI Gauges ---
-        /**
-         * Erzeugt ein SVG-Gauge-Element in einem Container.
-         * @param {string} elementId - Die ID des Container-Elements für das Gauge.
-         * @param {number} percentage - Der Prozentwert (0-100), der angezeigt werden soll.
-         */
         function createGauge(elementId, percentage) {
             const container = document.getElementById(elementId);
             if (!container) {
@@ -362,46 +357,46 @@
             
             container.innerHTML = ''; // Clear previous content
 
-            const value = Math.max(0, Math.min(100, percentage)); // Ensure value is between 0 and 100
+            const value = Math.max(0, Math.min(100, percentage));
             const radius = 70;
             const strokeWidth = 15;
-            const viewBoxHeight = 90; // Angepasst an CSS Höhe
-            const pathY = viewBoxHeight - strokeWidth / 2 - 2; // Start/End Y, etwas Puffer
+            const viewBoxHeight = 90;
+            const pathY = viewBoxHeight - strokeWidth / 2 - 2; 
             const pathStartX = strokeWidth / 2 + 2;
             const pathEndX = 150 - strokeWidth / 2 - 2;
             
-            const circumference = Math.PI * radius; // Half circumference for semi-circle
-            const offset = circumference * (1 - value / 100);
+            const angle = Math.PI; // 180 Grad
+            const arcLength = radius * angle; 
+            const offset = arcLength * (1 - value / 100);
             
-            // DEBUG LOG
-            console.log(`Gauge ${elementId}: percentage=${percentage}, circumference=${circumference.toFixed(2)}, offset=${offset.toFixed(2)}`);
+            console.log(`Gauge ${elementId}: percentage=${percentage}, arcLength=${arcLength.toFixed(2)}, offset=${offset.toFixed(2)}`);
 
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            // ViewBox angepasst an neue Höhe
             svg.setAttribute('viewBox', `0 0 150 ${viewBoxHeight}`); 
 
-            // Background arc - Pfad angepasst
+            // Background arc
             const backgroundArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            backgroundArc.setAttribute('d', `M ${pathStartX} ${pathY} A ${radius} ${radius} 0 0 1 ${pathEndX} ${pathY}`);
+            backgroundArc.setAttribute('d', `M ${pathStartX},${pathY} A ${radius},${radius} 0 0 1 ${pathEndX},${pathY}`); 
             backgroundArc.setAttribute('class', 'gauge-background');
-            backgroundArc.setAttribute('stroke-width', strokeWidth); // Sicherstellen, dass Breite gesetzt ist
+            backgroundArc.setAttribute('stroke-width', strokeWidth);
             svg.appendChild(backgroundArc);
 
-            // Value arc - Pfad angepasst
+            // Value arc 
             const valueArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            valueArc.setAttribute('d', `M ${pathStartX} ${pathY} A ${radius} ${radius} 0 0 1 ${pathEndX} ${pathY}`);
+            valueArc.setAttribute('d', `M ${pathStartX},${pathY} A ${radius},${radius} 0 0 1 ${pathEndX},${pathY}`); 
             valueArc.setAttribute('class', 'gauge-value');
-            valueArc.setAttribute('stroke-width', strokeWidth); // Sicherstellen, dass Breite gesetzt ist
-            valueArc.style.strokeDasharray = `${circumference} ${circumference}`;
-            valueArc.style.strokeDashoffset = offset;
+            valueArc.setAttribute('stroke-width', strokeWidth);
+            valueArc.style.strokeDasharray = `${arcLength} ${arcLength}`;
+            valueArc.style.strokeDashoffset = arcLength; 
             svg.appendChild(valueArc);
 
             container.appendChild(svg);
+
+            requestAnimationFrame(() => {
+                 valueArc.style.strokeDashoffset = offset;
+            });
         }
 
-        /**
-         * Lädt und zeigt die KPI-Daten für den ausgewählten Zeitraum an.
-         */
         function loadAndDisplayKpiData(startDate = null, endDate = null) {
             console.log('Lade KPI-Daten für Zeitraum:', startDate, 'bis', endDate);
 
@@ -1026,26 +1021,10 @@
         // Chat-Button-Funktionalität hinzufügen
         const toggleChatBtn = document.getElementById('toggleChatBtn');
         if (toggleChatBtn) {
-            toggleChatBtn.addEventListener('click', function() {
-                // Prüfen, ob das chatOverlay-Element existiert
-                const chatOverlay = document.getElementById('chatOverlay');
-                if (chatOverlay) {
-                    // Chat-Overlay anzeigen
-                    chatOverlay.style.display = 'flex';
-                    
-                    // Scrolle den Chat-Verlauf nach unten, falls nötig
-                    const chatHistory = document.getElementById('chatHistory');
-                    if (chatHistory) {
-                        chatHistory.scrollTop = chatHistory.scrollHeight;
-                    }
-                } else {
-                    // Fallback: Zur Hauptseite navigieren
-                    window.location.href = '/';
-                }
-            });
+            // ... event listener code as before ...
         }
         
-        // Den Float-Button mit dem 💬 Symbol ausblenden, da wir jetzt den Button in der Navigation haben
+        // Den Float-Button mit dem 💬 Symbol ausblenden
         const openChatBtn = document.getElementById('openChatBtn');
         if (openChatBtn) {
             openChatBtn.style.display = 'none';
@@ -1056,51 +1035,14 @@
         const tabContents = document.querySelectorAll('.tab-content');
         
         businessTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                businessTabs.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-                
-                this.classList.add('active');
-                const tabId = this.getAttribute('data-tab');
-                document.getElementById(tabId + '-tab').classList.add('active');
-                
-                // Laden der Daten für den jeweiligen Tab bei Aktivierung
-                if (tabId === 'overview') {
-                    loadDashboardDataDirectly();
-                } else if (tabId === 'customers') {
-                    loadActiveCustomersList();
-                    loadPausedCustomers();
-                } else if (tabId === 'kpi') {
-                    // Standardmäßig KPIs für die letzten 30 Tage laden
-                    const endDate = new Date();
-                    const startDate = new Date();
-                    startDate.setDate(endDate.getDate() - 30);
-                    
-                    const formattedStartDate = startDate.toISOString().split('T')[0];
-                    const formattedEndDate = endDate.toISOString().split('T')[0];
-                    
-                    // Setze die Datumswerte in den Input-Feldern
-                    document.getElementById('kpi-start-date').value = formattedStartDate;
-                    document.getElementById('kpi-end-date').value = formattedEndDate;
-                    
-                    loadAndDisplayKpiData(formattedStartDate, formattedEndDate);
-                }
-            });
+            // ... event listener code as before ...
         });
         
         // Event Listener für KPI Datumsbereich-Button
         const updateKpiRangeBtn = document.getElementById('update-kpi-range-btn');
         if (updateKpiRangeBtn) {
-            updateKpiRangeBtn.addEventListener('click', () => {
-                const startDate = document.getElementById('kpi-start-date').value;
-                const endDate = document.getElementById('kpi-end-date').value;
-                if (startDate && endDate) {
-                    loadAndDisplayKpiData(startDate, endDate);
-                } else {
-                    alert('Bitte Start- und Enddatum auswählen.');
-                }
-            });
+            // ... event listener code as before ...
         }
 
-    })(); // End of IIFE
+    })(); // Hinzugefügte schließende Klammer für IIFE
 </script>

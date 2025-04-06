@@ -2662,6 +2662,79 @@ def get_dashboard_data():
             logging.error(f"Dashboard: Abfrage {query_name} nicht gefunden")
             dashboard_result['active_customers'] = {'data': [], 'count': 0}
         
+        # Prüfe, ob ein bestimmter Abfragetyp angefordert wurde
+        query_type = request.args.get('type')
+        logging.info(f"Dashboard: Abfragetyp: {query_type}")
+        
+        # Spezifische Abfrage für Kunden in Pause
+        if query_type == 'paused_customers':
+            logging.info("Dashboard: Abfrage für Kunden in Pause")
+            query_name = "get_customers_on_pause"
+            
+            if query_name in query_patterns['common_queries']:
+                query_pattern = query_patterns['common_queries'][query_name]
+                
+                # Parameter vorbereiten
+                parameters = {'seller_id': seller_id}
+                logging.info(f"Dashboard: Parameter für Kunden in Pause: {parameters}")
+                
+                # Führe die Abfrage aus
+                logging.info("Dashboard: Führe BigQuery-Abfrage für Kunden in Pause aus")
+                paused_customers_result = execute_bigquery_query(
+                    query_pattern['sql_template'],
+                    parameters
+                )
+                
+                # Formatiere das Ergebnis
+                if paused_customers_result and 'rows' in paused_customers_result:
+                    paused_count = 0
+                    if paused_customers_result['rows'] and len(paused_customers_result['rows']) > 0:
+                        # Extrahiere die Gesamtzahl aus dem ersten Ergebnis
+                        paused_count = paused_customers_result['rows'][0].get('total_paused_customers', 0)
+                    
+                    dashboard_result['paused_customers'] = {
+                        'count': paused_count,
+                        'data': paused_customers_result['rows']
+                    }
+                    
+                    return jsonify(dashboard_result)
+            
+            # Fallback für den Fall, dass keine Daten gefunden wurden
+            return jsonify({
+                'paused_customers': {
+                    'count': 0,
+                    'data': []
+                }
+            })
+        
+        # Spezifische Abfrage für nur aktive neue Verträge
+        if query_type == 'active_new_contracts':
+            logging.info("Dashboard: Abfrage für nur aktive neue Verträge")
+            query_name = "get_contract_count"
+            
+            if query_name in query_patterns['common_queries']:
+                query_pattern = query_patterns['common_queries'][query_name]
+                
+                # Zeitraum: Letzte 90 Tage
+                end_date = datetime.now().date().isoformat()
+                start_date = (datetime.now().date() - timedelta(days=90)).isoformat()
+                parameters = {'seller_id': seller_id, 'start_date': start_date, 'end_date': end_date, 'limit': 100}
+                logging.info(f"Dashboard: Parameter für nur aktive neue Verträge: {parameters}")
+                
+                # Führe die Abfrage aus
+                logging.info("Dashboard: Führe BigQuery-Abfrage für nur aktive neue Verträge aus")
+                active_new_contracts_result = execute_bigquery_query(
+                    query_pattern['sql_template'],
+                    parameters
+                )
+                
+                # Formatiere das Ergebnis
+                formatted_active_new_contracts = format_query_result(active_new_contracts_result, query_pattern.get('result_structure'))
+                logging.info(f"Dashboard: Abfrage für nur aktive neue Verträge abgeschlossen")
+                
+                # Speichern für die Antwort
+                dashboard_result['active_new_contracts'] = formatted_active_new_contracts[0] if formatted_active_new_contracts else {}
+        
         # 2. Abschlussquote (get_cvr_lead_contract)
         query_name = "get_cvr_lead_contract"
         logging.info(f"Dashboard: Verwende Abfrage {query_name}")

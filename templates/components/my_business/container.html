@@ -560,58 +560,67 @@
                 `;
             }
             
-            // API-Anfrage
-            fetch('/run_query', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                    // Kein X-CSRFToken Header, da wir XMLHttpRequest verwenden
-                },
-                body: JSON.stringify({
-                    query_name: 'get_customers_on_pause',
-                    params: {}
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Netzwerkantwort war nicht ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Kunden in Pause geladen:', data);
-                
-                if (pausedCustomersContainer) {
-                    if (data && data.rows && data.rows.length > 0) {
-                        // Nehme den total_paused_customers Wert aus dem ersten Ergebnis
-                        const totalPausedCustomers = data.rows[0].total_paused_customers || 0;
-                        
-                        // Zeige die Gesamtzahl an
-                        pausedCustomersContainer.innerHTML = `<div class="customer-count">${totalPausedCustomers}</div>`;
-                        
-                        // Detaillierte Informationen in der Konsole ausgeben
-                        console.log(`${totalPausedCustomers} Kunden sind in Pause`);
-                        
-                        // Liste der ersten 10 Kunden in Pause ausgeben (für Debug-Zwecke)
-                        if (data.rows.length > 0) {
-                            console.log('Beispiele für Kunden in Pause:');
-                            data.rows.slice(0, 10).forEach((customer, index) => {
-                                console.log(`${index + 1}. ${customer.first_name} ${customer.last_name}, in Pause seit ${customer.days_on_pause} Tagen`);
-                            });
+            // Verwende XHR für konsistente Request-Verarbeitung (wie bei loadDashboardDataDirectly)
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/get_dashboard_data?type=paused_customers&t=' + new Date().getTime(), true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            
+            xhr.onreadystatechange = function() {
+                if (this.readyState === 4) {
+                    console.log('Kunden in Pause - XHR Status:', this.status);
+                    
+                    if (this.status === 200) {
+                        try {
+                            const data = JSON.parse(this.responseText);
+                            console.log('Kunden in Pause - Daten erfolgreich geladen:', data);
+                            
+                            if (pausedCustomersContainer) {
+                                // Prüfen, ob die Daten existieren und eine Zählung enthalten
+                                if (data && data.paused_customers) {
+                                    const pausedCount = data.paused_customers.count || 0;
+                                    
+                                    // Zeige die Gesamtzahl an
+                                    pausedCustomersContainer.innerHTML = `<div class="customer-count">${pausedCount}</div>`;
+                                    
+                                    // Detaillierte Informationen in der Konsole ausgeben
+                                    console.log(`${pausedCount} Kunden sind in Pause`);
+                                    
+                                    // Liste der ersten 10 Kunden in Pause ausgeben (für Debug-Zwecke)
+                                    if (data.paused_customers.data && data.paused_customers.data.length > 0) {
+                                        console.log('Beispiele für Kunden in Pause:');
+                                        data.paused_customers.data.slice(0, 10).forEach((customer, index) => {
+                                            console.log(`${index + 1}. ${customer.first_name || ''} ${customer.last_name || ''}, in Pause seit ${customer.days_on_pause || '?'} Tagen`);
+                                        });
+                                    }
+                                } else {
+                                    pausedCustomersContainer.innerHTML = `<div class="customer-count">0</div>`;
+                                    console.log('Keine Daten für Kunden in Pause gefunden');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Fehler beim Parsen der JSON-Antwort:', e);
+                            if (pausedCustomersContainer) {
+                                pausedCustomersContainer.innerHTML = `<div class="customer-count">?</div>`;
+                            }
                         }
                     } else {
-                        pausedCustomersContainer.innerHTML = `<div class="customer-count">0</div>`;
-                        console.log('Keine Kunden in Pause gefunden.');
+                        console.error('Fehler beim Laden der Kunden in Pause. Status:', this.status);
+                        if (pausedCustomersContainer) {
+                            pausedCustomersContainer.innerHTML = `<div class="customer-count">-</div>`;
+                        }
                     }
                 }
-            })
-            .catch(error => {
-                console.error('Fehler beim Laden der Kunden in Pause:', error);
+            };
+            
+            xhr.onerror = function() {
+                console.error('Netzwerkfehler beim Laden der Kunden in Pause');
                 if (pausedCustomersContainer) {
                     pausedCustomersContainer.innerHTML = `<div class="customer-count">-</div>`;
                 }
-            });
+            };
+            
+            xhr.send();
         }
         
         // Funktion zum Aktualisieren der Kundenliste

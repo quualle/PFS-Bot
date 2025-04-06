@@ -303,15 +303,6 @@
             
             <div class="widget">
                 <div class="widget-header">Kunden in Pause</div>
-                <div class="widget-content" id="paused-customers-count-container">
-                    <div class="customer-count">0</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="widget-row">
-            <div class="widget">
-                <div class="widget-header">Kunden in Pause</div>
                 <div class="widget-content">
                     <div id="paused-customers-container" class="text-center">
                         <div class="loading-spinner">
@@ -578,8 +569,6 @@
             console.log('Lade Kunden in Pause...');
             const pausedCustomersContainer = document.getElementById('paused-customers-container');
             const pausedCustomersCountContainer = document.getElementById('paused-customers-count-container');
-            const pausedCustomersListContainer = document.getElementById('paused-customers-list-container');
-            const pausedCustomersList = document.getElementById('paused-customers-list');
             
             // Lade-Indikator anzeigen
             if (pausedCustomersContainer) {
@@ -587,15 +576,6 @@
                     <div class="loading-spinner">
                         <div class="spinner"></div>
                         <div>Lade Kunden in Pause...</div>
-                    </div>
-                `;
-            }
-            
-            if (pausedCustomersList) {
-                pausedCustomersList.innerHTML = `
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <div>Lade Kundenliste...</div>
                     </div>
                 `;
             }
@@ -649,17 +629,6 @@
                                 
                                 // Fülle die Kundenliste mit den Kunden in Pause
                                 if (pausedCustomers.length > 0) {
-                                    // HTML für Kundenliste erstellen
-                                    let headerHtml = `
-                                        <div class="paused-list-header mb-2">
-                                            <div class="row">
-                                                <div class="col-6"><strong>Kunde</strong></div>
-                                                <div class="col-3"><strong>Agentur</strong></div>
-                                                <div class="col-3 text-end"><strong>In Pause</strong></div>
-                                            </div>
-                                        </div>
-                                    `;
-                                    
                                     let listHtml = '<div class="customer-list">';
                                     
                                     pausedCustomers.forEach(customer => {
@@ -681,17 +650,7 @@
                                     
                                     // WICHTIG: Ersetze den gesamten Container mit der Kundenliste
                                     if (pausedCustomersContainer) {
-                                        pausedCustomersContainer.innerHTML = headerHtml + listHtml;
-                                    }
-                                    
-                                    // Auch die Liste aktualisieren
-                                    if (pausedCustomersList) {
-                                        pausedCustomersList.innerHTML = listHtml;
-                                    }
-                                    
-                                    // Zeige die Kundenliste an
-                                    if (pausedCustomersListContainer) {
-                                        pausedCustomersListContainer.style.display = 'block';
+                                        pausedCustomersContainer.innerHTML = listHtml;
                                     }
                                     
                                 } else {
@@ -707,16 +666,6 @@
                                     if (pausedCustomersContainer) {
                                         pausedCustomersContainer.innerHTML = message;
                                     }
-                                    
-                                    // Auch die Liste aktualisieren
-                                    if (pausedCustomersList) {
-                                        pausedCustomersList.innerHTML = message;
-                                    }
-                                    
-                                    // Zeige die leere Liste trotzdem an
-                                    if (pausedCustomersListContainer) {
-                                        pausedCustomersListContainer.style.display = 'block';
-                                    }
                                 }
                             } else {
                                 if (pausedCustomersCountContainer) {
@@ -727,15 +676,6 @@
                                 
                                 if (pausedCustomersContainer) {
                                     pausedCustomersContainer.innerHTML = noDataMessage;
-                                }
-                                
-                                if (pausedCustomersList) {
-                                    pausedCustomersList.innerHTML = noDataMessage;
-                                    
-                                    // Zeige die leere Liste trotzdem an
-                                    if (pausedCustomersListContainer) {
-                                        pausedCustomersListContainer.style.display = 'block';
-                                    }
                                 }
                                 
                                 console.log('Keine Daten für Kunden in Pause gefunden');
@@ -751,19 +691,11 @@
                             if (pausedCustomersContainer) {
                                 pausedCustomersContainer.innerHTML = errorMessage;
                             }
-                            
-                            if (pausedCustomersList) {
-                                pausedCustomersList.innerHTML = errorMessage;
-                            }
                         }
                     } else {
                         console.error('Fehler beim Laden der Kunden in Pause. Status:', this.status);
                         if (pausedCustomersContainer) {
                             pausedCustomersContainer.innerHTML = `<div class="customer-count">-</div>`;
-                        }
-                        
-                        if (pausedCustomersList) {
-                            pausedCustomersList.innerHTML = `<div class="text-center p-2 text-danger">Fehler beim Laden: Server-Fehler (${this.status})</div>`;
                         }
                     }
                 }
@@ -773,10 +705,6 @@
                 console.error('Netzwerkfehler beim Laden der Kunden in Pause');
                 if (pausedCustomersContainer) {
                     pausedCustomersContainer.innerHTML = `<div class="customer-count">-</div>`;
-                }
-                
-                if (pausedCustomersList) {
-                    pausedCustomersList.innerHTML = '<div class="text-center p-2 text-danger">Netzwerkfehler beim Laden der Daten</div>';
                 }
             };
             

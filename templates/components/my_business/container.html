@@ -616,7 +616,10 @@
                             
                             if (data && data.paused_customers) {
                                 const pausedCustomers = data.paused_customers.data || [];
-                                const pausedCount = pausedCustomers.length;
+                                // Verwende total_paused_customers wenn vorhanden, ansonsten Fallback auf pausedCount
+                                const pausedCount = pausedCustomers.length > 0 && pausedCustomers[0].total_paused_customers ? 
+                                    pausedCustomers[0].total_paused_customers : 
+                                    pausedCustomers.length;
                                 
                                 // Zeige die Gesamtzahl an
                                 if (pausedCustomersContainer) {

@@ -298,10 +298,10 @@
 
 .gauge-container {
     width: 150px; /* Breite des Gauge-Bereichs */
-    height: 75px;  /* Höhe des Gauge-Bereichs (Halbkreis) */
+    height: 90px;  /* Höhe ERHÖHT für mehr Platz */
     position: relative; /* Für die Positionierung des Prozentwerts */
     margin-bottom: 10px;
-    overflow: hidden; /* Verhindert überstehende Teile */
+    overflow: visible; /* Geändert von hidden zu visible, um zu sehen ob etwas übersteht */
 }
 
 .gauge-container svg {
@@ -314,7 +314,7 @@
     font-size: 2em; /* Große Schrift für Prozentzahl */
     font-weight: bold;
     color: #00ffff; /* Cyan-Farbe */
-    margin-top: -45px; /* Positioniert die Zahl in der Mitte des Gauges */
+    margin-top: -55px; /* Leicht angepasst wegen höherem Container */
     position: relative;
     z-index: 1; /* Stellt sicher, dass die Zahl über dem Gauge liegt */
 }
@@ -364,22 +364,34 @@
 
             const value = Math.max(0, Math.min(100, percentage)); // Ensure value is between 0 and 100
             const radius = 70;
+            const strokeWidth = 15;
+            const viewBoxHeight = 90; // Angepasst an CSS Höhe
+            const pathY = viewBoxHeight - strokeWidth / 2 - 2; // Start/End Y, etwas Puffer
+            const pathStartX = strokeWidth / 2 + 2;
+            const pathEndX = 150 - strokeWidth / 2 - 2;
+            
             const circumference = Math.PI * radius; // Half circumference for semi-circle
             const offset = circumference * (1 - value / 100);
+            
+            // DEBUG LOG
+            console.log(`Gauge ${elementId}: percentage=${percentage}, circumference=${circumference.toFixed(2)}, offset=${offset.toFixed(2)}`);
 
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('viewBox', '0 0 150 75'); // ViewBox adjusted for semi-circle
+            // ViewBox angepasst an neue Höhe
+            svg.setAttribute('viewBox', `0 0 150 ${viewBoxHeight}`); 
 
-            // Background arc
+            // Background arc - Pfad angepasst
             const backgroundArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            backgroundArc.setAttribute('d', `M 5 70 A ${radius} ${radius} 0 0 1 145 70`);
+            backgroundArc.setAttribute('d', `M ${pathStartX} ${pathY} A ${radius} ${radius} 0 0 1 ${pathEndX} ${pathY}`);
             backgroundArc.setAttribute('class', 'gauge-background');
+            backgroundArc.setAttribute('stroke-width', strokeWidth); // Sicherstellen, dass Breite gesetzt ist
             svg.appendChild(backgroundArc);
 
-            // Value arc
+            // Value arc - Pfad angepasst
             const valueArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            valueArc.setAttribute('d', `M 5 70 A ${radius} ${radius} 0 0 1 145 70`);
+            valueArc.setAttribute('d', `M ${pathStartX} ${pathY} A ${radius} ${radius} 0 0 1 ${pathEndX} ${pathY}`);
             valueArc.setAttribute('class', 'gauge-value');
+            valueArc.setAttribute('stroke-width', strokeWidth); // Sicherstellen, dass Breite gesetzt ist
             valueArc.style.strokeDasharray = `${circumference} ${circumference}`;
             valueArc.style.strokeDashoffset = offset;
             svg.appendChild(valueArc);

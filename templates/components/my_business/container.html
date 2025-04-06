@@ -296,29 +296,32 @@
     text-align: center;
 }
 
-/* Einfacher Gauge-Stil - ein horizontaler Balken */
+/* SEHR EINFACHER GAUGE STIL */
 .gauge-container {
     width: 100%;
     height: 30px;
-    background-color: #1a2533; /* Dunkler Hintergrund */
-    border-radius: 5px;
-    overflow: hidden; /* Wichtig: Begrenze Überstand */
-    margin: 20px 0;
+    margin: 15px 0;
     position: relative;
-    border: 1px solid #2a3545; /* Sichtbare Grenze */
+    display: table; /* Tabellen-Display für maximale Kompatibilität */
+    border-collapse: collapse;
 }
 
-/* Absolut einfachster Progress-Bar Ansatz */
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(to right, #00d2ff, #00ffaa); /* Klarer Farbverlauf */
-    border-radius: 4px;
+.simple-progress {
+    height: 30px;
+    display: table-cell; /* Zelle für linke Seite */
+    background-color: #00FFAA; /* Sehr helle Farbe */
+    color: black; /* Schwarzer Text für Kontrast */
     text-align: center;
-    color: #000; /* Schwarzer Text für Kontrast */
+    vertical-align: middle;
     font-weight: bold;
-    line-height: 30px; /* Vertikal zentrieren */
-    font-size: 14px;
-    text-shadow: 0 0 2px rgba(255,255,255,0.5); /* Bessere Lesbarkeit */
+    border-right: 1px solid #000;
+}
+
+.simple-rest {
+    height: 30px;
+    display: table-cell; /* Zelle für rechte Seite */
+    background-color: #333; /* Dunkelgrau */
+    border-left: 1px solid #000; 
 }
 
 .gauge-value-percent {
@@ -344,27 +347,30 @@
     (function() {
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
-        // --- Völlig neuer Ansatz für Progress-Bars ---
+        // --- ABSOLUT NEUER FORTSCHRITTSBALKEN ANSATZ ---
         function createGauge(elementId, percentage) {
-            // Container finden
             const container = document.getElementById(elementId);
             if (!container) {
-                console.error(`Container für ID ${elementId} nicht gefunden!`);
+                console.error(`Container ${elementId} nicht gefunden`);
                 return;
             }
             
-            // Prozentsatz validieren
             let value = parseFloat(percentage);
-            if (isNaN(value)) {
-                console.error(`Ungültiger Prozentwert: ${percentage}`);
-                value = 0;
-            }
-            value = Math.max(0, Math.min(100, value));
+            if (isNaN(value) || value < 0) value = 0;
+            if (value > 100) value = 100;
             
-            // EXTREM einfacher Ansatz mit nur einem DIV und Inline-Width
-            container.innerHTML = `<div class="progress-fill" style="width: ${value}%">${value}%</div>`;
+            // EXTREM einfache 2-Zellen-Tabelle erstellen
+            // Keine CSS-Abhängigkeiten, funktioniert in jedem Browser
+            container.innerHTML = `
+                <table cellspacing="0" cellpadding="0" border="0" style="width:100%; height:30px; border-collapse:collapse; background:#333;">
+                    <tr>
+                        <td width="${value}%" style="background:#00FFAA; text-align:center; color:#000; font-weight:bold; font-size:14px;">${value}%</td>
+                        <td width="${100-value}%"></td>
+                    </tr>
+                </table>
+            `;
             
-            console.log(`Progress-Bar für ${elementId} mit ${value}% erstellt`);
+            console.log(`Fortschrittsbalken für ${elementId} mit ${value}% erstellt (HTML-Tabelle)`);
         }
 
         function loadAndDisplayKpiData(startDate = null, endDate = null) {

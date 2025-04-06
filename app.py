@@ -359,7 +359,7 @@ def store_chatlog(user_name, chat_history):
     session_id = session.get('user_id', 'unknown')
     
     # Create a unique filename based on user, date and session ID
-    filename = f"{user_name}_{date_str}_{session_id}.txt"
+    filename = f"chat_{date_str}_{session_id}.txt"
     filepath = os.path.join(CHATLOG_FOLDER, filename)
     
     # Write the complete chat history to the file (overwrite existing)

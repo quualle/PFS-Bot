@@ -303,7 +303,7 @@
             
             <div class="widget">
                 <div class="widget-header">Kunden in Pause</div>
-                <div class="widget-content" id="paused-customers-container">
+                <div class="widget-content" id="paused-customers-count-container">
                     <div class="customer-count">0</div>
                 </div>
             </div>
@@ -577,6 +577,7 @@
         function loadPausedCustomers() {
             console.log('Lade Kunden in Pause...');
             const pausedCustomersContainer = document.getElementById('paused-customers-container');
+            const pausedCustomersCountContainer = document.getElementById('paused-customers-count-container');
             const pausedCustomersListContainer = document.getElementById('paused-customers-list-container');
             const pausedCustomersList = document.getElementById('paused-customers-list');
             
@@ -639,15 +640,26 @@
                                     }
                                 }
                                 
-                                // Zeige die Gesamtzahl an
-                                if (pausedCustomersContainer) {
-                                    pausedCustomersContainer.innerHTML = `<div class="customer-count">${pausedCount}</div>`;
+                                // Zeige die Gesamtzahl an - jetzt im Count-Container
+                                if (pausedCustomersCountContainer) {
+                                    pausedCustomersCountContainer.innerHTML = `<div class="customer-count">${pausedCount}</div>`;
                                 }
                                 
                                 console.log(`${pausedCount} Kunden sind in Pause`);
                                 
                                 // Fülle die Kundenliste mit den Kunden in Pause
-                                if (pausedCustomersList && pausedCustomers.length > 0) {
+                                if (pausedCustomers.length > 0) {
+                                    // HTML für Kundenliste erstellen
+                                    let headerHtml = `
+                                        <div class="paused-list-header mb-2">
+                                            <div class="row">
+                                                <div class="col-6"><strong>Kunde</strong></div>
+                                                <div class="col-3"><strong>Agentur</strong></div>
+                                                <div class="col-3 text-end"><strong>In Pause</strong></div>
+                                            </div>
+                                        </div>
+                                    `;
+                                    
                                     let listHtml = '<div class="customer-list">';
                                     
                                     pausedCustomers.forEach(customer => {
@@ -666,60 +678,59 @@
                                     });
                                     
                                     listHtml += '</div>';
-                                    pausedCustomersList.innerHTML = listHtml;
                                     
-                                    // Zeige die Kundenliste an und verstecke den Spinner
+                                    // WICHTIG: Ersetze den gesamten Container mit der Kundenliste
+                                    if (pausedCustomersContainer) {
+                                        pausedCustomersContainer.innerHTML = headerHtml + listHtml;
+                                    }
+                                    
+                                    // Auch die Liste aktualisieren
+                                    if (pausedCustomersList) {
+                                        pausedCustomersList.innerHTML = listHtml;
+                                    }
+                                    
+                                    // Zeige die Kundenliste an
                                     if (pausedCustomersListContainer) {
                                         pausedCustomersListContainer.style.display = 'block';
-                                        
-                                        // Spinner entfernen (falls vorhanden)
-                                        const spinner = pausedCustomersListContainer.querySelector('.loading-spinner');
-                                        if (spinner) {
-                                            spinner.style.display = 'none';
-                                        }
                                     }
                                     
-                                    // Spinner im Container verstecken
-                                    if (pausedCustomersContainer) {
-                                        const spinner = pausedCustomersContainer.querySelector('.loading-spinner');
-                                        if (spinner) {
-                                            spinner.style.display = 'none';
-                                        }
-                                    }
-                                } else if (pausedCustomersList) {
+                                } else {
                                     // Wenn keine Kundendaten vorhanden sind, aber pausedCount > 0 ist
+                                    let message = '';
                                     if (pausedCount > 0) {
-                                        pausedCustomersList.innerHTML = '<div class="text-center p-2">Es gibt Kunden in Pause, aber keine detaillierten Daten verfügbar.</div>';
+                                        message = '<div class="text-center p-3">Es gibt Kunden in Pause, aber keine detaillierten Daten verfügbar.</div>';
                                     } else {
-                                        pausedCustomersList.innerHTML = '<div class="text-center p-2">Keine Kunden in Pause gefunden</div>';
+                                        message = '<div class="text-center p-3">Keine Kunden in Pause gefunden</div>';
                                     }
                                     
-                                    // Zeige die leere Liste trotzdem an und verstecke den Spinner
+                                    // Ersetze den gesamten Container mit der Meldung
+                                    if (pausedCustomersContainer) {
+                                        pausedCustomersContainer.innerHTML = message;
+                                    }
+                                    
+                                    // Auch die Liste aktualisieren
+                                    if (pausedCustomersList) {
+                                        pausedCustomersList.innerHTML = message;
+                                    }
+                                    
+                                    // Zeige die leere Liste trotzdem an
                                     if (pausedCustomersListContainer) {
                                         pausedCustomersListContainer.style.display = 'block';
-                                        
-                                        // Spinner entfernen (falls vorhanden)
-                                        const spinner = pausedCustomersListContainer.querySelector('.loading-spinner');
-                                        if (spinner) {
-                                            spinner.style.display = 'none';
-                                        }
-                                    }
-                                    
-                                    // Spinner im Container verstecken
-                                    if (pausedCustomersContainer) {
-                                        const spinner = pausedCustomersContainer.querySelector('.loading-spinner');
-                                        if (spinner) {
-                                            spinner.style.display = 'none';
-                                        }
                                     }
                                 }
                             } else {
+                                if (pausedCustomersCountContainer) {
+                                    pausedCustomersCountContainer.innerHTML = `<div class="customer-count">0</div>`;
+                                }
+                                
+                                const noDataMessage = '<div class="text-center p-2">Keine Daten zu Kunden in Pause gefunden</div>';
+                                
                                 if (pausedCustomersContainer) {
-                                    pausedCustomersContainer.innerHTML = `<div class="customer-count">0</div>`;
+                                    pausedCustomersContainer.innerHTML = noDataMessage;
                                 }
                                 
                                 if (pausedCustomersList) {
-                                    pausedCustomersList.innerHTML = '<div class="text-center p-2">Keine Daten zu Kunden in Pause gefunden</div>';
+                                    pausedCustomersList.innerHTML = noDataMessage;
                                     
                                     // Zeige die leere Liste trotzdem an
                                     if (pausedCustomersListContainer) {
@@ -731,12 +742,18 @@
                             }
                         } catch (e) {
                             console.error('Fehler beim Parsen der JSON-Antwort:', e);
+                            if (pausedCustomersCountContainer) {
+                                pausedCustomersCountContainer.innerHTML = `<div class="customer-count">?</div>`;
+                            }
+                            
+                            const errorMessage = '<div class="text-center p-2 text-danger">Fehler beim Laden der Daten</div>';
+                            
                             if (pausedCustomersContainer) {
-                                pausedCustomersContainer.innerHTML = `<div class="customer-count">?</div>`;
+                                pausedCustomersContainer.innerHTML = errorMessage;
                             }
                             
                             if (pausedCustomersList) {
-                                pausedCustomersList.innerHTML = '<div class="text-center p-2 text-danger">Fehler beim Laden der Daten</div>';
+                                pausedCustomersList.innerHTML = errorMessage;
                             }
                         }
                     } else {

@@ -2564,6 +2564,14 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
             // Zeige Ladeindikator für Lead-Qualität an
             document.getElementById('lead-quality-percent').innerHTML = '<div class="spinner"></div>';
             document.getElementById('lead-quality-absolute').innerHTML = 'Wird geladen...';
+
+            // Zeige Ladeindikator für Kündigungsrate an
+            const terminationRatePercent = document.getElementById('termination-rate-percent');
+            const terminationRateAbsolute = document.getElementById('termination-rate-absolute');
+            if (terminationRatePercent && terminationRateAbsolute) {
+                terminationRatePercent.innerHTML = '<div class="spinner"></div>';
+                terminationRateAbsolute.innerHTML = 'Wird geladen...';
+            }
             
             // 1. Rufe die Abschlussquote vom Backend ab
             fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=conversion_rate`)
@@ -2643,6 +2651,48 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                         document.getElementById('lead-quality-absolute').textContent = 'Keine Daten verfügbar';
                     }
                 });
+                
+                // 3. Rufe die Kündigungsrate vom Backend ab
+                if (terminationRatePercent && terminationRateAbsolute) {
+                    fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=termination_rate`)
+                        .then(response => {
+                            if (!response.ok) {
+                                // Prüfe auf CSRF-Token-Fehler (Sitzung abgelaufen)
+                                if (response.status === 403 || response.status === 401) {
+                                    showSessionExpiredMessage();
+                                    throw new Error('Sitzung abgelaufen');
+                                }
+                                throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.status === 'success' && data.data) {
+                                // Extrahiere die relevanten Daten
+                                const terminationRate = data.data.termination_rate || 0;
+                                const totalTerminations = data.data.total_terminations || 0;
+                                const activeContracts = data.data.active_contracts || 0;
+                                const totalContracts = activeContracts + totalTerminations;
+                                
+                                // Aktualisiere die UI-Elemente
+                                terminationRatePercent.textContent = terminationRate + '%';
+                                terminationRateAbsolute.textContent = `${totalTerminations} / ${totalContracts}`;
+                                
+                                console.log('Kündigungsraten-Daten geladen:', data.data);
+                            } else {
+                                console.error('Fehler beim Laden der Kündigungsraten-Daten:', data.error);
+                                terminationRatePercent.textContent = 'Fehler';
+                                terminationRateAbsolute.textContent = 'Keine Daten verfügbar';
+                            }
+                        })
+                        .catch(error => {
+                            if (!error.message.includes('Sitzung abgelaufen')) {
+                                console.error('Fehler beim Abrufen der Kündigungsraten-Daten:', error);
+                                terminationRatePercent.textContent = 'Fehler';
+                                terminationRateAbsolute.textContent = 'Keine Daten verfügbar';
+                            }
+                        });
+                }
                 
                 // 3. Rufe die Lead zu EB Conversion vom Backend ab
                 fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=lead_household_conversion`)

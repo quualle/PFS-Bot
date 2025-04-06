@@ -2878,6 +2878,8 @@ def get_kpi_data():
             query_name = "get_household_posting_conversion"
         elif query_type == 'posting_contract_conversion':
             query_name = "get_posting_contract_conversion"
+        elif query_type == 'termination_rate':
+            query_name = "get_contract_terminations"
         else:  # Standardfall: Abschlussquote
             query_name = "get_cvr_lead_contract"
             

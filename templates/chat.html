@@ -2654,8 +2654,8 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                 
                 // 3. Rufe die Kündigungsrate vom Backend ab
                 if (terminationRatePercent && terminationRateAbsolute) {
-                    // Zuerst die aktiven Verträge laden
-                    fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=contract_count`)
+                    // Hole die Kündigungsdaten
+                    fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=termination_rate`)
                         .then(response => {
                             if (!response.ok) {
                                 // Prüfe auf CSRF-Token-Fehler (Sitzung abgelaufen)
@@ -2667,65 +2667,27 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                             }
                             return response.json();
                         })
-                        .then(contractData => {
-                            // Nachdem aktive Verträge geladen sind, Kündigungsdaten holen
-                            if (contractData.status !== 'success' || !contractData.data) {
-                                throw new Error('Fehler beim Laden der aktiven Verträge');
+                        .then(terminationData => {
+                            if (terminationData.status !== 'success' || !terminationData.data) {
+                                throw new Error('Fehler beim Laden der Kündigungsdaten');
                             }
                             
-                            // DEBUG-AUSGABE: Vollständige Struktur der Antwort anzeigen
-                            console.log('Rohdaten der aktiven Verträge:', JSON.stringify(contractData));
+                            // DEBUG-AUSGABE: Kündigungsdaten anzeigen
+                            console.log('Kündigungsdaten:', JSON.stringify(terminationData.data));
                             
-                            // Aktive Verträge zählen
-                            // Wir müssen die tatsächlichen aktiven Care Stays zählen, die in der Antwort enthalten sind
-                            let activeContracts = 0;
+                            // Hole die Anzahl der aktiven Kunden aus dem Dashboard
+                            // Das Dashboard hat bereits die korrekte Anzahl aller aktiven Kunden
+                            const customerCountEl = document.getElementById('customer-count');
+                            const activeContracts = customerCountEl ? parseInt(customerCountEl.textContent || '0') : 0;
                             
-                            // Zuerst prüfen wir, ob es sich um ein Array handelt
-                            if (Array.isArray(contractData.data)) {
-                                // Es ist ein Array von Care Stays - die Länge ist die Anzahl der aktiven Verträge
-                                activeContracts = contractData.data.length;
-                                console.log('Aktive Verträge (Array-Format):', activeContracts);
-                            } else if (typeof contractData.data === 'object') {
-                                // Wenn es sich um ein Objekt handelt, könnte es verschiedene Strukturen haben
-                                if (contractData.data.cs_id && Array.isArray(contractData.data.cs_id)) {
-                                    // Wenn cs_id ein Array ist, verwenden wir dessen Länge
-                                    activeContracts = contractData.data.cs_id.length;
-                                    console.log('Aktive Verträge (cs_id Array-Format):', activeContracts);
-                                } else {
-                                    // Fallback: Zähle die Anzahl der Schlüssel im Objekt
-                                    // Nur als letzten Ausweg, da dies wahrscheinlich nicht korrekt ist
-                                    const keys = Object.keys(contractData.data).filter(key => !key.startsWith('_'));
-                                    console.log('Objektschlüssel:', keys);
-                                    
-                                    if (keys.includes('cs_id') && !Array.isArray(contractData.data.cs_id)) {
-                                        // Wenn cs_id ein einzelner Wert ist, gibt es nur einen aktiven Vertrag
-                                        activeContracts = 1;
-                                    } else {
-                                        // Ansonsten nehmen wir einfach an, dass es die Anzahl der Schlüssel ist
-                                        // (Dies ist nur ein Fallback und wahrscheinlich nicht korrekt)
-                                        activeContracts = keys.length;
-                                    }
-                                    console.log('Aktive Verträge (Fallback-Format):', activeContracts);
-                                }
-                            } else {
-                                // Wenn es weder ein Array noch ein Objekt ist, gibt es keine aktiven Verträge
-                                activeContracts = 0;
-                                console.log('Keine aktiven Verträge erkannt:', typeof contractData.data);
-                            }
+                            console.log('Kundenanzahl aus Dashboard:', activeContracts);
                             
-                            // Jetzt die Kündigungsdaten abrufen
-                            return fetch(`/get_kpi_data?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&query_type=termination_rate`)
-                                .then(response => {
-                                    if (!response.ok) {
-                                        // Prüfe auf CSRF-Token-Fehler (Sitzung abgelaufen)
-                                        if (response.status === 403 || response.status === 401) {
-                                            showSessionExpiredMessage();
-                                            throw new Error('Sitzung abgelaufen');
-                                        }
-                                        throw new Error('Netzwerkantwort war nicht ok: ' + response.status);
-                                    }
-                                    return response.json().then(terminationData => ({ terminationData, activeContracts }));
-                                });
+                            // Extrahiere die relevanten Kündigungsdaten
+                            const totalTerminations = terminationData.data.total_terminations_count || 0;
+                            console.log('Anzahl Kündigungen:', totalTerminations);
+                            
+                            // Berechne Kündigungsrate mit Daten aus dem Dashboard
+                            return { terminationData, activeContracts };
                         })
                         .then(({ terminationData, activeContracts }) => {
                             if (terminationData.status === 'success' && terminationData.data) {

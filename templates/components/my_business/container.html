@@ -43,20 +43,13 @@
         
         <div class="widget-row">
             <div class="widget">
-                <div class="widget-header">Umsatz im laufenden Monat bisher
+                <div class="widget-header">Tagesverdienst (Provisionen)
                     <span class="info-icon">i
-                        <span class="tooltip"<>Dein Umsatz diesen Monat bisher></span>
+                        <span class="tooltip">Deine durchschnittlichen täglichen Provisionseinnahmen</span>
                     </span>
                 </div>
                 <div class="widget-content">
                     <div class="customer-count" id="total-revenue">0 €</div>
-                    <div class="month-selector">
-                        <select id="month-select" class="month-select">
-                            <option value="0">Aktueller Monat</option>
-                            <option value="1">Letzter Monat</option>
-                            <option value="2">Vor 2 Monaten</option>
-                        </select>
-                    </div>
                 </div>
             </div>
             
@@ -555,12 +548,23 @@
                             const totalRevenueElementNew = document.getElementById('total-revenue');
                             if (totalRevenueElementNew && data.pro_rata_revenue !== undefined) {
                                 const proRataRevenue = parseFloat(data.pro_rata_revenue) || 0;
-                                totalRevenueElementNew.textContent = `${proRataRevenue.toFixed(2)} €`;
-                                console.log('Gesamtumsatz aktualisiert (Pro Rata Methode):', proRataRevenue.toFixed(2));
+                                
+                                // Berechne täglichen Durchschnittsverdienst
+                                // Aktuelle Anzahl Tage im Monat
+                                const now = new Date();
+                                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                                const currentDay = Math.min(now.getDate(), daysInMonth);
+                                
+                                // Täglicher Durchschnitt (Annahme: Umsatz ist pro Monat)
+                                const dailyAverage = proRataRevenue / currentDay;
+                                
+                                // Anzeigen mit 2 Dezimalstellen
+                                totalRevenueElementNew.textContent = `${dailyAverage.toFixed(2)} €`;
+                                console.log('Täglicher Provisionsertrag berechnet:', dailyAverage.toFixed(2), '€ (Monatsumsatz:', proRataRevenue.toFixed(2), '€ geteilt durch', currentDay, 'Tage)');
                             } else if (totalRevenueElementNew) {
                                 // Fallback, falls Wert nicht vorhanden
                                 totalRevenueElementNew.textContent = '0.00 €';
-                                console.log('Gesamtumsatz Pro Rata konnte nicht geladen werden');
+                                console.log('Täglicher Provisionsertrag konnte nicht berechnet werden, keine Umsatzdaten verfügbar');
                             }
                             
                             // Abschlussquote aktualisieren
@@ -1032,7 +1036,29 @@
         // Chat-Button-Funktionalität hinzufügen
         const toggleChatBtn = document.getElementById('toggleChatBtn');
         if (toggleChatBtn) {
-            // ... event listener code as before ...
+            toggleChatBtn.addEventListener('click', function() {
+                // Prüfen, ob das chatOverlay-Element existiert
+                const chatOverlay = document.getElementById('chatOverlay');
+                if (chatOverlay) {
+                    // Chat-Overlay anzeigen
+                    chatOverlay.style.display = 'flex';
+                    
+                    // Scrolle den Chat-Verlauf nach unten, falls nötig
+                    const chatHistory = document.getElementById('chatHistory');
+                    if (chatHistory) {
+                        chatHistory.scrollTop = chatHistory.scrollHeight;
+                    }
+                    
+                    console.log('Chat-Overlay wurde angezeigt');
+                } else {
+                    // Fallback: Zur Hauptseite navigieren
+                    console.log('Chat-Overlay nicht gefunden, navigiere zur Hauptseite');
+                    window.location.href = '/';
+                }
+            });
+            console.log('Event-Listener für toggleChatBtn hinzugefügt');
+        } else {
+            console.error('toggleChatBtn nicht gefunden!');
         }
         
         // Den Float-Button mit dem 💬 Symbol ausblenden

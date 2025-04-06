@@ -2795,6 +2795,10 @@ Falls du zum ersten mal hier bist, schlage ich vor, meine neuen Funktionen zum D
                 startDateField.value = formatDate(dateRange.start);
                 endDateField.value = formatDate(dateRange.end);
                 console.log('KPI-Datumsfelder erfolgreich initialisiert');
+                
+                // Automatisches Laden der KPI-Daten beim Öffnen des Tabs
+                updateKPIMetrics(dateRange);
+                console.log('KPI-Daten werden automatisch geladen');
             } else {
                 console.warn('KPI-Datumsfelder noch nicht im DOM verfügbar');
             }

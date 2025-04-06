@@ -619,39 +619,25 @@
                                 console.log('Pausierte Kunden Daten:', pausedCustomers);
                                 console.log('Pausierte Kunden Struktur:', data.paused_customers);
                                 
-                                // Detaillierte Debug-Ausgabe zur Analyse
-                                if (pausedCustomers.length > 0) {
-                                    console.log('Erster pausierter Kunde:', pausedCustomers[0]);
-                                    console.log('Total paused customers (aus Datensatz):', pausedCustomers[0].total_paused_customers);
-                                } else {
-                                    console.log('Keine pausierte Kunden im Array');
-                                }
+                                // Direkt die count-Eigenschaft aus der Server-Antwort auslesen
+                                let pausedCount = data.paused_customers.count || 0;
+                                console.log('Server-Seitige Zählung (count):', pausedCount);
                                 
-                                // Priorisiere die Verwendung der direkten count/total_count Werte vom Server
-                                let pausedCount = 0;
-                                
-                                // 1. Prüfe, ob es ein explizites total_count Feld gibt
+                                // Alternative Felder prüfen
                                 if (data.paused_customers.total_count !== undefined) {
+                                    console.log('Server-Seitige Gesamtzahl (total_count):', data.paused_customers.total_count);
                                     pausedCount = data.paused_customers.total_count;
-                                    console.log('Verwende total_count aus Antwort:', pausedCount);
-                                }
-                                // 2. Prüfe, ob es ein count Feld gibt
-                                else if (data.paused_customers.count !== undefined) {
-                                    pausedCount = data.paused_customers.count;
-                                    console.log('Verwende count aus Antwort:', pausedCount);
-                                }
-                                // 3. Prüfe auf total_paused_customers im ersten Datensatz
-                                else if (pausedCustomers.length > 0 && pausedCustomers[0].total_paused_customers) {
-                                    pausedCount = pausedCustomers[0].total_paused_customers;
-                                    console.log('Verwende total_paused_customers aus erstem Datensatz:', pausedCount);
-                                }
-                                // 4. Fallback: Array-Länge
-                                else {
-                                    pausedCount = pausedCustomers.length;
-                                    console.log('Fallback: Verwende Array-Länge:', pausedCount);
                                 }
                                 
-                                console.log('Endgültig berechneter pausedCount:', pausedCount);
+                                // Als Fallback total_paused_customers aus dem ersten Datensatz prüfen
+                                if (pausedCount === 0 && pausedCustomers.length > 0 && pausedCustomers[0].total_paused_customers) {
+                                    console.log('Verwende total_paused_customers aus Datensatz:', pausedCustomers[0].total_paused_customers);
+                                    try {
+                                        pausedCount = parseInt(pausedCustomers[0].total_paused_customers, 10);
+                                    } catch (e) {
+                                        console.error('Fehler beim Konvertieren von total_paused_customers:', e);
+                                    }
+                                }
                                 
                                 // Zeige die Gesamtzahl an
                                 if (pausedCustomersContainer) {
@@ -683,7 +669,12 @@
                                         pausedCustomersListContainer.style.display = 'block';
                                     }
                                 } else if (pausedCustomersList) {
-                                    pausedCustomersList.innerHTML = '<div class="text-center p-2">Keine Kunden in Pause gefunden</div>';
+                                    // Wenn keine Kundendaten vorhanden sind, aber pausedCount > 0 ist
+                                    if (pausedCount > 0) {
+                                        pausedCustomersList.innerHTML = '<div class="text-center p-2">Es gibt Kunden in Pause, aber keine detaillierten Daten verfügbar.</div>';
+                                    } else {
+                                        pausedCustomersList.innerHTML = '<div class="text-center p-2">Keine Kunden in Pause gefunden</div>';
+                                    }
                                     
                                     // Zeige die leere Liste trotzdem an
                                     if (pausedCustomersListContainer) {

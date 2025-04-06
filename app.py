@@ -2691,18 +2691,18 @@ def get_dashboard_data():
                     logging.info(f"Dashboard Pause: SQL-Abfrage: {query_pattern['sql_template'][:500]}...")
                     
                     # Debug-Ausgabe der Ergebnisse
-                    if paused_customers_result and 'rows' in paused_customers_result:
-                        row_count = len(paused_customers_result['rows']) if paused_customers_result['rows'] else 0
-                        logging.info(f"Dashboard Pause: {row_count} Zeilen gefunden")
-                        
-                        # Zeige die ersten paar Ergebnisse
-                        if row_count > 0:
-                            for i, row in enumerate(paused_customers_result['rows'][:3]):
-                                logging.info(f"Dashboard Pause: Beispiel {i+1}: {row}")
-                        
+                    # WICHTIG: paused_customers_result ist eine direkte Liste von Dictionaries (keine 'rows')
+                    row_count = len(paused_customers_result) if paused_customers_result else 0
+                    logging.info(f"Dashboard Pause: {row_count} Zeilen gefunden")
+                    
+                    # Zeige die ersten paar Ergebnisse
+                    if row_count > 0:
+                        for i, row in enumerate(paused_customers_result[:3]):
+                            logging.info(f"Dashboard Pause: Beispiel {i+1}: {row}")
+                    
                         # Zeige die total_paused_customers-Werte
-                        if row_count > 0 and 'total_paused_customers' in paused_customers_result['rows'][0]:
-                            total_paused = paused_customers_result['rows'][0]['total_paused_customers']
+                        if 'total_paused_customers' in paused_customers_result[0]:
+                            total_paused = paused_customers_result[0]['total_paused_customers']
                             logging.info(f"Dashboard Pause: Gesamtanzahl paused ist {total_paused}")
                             
                             # Stelle sicher, dass das Feld korrekt als Zahl zurückgegeben wird
@@ -2715,33 +2715,30 @@ def get_dashboard_data():
                             logging.info("Dashboard Pause: Kein total_paused_customers Wert gefunden!")
                             
                             # Zeige die Spalten des ersten Ergebnisses
-                            if row_count > 0:
-                                logging.info(f"Dashboard Pause: Verfügbare Spalten: {list(paused_customers_result['rows'][0].keys())}")
+                            logging.info(f"Dashboard Pause: Verfügbare Spalten: {list(paused_customers_result[0].keys())}")
                     else:
-                        logging.warning("Dashboard Pause: Keine Ergebnisse oder keine 'rows' in der Antwort!")
-                        if paused_customers_result:
-                            logging.warning(f"Dashboard Pause: Antwortstruktur: {paused_customers_result.keys()}")
+                        logging.warning("Dashboard Pause: Keine Zeilen im Ergebnis!")
                     
                     # Formatiere das Ergebnis
-                    if paused_customers_result and 'rows' in paused_customers_result and paused_customers_result['rows']:
+                    if paused_customers_result and len(paused_customers_result) > 0:
                         # Zähle die Anzahl der eindeutigen Kunden
-                        paused_count = len(paused_customers_result['rows'])
+                        paused_count = len(paused_customers_result)
                         
                         # Ermittle die Gesamtzahl aus dem total_paused_customers Feld, wenn vorhanden
                         total_paused = paused_count  # Standardwert
-                        if paused_count > 0 and 'total_paused_customers' in paused_customers_result['rows'][0]:
+                        if paused_count > 0 and 'total_paused_customers' in paused_customers_result[0]:
                             try:
-                                total_paused = int(paused_customers_result['rows'][0]['total_paused_customers'])
+                                total_paused = int(paused_customers_result[0]['total_paused_customers'])
                             except (ValueError, TypeError):
                                 logging.warning("Dashboard Pause: Konvertierungsfehler bei total_paused_customers")
                         
                         # Debug-Ausgabe für die Fehlersuche
-                        logging.info(f"Dashboard Pause: Sende Antwort mit {paused_count} Kunden, Gesamtanzahl: {total_paused}")
-                        logging.info(f"Dashboard Pause: Erster Datensatz: {paused_customers_result['rows'][0] if paused_count > 0 else 'keine Daten'}")
+                        logging.info(f"Dashboard Pause: Sende Antwort mit {paused_count} Kunden, Gesamtzahl: {total_paused}")
+                        logging.info(f"Dashboard Pause: Erster Datensatz: {paused_customers_result[0] if paused_count > 0 else 'keine Daten'}")
                         
                         dashboard_result['paused_customers'] = {
                             'count': total_paused,  # Verwende die Gesamtzahl hier
-                            'data': paused_customers_result['rows'],
+                            'data': paused_customers_result,
                             'total_count': total_paused  # Zusätzliches Feld für die Gesamtzahl
                         }
                         logging.info(f"Dashboard Pause: Antwort mit {paused_count} Kunden erstellt, Gesamtzahl: {total_paused}")

@@ -648,25 +648,43 @@
                                 
                                 // Fülle die Kundenliste mit den Kunden in Pause
                                 if (pausedCustomersList && pausedCustomers.length > 0) {
-                                    let listHtml = '';
+                                    let listHtml = '<div class="customer-list">';
                                     
                                     pausedCustomers.forEach(customer => {
                                         const name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
                                         const daysOnPause = customer.days_on_pause || '?';
+                                        const agency = customer.agency_name || 'Keine Agentur';
                                         
+                                        // Neues Format wie bei aktiven Kunden
                                         listHtml += `
-                                            <div class="d-flex justify-content-between align-items-center mb-1 customer-entry">
-                                                <div>${name}</div>
-                                                <div class="text-end">${daysOnPause} Tage</div>
+                                            <div class="customer-item">
+                                                <div class="customer-name">${name}</div>
+                                                <div class="customer-agency">${agency}</div>
+                                                <div class="customer-since">${daysOnPause} Tage in Pause</div>
                                             </div>
                                         `;
                                     });
                                     
+                                    listHtml += '</div>';
                                     pausedCustomersList.innerHTML = listHtml;
                                     
-                                    // Zeige die Kundenliste an
+                                    // Zeige die Kundenliste an und verstecke den Spinner
                                     if (pausedCustomersListContainer) {
                                         pausedCustomersListContainer.style.display = 'block';
+                                        
+                                        // Spinner entfernen (falls vorhanden)
+                                        const spinner = pausedCustomersListContainer.querySelector('.loading-spinner');
+                                        if (spinner) {
+                                            spinner.style.display = 'none';
+                                        }
+                                    }
+                                    
+                                    // Spinner im Container verstecken
+                                    if (pausedCustomersContainer) {
+                                        const spinner = pausedCustomersContainer.querySelector('.loading-spinner');
+                                        if (spinner) {
+                                            spinner.style.display = 'none';
+                                        }
                                     }
                                 } else if (pausedCustomersList) {
                                     // Wenn keine Kundendaten vorhanden sind, aber pausedCount > 0 ist
@@ -676,9 +694,23 @@
                                         pausedCustomersList.innerHTML = '<div class="text-center p-2">Keine Kunden in Pause gefunden</div>';
                                     }
                                     
-                                    // Zeige die leere Liste trotzdem an
+                                    // Zeige die leere Liste trotzdem an und verstecke den Spinner
                                     if (pausedCustomersListContainer) {
                                         pausedCustomersListContainer.style.display = 'block';
+                                        
+                                        // Spinner entfernen (falls vorhanden)
+                                        const spinner = pausedCustomersListContainer.querySelector('.loading-spinner');
+                                        if (spinner) {
+                                            spinner.style.display = 'none';
+                                        }
+                                    }
+                                    
+                                    // Spinner im Container verstecken
+                                    if (pausedCustomersContainer) {
+                                        const spinner = pausedCustomersContainer.querySelector('.loading-spinner');
+                                        if (spinner) {
+                                            spinner.style.display = 'none';
+                                        }
                                     }
                                 }
                             } else {

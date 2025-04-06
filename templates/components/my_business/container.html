@@ -43,7 +43,7 @@
         
         <div class="widget-row">
             <div class="widget">
-                <div class="widget-header">Umsatz
+                <div class="widget-header">Umsatz im laufenden Monat bisher
                     <span class="info-icon">i
                         <span class="tooltip"<>Dein Umsatz diesen Monat bisher></span>
                     </span>
@@ -297,32 +297,70 @@
 }
 
 .gauge-container {
-    width: 150px; /* Breite des Gauge-Bereichs */
-    height: 90px;  /* Höhe ERHÖHT für mehr Platz */
-    position: relative; /* Für die Positionierung des Prozentwerts */
-    margin-bottom: 10px;
-    overflow: visible; /* Geändert von hidden zu visible, um zu sehen ob etwas übersteht */
+    width: 150px;
+    height: 85px;
+    position: relative;
+    margin: 0 auto 35px;
+    overflow: visible;
 }
 
-.gauge-container svg {
-    width: 100%;
-    height: 100%;
-    display: block;
+.gauge-bg {
+    width: 150px;
+    height: 75px;
+    background-color: #334455;
+    border-top-left-radius: 150px;
+    border-top-right-radius: 150px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+}
+
+.gauge-fill {
+    width: 150px;
+    height: 75px;
+    background-color: #00ffff;
+    border-top-left-radius: 150px;
+    border-top-right-radius: 150px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: center bottom;
+    transform: rotate(180deg);
+    z-index: 1;
+}
+
+.gauge-cover {
+    width: 130px;
+    height: 65px;
+    background-color: #1a2431; /* Gleiche Farbe wie der Hintergrund */
+    border-top-left-radius: 130px;
+    border-top-right-radius: 130px;
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    z-index: 2;
 }
 
 .gauge-value-percent {
-    font-size: 2em; /* Große Schrift für Prozentzahl */
+    font-size: 2em;
     font-weight: bold;
-    color: #00ffff; /* Cyan-Farbe */
-    margin-top: -55px; /* Leicht angepasst wegen höherem Container */
-    position: relative;
-    z-index: 1; /* Stellt sicher, dass die Zahl über dem Gauge liegt */
+    color: #00ffff;
+    position: absolute;
+    top: 20px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    z-index: 3;
 }
 
 .gauge-value-absolute {
     font-size: 0.9em;
-    color: #a0a0a0; /* Graue Farbe für absolute Zahlen */
-    margin-top: 5px;
+    color: #a0a0a0;
+    position: absolute;
+    bottom: -30px;
+    width: 100%;
+    text-align: center;
 }
 
 /* SVG Gauge Stile */
@@ -347,7 +385,7 @@
     (function() {
         console.log('My Business Overlay: JavaScript wird initialisiert');
         
-        // --- Hinzugefügt für KPI Gauges ---
+        // --- Neuer CSS-basierter Gauge Code ---
         function createGauge(elementId, percentage) {
             const container = document.getElementById(elementId);
             if (!container) {
@@ -355,69 +393,25 @@
                 return;
             }
             
-            container.innerHTML = ''; // Clear previous content
-
-            // Vereinfachte Berechnung
+            // Percentage auf 0-100 beschränken
             const value = Math.max(0, Math.min(100, percentage));
-            console.log(`Creating gauge for ${elementId} with percentage: ${value}%`); // Debug-Ausgabe
+            console.log(`Creating gauge for ${elementId} with percentage: ${value}%`);
             
-            // Vereinfachte SVG-Parameter
-            const radius = 65;  // etwas kleiner für Platz
-            const cx = 75;      // Mittelpunkt X
-            const cy = 75;      // Mittelpunkt Y
-            const startAngle = Math.PI;     // 180° (unten)
-            const endAngle = 0;             // 0° (oben)
+            // Berechne Rotation für die Anzeige (180° = 0%, 0° = 100%)
+            const rotation = 180 - (value * 1.8); // 180 Grad * Prozent / 100
             
-            // SVG erstellen
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('viewBox', '0 0 150 95'); // etwas höher für mehr Platz
-            svg.style.overflow = 'visible'; // zeigt alles, auch wenn es übersteht
+            // Container leeren
+            container.innerHTML = '';
             
-            // Hintergrund-Bogen (voller Halbkreis)
-            const backgroundPath = describeArc(cx, cy, radius, startAngle, endAngle);
-            const backgroundArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            backgroundArc.setAttribute('d', backgroundPath);
-            backgroundArc.setAttribute('class', 'gauge-background');
-            svg.appendChild(backgroundArc);
+            // Gauge-Elemente erstellen
+            const gaugeHTML = `
+                <div class="gauge-bg"></div>
+                <div class="gauge-fill" style="transform: rotate(${rotation}deg);"></div>
+                <div class="gauge-cover"></div>
+            `;
             
-            // Wert-Bogen (teilweiser Halbkreis je nach Prozent)
-            const valueEndAngle = startAngle - (startAngle - endAngle) * (value / 100);
-            const valuePath = describeArc(cx, cy, radius, startAngle, valueEndAngle);
-            const valueArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            valueArc.setAttribute('d', valuePath);
-            valueArc.setAttribute('class', 'gauge-value');
-            svg.appendChild(valueArc);
-            
-            // Zum Container hinzufügen
-            container.appendChild(svg);
-            
-            // Debug-Ausgabe zum Prüfen der Pfade
-            console.log(`SVG paths: bg=${backgroundPath.substring(0, 30)}..., value=${valuePath.substring(0, 30)}...`);
-        }
-        
-        // Hilfsfunktion zum Erstellen eines Bogen-Pfades
-        function describeArc(x, y, radius, startAngle, endAngle) {
-            // Positionen berechnen
-            const start = {
-                x: x + radius * Math.cos(startAngle),
-                y: y + radius * Math.sin(startAngle)
-            };
-            
-            const end = {
-                x: x + radius * Math.cos(endAngle),
-                y: y + radius * Math.sin(endAngle)
-            };
-            
-            // Entscheiden ob großer oder kleiner Bogen
-            const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
-            
-            // SVG-Pfad erstellen
-            const path = [
-                "M", start.x, start.y,
-                "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
-            ].join(" ");
-            
-            return path;
+            // HTML in Container einfügen
+            container.innerHTML = gaugeHTML;
         }
 
         function loadAndDisplayKpiData(startDate = null, endDate = null) {

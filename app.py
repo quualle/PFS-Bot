@@ -2673,31 +2673,64 @@ def get_dashboard_data():
             
             if query_name in query_patterns['common_queries']:
                 query_pattern = query_patterns['common_queries'][query_name]
+                logging.info(f"Dashboard Pause: SQL Template geladen: {query_pattern['sql_template'][:100]}...")
                 
-                # Parameter vorbereiten
+                # Parameter vorbereiten - seller_id ist erforderlich laut Abfragedefinition
                 parameters = {'seller_id': seller_id}
-                logging.info(f"Dashboard: Parameter für Kunden in Pause: {parameters}")
+                logging.info(f"Dashboard Pause: Parameter: {parameters}")
                 
-                # Führe die Abfrage aus
-                logging.info("Dashboard: Führe BigQuery-Abfrage für Kunden in Pause aus")
-                paused_customers_result = execute_bigquery_query(
-                    query_pattern['sql_template'],
-                    parameters
-                )
-                
-                # Formatiere das Ergebnis
-                if paused_customers_result and 'rows' in paused_customers_result:
-                    paused_count = 0
-                    if paused_customers_result['rows'] and len(paused_customers_result['rows']) > 0:
-                        # Extrahiere die Gesamtzahl aus dem ersten Ergebnis
-                        paused_count = paused_customers_result['rows'][0].get('total_paused_customers', 0)
+                try:
+                    # Führe die Abfrage aus
+                    logging.info("Dashboard Pause: Führe BigQuery-Abfrage aus")
+                    paused_customers_result = execute_bigquery_query(
+                        query_pattern['sql_template'],
+                        parameters
+                    )
                     
-                    dashboard_result['paused_customers'] = {
-                        'count': paused_count,
-                        'data': paused_customers_result['rows']
-                    }
+                    # Debug-Ausgabe der Ergebnisse
+                    if paused_customers_result and 'rows' in paused_customers_result:
+                        row_count = len(paused_customers_result['rows']) if paused_customers_result['rows'] else 0
+                        logging.info(f"Dashboard Pause: {row_count} Zeilen gefunden")
+                        
+                        # Zeige die ersten paar Ergebnisse
+                        if row_count > 0:
+                            for i, row in enumerate(paused_customers_result['rows'][:3]):
+                                logging.info(f"Dashboard Pause: Beispiel {i+1}: {row}")
+                        
+                        # Zeige die total_paused_customers-Werte
+                        if row_count > 0 and 'total_paused_customers' in paused_customers_result['rows'][0]:
+                            logging.info(f"Dashboard Pause: Gesamtanzahl paused ist {paused_customers_result['rows'][0]['total_paused_customers']}")
+                        else:
+                            logging.info("Dashboard Pause: Kein total_paused_customers Wert gefunden!")
+                            
+                            # Zeige die Spalten des ersten Ergebnisses
+                            if row_count > 0:
+                                logging.info(f"Dashboard Pause: Verfügbare Spalten: {list(paused_customers_result['rows'][0].keys())}")
+                    else:
+                        logging.warning("Dashboard Pause: Keine Ergebnisse oder keine 'rows' in der Antwort!")
+                        if paused_customers_result:
+                            logging.warning(f"Dashboard Pause: Antwortstruktur: {paused_customers_result.keys()}")
                     
-                    return jsonify(dashboard_result)
+                    # Formatiere das Ergebnis
+                    if paused_customers_result and 'rows' in paused_customers_result and paused_customers_result['rows']:
+                        # Zähle die Anzahl der eindeutigen Kunden
+                        paused_count = len(paused_customers_result['rows'])
+                        
+                        dashboard_result['paused_customers'] = {
+                            'count': paused_count,
+                            'data': paused_customers_result['rows']
+                        }
+                        logging.info(f"Dashboard Pause: Antwort mit {paused_count} Kunden erstellt")
+                        
+                        return jsonify(dashboard_result)
+                    else:
+                        logging.warning("Dashboard Pause: Keine Daten gefunden, sende leeres Ergebnis")
+                except Exception as e:
+                    logging.error(f"Dashboard Pause: Fehler bei der Ausführung: {str(e)}")
+                    import traceback
+                    logging.error(traceback.format_exc())
+            else:
+                logging.error(f"Dashboard Pause: Abfrage {query_name} nicht in query_patterns gefunden!")
             
             # Fallback für den Fall, dass keine Daten gefunden wurden
             return jsonify({
